@@ -20,22 +20,22 @@ The user navigates the composer, send, stop, message actions, and scroll-to-late
 
 **Acceptance Scenarios**:
 
-1. **Given** the chat screen is open, **When** the user tabs through controls, **Then** each control receives visible focus.
+1. **Given** the chat screen is open, **When** the user tabs through controls, **Then** focus order is logical and each control receives visible focus.
 2. **Given** a control has focus, **When** the user activates it with the keyboard, **Then** the action fires.
-3. **Given** the user is operating the keyboard, **When** focus reaches the message list, **Then** messages can be read and interacted with.
+3. **Given** focus reaches the message list, **When** the user operates it with standard scroll keys, **Then** messages can be scrolled, read, and interacted with.
 
 ### User Story 2 - Read with increased text and zoom (Priority: P1)
 
-The user increases text size or zooms the browser; the layout adapts without clipping or overlap.
+The user increases text size or zooms to 200%; the layout adapts without clipping or overlap.
 
 **Why this priority**: Larger text is a common need; broken layout at large sizes makes the app unusable.
 
-**Independent Test**: Increase text size and browser zoom; confirm the layout adapts.
+**Independent Test**: Set the largest supported OS text size and 200% browser zoom; confirm the layout adapts.
 
 **Acceptance Scenarios**:
 
 1. **Given** the largest supported text size, **When** the chat renders, **Then** no content is clipped or overlapped.
-2. **Given** browser zoom is increased, **When** the chat renders, **Then** the layout remains usable.
+2. **Given** browser zoom is at 200%, **When** the chat renders, **Then** the layout remains usable.
 
 ### User Story 3 - Perceive status without color (Priority: P2)
 
@@ -56,37 +56,42 @@ The user enables reduced motion or high contrast; the component honors both.
 
 **Why this priority**: Both settings are system-level and cheap to honor; ignoring them is a real defect.
 
+**Independent Test**: Enable reduced motion and high contrast, then exercise the chat; confirm no component-triggered animation plays and all text and controls remain readable.
+
 **Acceptance Scenarios**:
 
 1. **Given** reduced motion is enabled, **When** content updates, **Then** no unnecessary animation plays.
-2. **Given** high contrast is enabled, **When** the chat renders, **Then** contrast is sufficient.
+2. **Given** high contrast is enabled, **When** the chat renders, **Then** text and UI components meet the applicable contrast ratios (at least 4.5:1 normal text; 3:1 large text and UI components).
 
 ### Edge Cases
 
-- Touch targets on iOS must meet the minimum size.
+- Touch targets must meet minimum sizes on both platforms.
 - Status must be perceivable without sound or animation.
 - Focus indicators must remain visible against both light and dark themes.
+- Focus must not be lost when a message is removed: focus moves to a nearby message or control.
+- High contrast combined with the dark theme must not produce unreadable surfaces.
 
 ## Requirements
 
 ### Functional Requirements
 
 - **FR-001**: The web output MUST meet WCAG 2.2 AA.
-- **FR-002**: All controls MUST have accessible names.
+- **FR-002**: All controls MUST have accessible names matching their visible labels.
 - **FR-003**: The component MUST be fully operable with a keyboard, with visible focus indicators.
-- **FR-004**: Touch targets MUST meet the minimum iOS size.
-- **FR-005**: The component MUST support dynamic type and browser zoom without clipping.
+- **FR-004**: Touch targets MUST be at least 44 points on iOS and at least 24 CSS pixels on web.
+- **FR-005**: The component MUST support dynamic type and 200% browser zoom without clipping.
 - **FR-006**: The component MUST honor reduced-motion settings.
 - **FR-007**: The component MUST honor high-contrast settings.
 - **FR-008**: Status information MUST NOT rely on color alone.
+- **FR-009**: FR-001 through FR-008 bind the component's default controls, states, and renderers. Host-supplied replacements (spec 004) are the host's responsibility.
 
 ## Success Criteria
 
 ### Measurable Outcomes
 
-- **SC-001**: Automated accessibility checks pass on the rendered chat.
+- **SC-001**: The project's automated WCAG 2.2 AA suite passes, plus the manual checks automation cannot catch: focus order, target size, and reflow at 200% zoom.
 - **SC-002**: The full chat flow works with a keyboard only.
-- **SC-003**: The layout survives maximum text size and browser zoom.
+- **SC-003**: At 200% browser zoom and the largest supported OS text size, no content is clipped, overlapped, or lost.
 - **SC-004**: Status remains identifiable without color.
 
 ## Assumptions

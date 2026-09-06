@@ -23,49 +23,65 @@ Assistant responses render as formatted Markdown: headings, emphasis, lists, blo
 1. **Given** an assistant response contains Markdown, **When** it is displayed, **Then** the formatting renders (headings, emphasis, lists, blockquotes, links, inline code, fenced code blocks, horizontal rules).
 2. **Given** a response contains a fenced code block, **When** it is displayed, **Then** the code is selectable and horizontally scrollable, and a copy control is available.
 3. **Given** a response contains a link, **When** the user activates it, **Then** navigation is delegated to the host app, never performed inside the component.
+4. **Given** a response contains a table, **When** it is displayed, **Then** it renders formatted or as plain text, never as broken layout.
 
 ### User Story 2 - Distinguish message roles visually (Priority: P1)
 
-User prompts and assistant responses are visually distinct so the conversation reads correctly.
+User prompts and assistant responses are visually distinct and aligned so the conversation reads correctly.
 
 **Why this priority**: Confusing who said what breaks the conversation.
 
-**Independent Test**: A conversation with user and assistant messages; each role has a distinct visual treatment.
+**Independent Test**: A conversation with user and assistant messages; each role has a distinct visual treatment and alignment.
 
 **Acceptance Scenarios**:
 
-1. **Given** a user message, **When** it is displayed, **Then** it is visually distinct from assistant messages.
-2. **Given** a system message, **When** it is displayed, **Then** it renders in a distinct, non-conversational treatment.
+1. **Given** a user message, **When** it is displayed, **Then** it is visually distinct from assistant messages and aligned to the right.
+2. **Given** an assistant response, **When** it is displayed, **Then** it is aligned to the left.
+3. **Given** a system message, **When** it is displayed, **Then** it renders in a distinct, non-conversational treatment.
 
-### User Story 3 - Handle unsupported content gracefully (Priority: P3)
+### User Story 3 - Safe by default (Priority: P1)
 
-Content types the component does not support show a fallback rather than an error or blank space.
+Raw HTML, remote images, and executable content are inert.
 
-**Why this priority**: Future content types (attachments, images, tool calls) will appear; the app must not break when they do.
+**Why this priority**: The component renders untrusted model output; any code execution or automatic network fetch is a security defect.
 
-**Independent Test**: A message with an unsupported content type renders a defined fallback.
+**Independent Test**: A response containing scripts, event handlers, and embeds renders as inert text.
 
 **Acceptance Scenarios**:
 
-1. **Given** a message contains unsupported content, **When** it is displayed, **Then** a fallback renderer shows a usable representation.
-2. **Given** a message contains raw HTML, **When** it is displayed, **Then** the HTML is never rendered as markup.
-3. **Given** a message references a remote image, **When** it is displayed, **Then** the image is not loaded by default.
+1. **Given** a message contains raw HTML, **When** it is displayed, **Then** the HTML is never rendered as markup.
+2. **Given** a message references a remote image, **When** it is displayed, **Then** the image is not loaded by default.
+3. **Given** a response contains a `javascript:` link, an inline event-handler attribute, or an embed, **When** it is displayed, **Then** nothing executes and the element is inert.
+
+### User Story 4 - Copy text without side effects (Priority: P3)
+
+The user selects and copies message text and code; selection triggers no actions, and denied clipboard access fails visibly.
+
+**Why this priority**: Copying is frequent but secondary; it must not misfire.
+
+**Independent Test**: Select text across a message, confirm no action fires; deny clipboard access and copy a code block, confirm a visible failure.
+
+**Acceptance Scenarios**:
+
+1. **Given** the user drags a text selection across a message, **When** the selection completes, **Then** no message action fires.
+2. **Given** clipboard access is denied, **When** a copy control is activated, **Then** a visible failure state appears.
 
 ### Edge Cases
 
 - Partial or malformed Markdown must not break rendering.
 - A very large Markdown response (100 KB) must render without freezing.
-- Selectable text must not trigger message actions.
-- Links must not navigate the host window automatically.
+- HTML-looking text inside a code block must appear as literal text.
+- A very long unbroken string (such as a URL) must wrap or scroll without breaking layout.
+- Markdown-like characters in a user prompt must render literally as typed.
 
 ## Requirements
 
 ### Functional Requirements
 
 - **FR-001**: Assistant responses MUST render these Markdown elements: paragraphs, headings, emphasis and strong text, ordered and unordered lists, blockquotes, links, inline code, fenced code blocks, and horizontal rules.
-- **FR-002**: Tables and task lists MAY be supported but MUST render acceptably if not.
-- **FR-003**: User prompts MUST render as plain text.
-- **FR-004**: User, assistant, and system roles MUST be visually distinct.
+- **FR-002**: Tables and task lists MAY be supported; where not supported they MUST render as plain text or through the fallback renderer without breaking the layout.
+- **FR-003**: User prompts MUST render as plain text; Markdown-like characters MUST render literally as typed.
+- **FR-004**: User, assistant, and system roles MUST be visually distinct. User prompts align right and assistant responses align left as the default treatment.
 - **FR-005**: Code blocks MUST be selectable, horizontally scrollable, and have a copy control.
 - **FR-006**: Raw HTML MUST NOT be rendered as markup.
 - **FR-007**: Remote images MUST NOT be loaded by default.
@@ -74,6 +90,7 @@ Content types the component does not support show a fallback rather than an erro
 - **FR-010**: Text selection MUST NOT trigger message actions.
 - **FR-011**: A Markdown response of 100 KB MUST render without perceptible freezing.
 - **FR-012**: Link activation MUST be delegated to the host application.
+- **FR-013**: Code blocks MAY support optional syntax highlighting.
 
 ### Key Entities
 
@@ -87,11 +104,12 @@ Content types the component does not support show a fallback rather than an erro
 
 - **SC-001**: A response using every supported Markdown element renders correctly.
 - **SC-002**: A 100 KB Markdown response renders without perceptible freezing.
-- **SC-003**: Raw HTML and remote images are never activated.
+- **SC-003**: Raw HTML is never rendered, remote images are never loaded, and nothing executes.
 - **SC-004**: Unsupported content shows a fallback instead of breaking the list.
 
 ## Assumptions
 
 - An existing Markdown component provides parsing and rendering; no parser or renderer is built in this project.
+- The chosen Markdown component must render acceptably on both the mobile and desktop rendering targets.
 - The host application handles link navigation.
 - Raw HTML and remote images are disabled by default, matching the personal-use and safety posture of the app.

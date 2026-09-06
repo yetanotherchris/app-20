@@ -22,12 +22,13 @@ The user chats, closes the app, and reopens; the conversation is still there.
 
 1. **Given** a conversation has messages, **When** the app restarts, **Then** the conversation and its messages are restored.
 2. **Given** a conversation is saved, **When** it is written to disk, **Then** it is one JSON file following the app-owned schema.
+3. **Given** a save is interrupted by crash or exit, **When** the app next reads the file, **Then** the previous complete version is intact.
 
 ### User Story 2 - Conversations are listed from a manifest (Priority: P2)
 
 The app reads a manifest to know which conversations exist.
 
-**Why this priority**: The manifest enables later history and search without scanning every file.
+**Why this priority**: The manifest enables the beta history list and later search without scanning every file.
 
 **Independent Test**: Create two conversations; confirm the manifest lists both with their metadata.
 
@@ -41,6 +42,9 @@ The app reads a manifest to know which conversations exist.
 - A corrupt conversation file must be reported, not crash the app.
 - An empty conversation must still be valid to save.
 - A missing manifest must be treated as an empty history, not an error.
+- A new conversation whose filename already exists on disk but is not referenced by the manifest must get a fresh unique filename; the orphan file is left untouched.
+- A manifest entry referencing a missing file must be dropped or repaired without crashing.
+- A valid conversation file missing from the manifest must be repaired into the manifest at startup.
 
 ## Requirements
 
@@ -54,6 +58,10 @@ The app reads a manifest to know which conversations exist.
 - **FR-006**: The canonical conversation format MUST NOT include provider-specific response fields.
 - **FR-007**: SQLite MUST NOT be used in beta releases.
 - **FR-008**: Conversations MUST persist locally on the device.
+- **FR-009**: Storage MUST sit behind an interface so a future storage backend can replace file storage.
+- **FR-010**: The schema MUST tolerate future optional message fields (update time, parent message ID, error, metadata) without breaking beta readers.
+- **FR-011**: The persisted message status vocabulary is `complete`, `stopped`, and `error`. Transient statuses (queued, sending, streaming) MUST be normalized to a terminal value at save and at restore.
+- **FR-012**: The storage and schema layer MUST be implementable without Electron so the iOS app reuses it unchanged.
 
 ### Key Entities
 
@@ -69,9 +77,11 @@ The app reads a manifest to know which conversations exist.
 - **SC-002**: The manifest lists every saved conversation.
 - **SC-003**: The saved JSON matches the app-owned schema.
 - **SC-004**: No provider-specific fields leak into stored conversations.
+- **SC-005**: A beta build's storage dependencies contain no embedded database; storage is JSON files only.
 
 ## Assumptions
 
 - Storage is local files on the device; the schema is stable for beta.
-- Overwrite semantics are acceptable in beta; conflict resolution is out of scope.
-- The manifest is plain JSON and searchable in a future release.
+- Storage itself performs no conflict resolution; sync conflict policy is owned by spec 104.
+- The manifest is plain JSON, read by the beta history list (spec 105) and by future search.
+- Overwrite semantics are acceptable in beta; conflict resolution is out of scope at the storage layer.

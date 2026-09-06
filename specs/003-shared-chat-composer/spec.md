@@ -21,8 +21,9 @@ The user types a message and sends it with the Send button or the Enter key on d
 **Acceptance Scenarios**:
 
 1. **Given** a non-empty draft, **When** the user clicks Send, **Then** the draft is submitted.
-2. **Given** a non-empty draft, **When** the user presses Enter on desktop, **Then** the draft is submitted.
+2. **Given** a non-empty draft on desktop, **When** the user presses Enter, **Then** the draft is submitted.
 3. **Given** an empty draft, **When** the user attempts to send, **Then** Send is disabled and nothing is submitted.
+4. **Given** a draft on a touch device, **When** the user presses the return key, **Then** a newline is inserted and nothing is submitted.
 
 ### User Story 2 - Compose a multiline message (Priority: P1)
 
@@ -36,7 +37,7 @@ The user writes a long message that grows the composer and scrolls internally pa
 
 1. **Given** the composer starts at one line, **When** the user types more text, **Then** the composer grows with the content.
 2. **Given** the composer reaches its maximum height, **When** the user keeps typing, **Then** the composer scrolls internally.
-3. **Given** the user presses Shift+Enter on desktop, **When** the composer is multi-line, **Then** a newline is inserted instead of sending.
+3. **Given** a non-empty draft on desktop, **When** the user presses Shift+Enter, **Then** a newline is inserted and the draft is not submitted.
 
 ### User Story 3 - Stop a response (Priority: P2)
 
@@ -44,11 +45,11 @@ While a submission or streaming response can be cancelled, the composer shows a 
 
 **Why this priority**: The user needs to interrupt a long or wrong response.
 
-**Independent Test**: Submit, then stop during streaming; confirm the response stops and partial content is retained.
+**Independent Test**: Submit, then stop during streaming; confirm the response stops per spec 006 and the Stop control disappears when nothing is cancellable.
 
 **Acceptance Scenarios**:
 
-1. **Given** a submission is in progress, **When** the user presses Stop, **Then** the operation is cancelled and partial content is retained.
+1. **Given** a submission or streaming response is in flight, **When** the composer renders, **Then** a Stop control is shown.
 2. **Given** no operation can be cancelled, **When** the composer is idle, **Then** no Stop control is shown.
 
 ### User Story 4 - Compose with an input-method editor (Priority: P2)
@@ -64,12 +65,26 @@ Users of languages that need an input-method editor (IME) can compose without pr
 1. **Given** an IME composition is active, **When** the user confirms text, **Then** only the confirmed text is submitted.
 2. **Given** pasted multiline text, **When** it is inserted, **Then** the composer treats it as one draft with the newlines intact.
 
+### User Story 5 - Configure blur and dismissal behavior (Priority: P3)
+
+The host chooses what happens on blur and whether the on-screen keyboard dismisses after send.
+
+**Why this priority**: Desktop and touch hosts disagree about blur and keyboard behavior; both must be supportable.
+
+**Independent Test**: Configure blur-to-send and blur-to-keep in turn; confirm each behaves as configured.
+
+**Acceptance Scenarios**:
+
+1. **Given** the host configures blur-to-send, **When** the composer loses focus with a non-empty draft, **Then** the draft is submitted.
+2. **Given** the host configures blur-to-keep, **When** the composer loses focus with a non-empty draft, **Then** the draft is kept.
+3. **Given** the host configures keyboard dismissal after send, **When** a message is submitted on a touch device, **Then** the on-screen keyboard dismisses.
+
 ### Edge Cases
 
-- Send must fire exactly once per submit; no duplicate Send or Stop events.
+- A very long draft must not degrade typing: typing latency in a 10,000-character draft stays within the same budget as in a 10-character draft.
+- A draft containing only whitespace is treated as empty for the Send-disabled rule.
+- A second send MUST NOT start while a response is in flight; the Send control is disabled during submitting and streaming.
 - The draft must be preserved when the app re-renders or updates messages.
-- A very long draft must not degrade typing performance.
-- On touch devices the return key must insert a newline rather than send.
 
 ## Requirements
 
@@ -78,19 +93,19 @@ Users of languages that need an input-method editor (IME) can compose without pr
 - **FR-001**: The composer MUST start at one line.
 - **FR-002**: The composer MUST grow with content to a configurable maximum height.
 - **FR-003**: Past the maximum height the composer MUST scroll internally.
-- **FR-004**: Send MUST be disabled when the draft is empty.
+- **FR-004**: Send MUST be disabled when the draft is empty; a whitespace-only draft counts as empty.
 - **FR-005**: On desktop, Enter MUST send and Shift+Enter MUST insert a newline.
 - **FR-006**: On touch devices, the return key MUST insert a newline.
-- **FR-007**: A Stop control MUST be shown while submission or streaming can be cancelled.
+- **FR-007**: A Stop control MUST be shown while submission or streaming can be cancelled, per the chat status defined in spec 006.
 - **FR-008**: The draft MUST remain controlled by the host; the component MUST NOT discard it on re-render.
 - **FR-009**: IME composition MUST NOT trigger a send until the text is confirmed.
 - **FR-010**: Pasted multiline text MUST be inserted with newlines intact.
-- **FR-011**: Focus and keyboard-dismissal behavior MUST be configurable.
+- **FR-011**: The host MUST be able to configure whether the composer sends or keeps the draft on blur, and whether the on-screen keyboard dismisses after send.
+- **FR-012**: Send MUST be disabled while a response is in flight; a second send MUST NOT start. Duplicate send events MUST NOT fire (see spec 006).
 
 ### Key Entities
 
 - **Draft**: The in-progress composer text, controlled by the host.
-- **Composer State**: Idle, submitting, streaming, stopping, or error.
 
 ## Success Criteria
 
@@ -100,9 +115,11 @@ Users of languages that need an input-method editor (IME) can compose without pr
 - **SC-002**: A newline can be added without sending.
 - **SC-003**: The draft survives unrelated updates to the conversation.
 - **SC-004**: IME composition never causes a premature send.
+- **SC-005**: Blur behavior matches the host configuration in every case.
 
 ## Assumptions
 
 - The draft is controlled by the host application, not owned by the component.
 - Desktop and touch input conventions differ; both are supported.
-- Stop retains partial content; discarding it would be data loss.
+- Beta allows only one response in flight; the Send control is disabled while streaming. Queuing follow-up sends is future work.
+- Stop semantics, including partial-content retention, are owned by spec 006.

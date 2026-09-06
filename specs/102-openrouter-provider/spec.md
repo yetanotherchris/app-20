@@ -12,16 +12,17 @@
 
 ### User Story 1 - Send a message and get a response (Priority: P1)
 
-The user sends a prompt and receives an assistant response.
+The user sends a prompt and receives an assistant response using automatic model selection.
 
 **Why this priority**: Generating responses is the core function of the app.
 
-**Independent Test**: Send a prompt; confirm a response is returned for the automatic model.
+**Independent Test**: Send a prompt with no model configured; confirm a response is returned via automatic model selection and the requested model is recorded.
 
 **Acceptance Scenarios**:
 
 1. **Given** a valid API key, **When** the user sends a prompt, **Then** an assistant response is returned.
-2. **Given** a missing or invalid API key, **When** the user sends a prompt, **Then** a clear error is shown and nothing is lost.
+2. **Given** no model is configured, **When** a prompt is sent, **Then** the request uses automatic model selection and the requested model is recorded with the response.
+3. **Given** a missing or invalid API key, **When** the user sends a prompt, **Then** a clear error is shown and nothing is lost.
 
 ### User Story 2 - See the response stream (Priority: P2)
 
@@ -47,13 +48,13 @@ A future provider is added without changing the chat UI.
 **Acceptance Scenarios**:
 
 1. **Given** a provider interface, **When** a new provider implements it, **Then** the chat UI works without modification.
-2. **Given** provider-specific fields in a response, **When** the response is stored, **Then** they are not written into the canonical conversation format.
 
 ### Edge Cases
 
-- Network failure must produce a retryable error.
-- An empty response must be handled without a crash.
-- Provider-specific errors must be shown in human-readable form.
+- An empty completion must be stored as an empty assistant message with complete status and a retry affordance.
+- A connection dropped mid-chunk must retain partial content, mark the message as error, and allow retry from the beginning.
+- An unparseable chunk must be skipped cleanly; already-rendered content must not be corrupted.
+- A multi-megabyte response must stream and store with bounded memory and no truncation.
 
 ## Requirements
 
@@ -63,9 +64,10 @@ A future provider is added without changing the chat UI.
 - **FR-002**: Beta MUST use the automatic model selection.
 - **FR-003**: Responses MUST support streaming.
 - **FR-004**: The provider MUST be behind an interface that a different provider can implement.
-- **FR-005**: Provider-specific response fields MUST NOT enter the canonical conversation format.
-- **FR-006**: Failed requests MUST produce a clear, retryable error.
-- **FR-007**: Requests MUST use the locally stored API key.
+- **FR-005**: Provider-specific response fields MUST NOT enter the canonical conversation format (owned by spec 101).
+- **FR-006**: Failed requests MUST produce a clear, retryable error that names the failure class (invalid key, rate limit, network), and the draft MUST be preserved.
+- **FR-007**: Requests MUST use the locally stored API key (see spec 103).
+- **FR-008**: The provider MAY expose the routed model name per response; beta records the requested model.
 
 ### Key Entities
 
@@ -80,10 +82,11 @@ A future provider is added without changing the chat UI.
 - **SC-001**: A prompt produces a streamed assistant response.
 - **SC-002**: A second provider works without UI changes.
 - **SC-003**: No provider-specific fields are stored in conversations.
-- **SC-004**: Missing-key and network errors are clear and non-destructive.
+- **SC-004**: Missing-key, rate-limit, and network errors are classed, clear, and non-destructive.
 
 ## Assumptions
 
 - OpenRouter is the beta provider; others may follow.
-- The API key is stored locally and imported via a file chooser.
+- The API key is stored locally and imported via a file chooser (spec 103).
+- The manifest stores the requested model in beta; recording the resolved model is future work (see spec 101).
 - Responses may be large; streaming is required to keep the UI responsive.

@@ -12,16 +12,17 @@
 
 ### User Story 1 - Chat on iPhone (Priority: P1)
 
-The user chats on their iPhone with the same conversation experience as desktop.
+The user chats on their iPhone with the same conversation experience as desktop, including the session flow and key import.
 
 **Why this priority**: iOS is a beta platform; the chat must be fully usable there.
 
-**Independent Test**: On an iPhone, send a prompt and receive a streamed response using the shared component.
+**Independent Test**: On an iPhone, import a key via the document picker, send a prompt, and receive a streamed response using the shared component.
 
 **Acceptance Scenarios**:
 
 1. **Given** the iOS app is installed, **When** the user opens it, **Then** the chat screen renders within the safe areas.
 2. **Given** a prompt is sent, **When** the response streams, **Then** it displays and the conversation persists.
+3. **Given** no stored API key, **When** the user reaches first send, **Then** the key import flow opens through the platform document picker.
 
 ### User Story 2 - Type with the iOS keyboard (Priority: P1)
 
@@ -42,6 +43,8 @@ The user increases text size; the chat adapts.
 
 **Why this priority**: Dynamic type is standard on iOS and cheap to honor.
 
+**Independent Test**: Set the largest dynamic type size; confirm the chat renders without clipping.
+
 **Acceptance Scenarios**:
 
 1. **Given** the largest dynamic type size, **When** the chat renders, **Then** content is readable and not clipped.
@@ -53,6 +56,7 @@ The user increases text size; the chat adapts.
 - Focus and text selection must behave on touch.
 - Composer growth and internal scrolling must work on small screens.
 - Stop must retain partial content on iOS as on desktop.
+- The app backgrounded or terminated mid-stream must not lose partial content (per spec 105 FR-003).
 
 ## Requirements
 
@@ -64,7 +68,10 @@ The user increases text size; the chat adapts.
 - **FR-004**: Input-method editor composition MUST NOT trigger premature sends.
 - **FR-005**: The app MUST support dynamic type.
 - **FR-006**: Streaming, stop, composer growth, scrolling, and focus MUST behave as on desktop.
-- **FR-007**: Conversations MUST persist on iOS as on desktop.
+- **FR-007**: Conversations MUST persist on iOS using the shared, platform-neutral storage layer (see spec 101).
+- **FR-008**: The iOS app MUST implement the session flow (spec 105) and key import (spec 103) using the platform document picker in place of the desktop file chooser.
+- **FR-009**: Partial content MUST be saved when the app is backgrounded or terminated, per spec 105 FR-003.
+- **FR-010**: S3 sync (spec 104) is in iOS beta scope.
 
 ### Key Entities
 
@@ -74,7 +81,7 @@ The user increases text size; the chat adapts.
 
 ### Measurable Outcomes
 
-- **SC-001**: A full chat loop works on an iPhone.
+- **SC-001**: A full chat loop works on an iPhone, including key import and resume.
 - **SC-002**: Keyboard and IME flows work without premature sends.
 - **SC-003**: Dynamic type renders without clipping.
 - **SC-004**: Streaming and stop behave identically to desktop.
@@ -83,4 +90,6 @@ The user increases text size; the chat adapts.
 
 - iOS is built and distributed via a cloud build service; no beta distribution through the App Store when another supported method is available.
 - Android is out of scope for beta.
+- The storage schema layer is platform-neutral per spec 101, so iOS reuses it unchanged.
 - Native iOS views are checked at release; automated tests cover the shared web-rendered behavior.
+- S3 sync on iOS is assumed in scope per docs/overview.md; confirm during clarify.
