@@ -189,7 +189,6 @@ Restated from the constitution because these are the ones most easily lost:
 .specify/memory/constitution.md   Principles (authority 1)
 specs/                            Active feature specs (not yet implemented)
 specs/archive/                    Completed and archived specs
-docs/DESIGN_DECISIONS.md          Fixed stack decisions, pre-dates the specs
 docs/codingstandards.md           Code style and standards (@codingstandards.md)
 .opencode/commands/               Spec Kit slash commands
 AGENTS.md                         This file
