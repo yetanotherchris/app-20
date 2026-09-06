@@ -15,6 +15,321 @@ Only you see that command's output — the user's terminal shows at most a few l
 First privately list what you need next; then request every item that doesn't depend on another's result in this one response.
 
 
+## What this project is
+See @docs/overview.md
 
-@docs/overview.md
+## Authority order
 
+When guidance conflicts, higher wins:
+
+1. **`.specify/memory/constitution.md`**: non-negotiable principles
+2. **`specs/<feature>/spec.md`**: what to build and why
+3. **`specs/<feature>/plan.md`** + `research.md`: how to build it
+4. **`specs/<feature>/tasks.md`**: order of work
+5. This file: working practice
+6. **`docs/codingstandards.md`** (@codingstandards.md): how the code should look
+7. Existing code: precedent, not authority
+
+Code that contradicts the spec is a bug in the code *or* a bug in the spec.
+Decide which. Never assume the code is right because it exists.
+
+## The workflow
+
+```text
+constitution → specify → clarify → plan → tasks → analyze → implement
+```
+
+### Running speckit inside OpenCode
+
+The commands below are OpenCode slash commands. Type them directly into the
+OpenCode chat, e.g. `/speckit.constitution`.
+
+They are defined as markdown files under `.opencode/commands/` and were
+installed when Spec Kit was initialized. If a command is missing, ensure the
+repo has been cloned and `.opencode/commands/` is present.
+
+| Command | Produces | Purpose |
+|---------|----------|---------|
+| `/speckit.constitution` | `.specify/memory/constitution.md` | Project principles. Rarely changes. |
+| `/speckit.specify` | `specs/<n>-<name>/spec.md` | WHAT and WHY. No technology. |
+| `/speckit.clarify` | `## Clarifications` in spec.md | Closes ambiguity by asking, before it becomes a guess. |
+| `/speckit.plan` | `plan.md`, `research.md`, `data-model.md`, `contracts/`, `quickstart.md` | HOW. Technology lives here. |
+| `/speckit.tasks` | `tasks.md` | Ordered, independently verifiable work items. |
+| `/speckit.analyze` | report | Cross-artifact consistency check. Optional but cheap. |
+| `/speckit.implement` | code | Execute tasks. |
+
+Rules:
+
+- **Do not skip forward.** Writing code because the spec "is obvious" defeats
+  the entire method.
+- **`spec.md` contains no technology.** No framework, library, or API names. If
+  you are writing "Electron" into a spec, it belongs in the plan.
+- **`plan.md` contains no requirements.** If you are inventing user-visible
+  behaviour in the plan, it belongs in the spec.
+- Artifacts are living documents. Update them when reality changes.
+
+## When something isn't right
+
+It usually will be. **The default failure mode of an AI agent is to silently
+improvise around a gap and leave no trace.** Do not do this. Everything below
+exists to prevent it.
+
+### Step 1: Diagnose the layer
+
+Do not start fixing until you know which artifact is actually wrong.
+
+| Symptom | Layer at fault | Fix there |
+|---------|----------------|-----------|
+| Spec is silent on a case you hit | spec (gap) | Add the detail to `spec.md` |
+| Spec sentence admits two readings | spec (ambiguity) | Clarify, then reword `spec.md` |
+| Two requirements contradict | spec (conflict) | Resolve in `spec.md` |
+| Spec violates the constitution | spec | Constitution wins; amend `spec.md` |
+| Requirement is fine, chosen approach fails | plan | Fix `plan.md`/`research.md` |
+| Library cannot do what the plan assumed | plan (and maybe spec) | Evidence, then re-decide |
+| Work item too large or badly ordered | tasks | Fix `tasks.md` |
+| Artifacts fine, code wrong | code | Just fix the code |
+
+The most common case by far is a **spec gap**: the spec is not wrong, it is
+incomplete. The correct response is to *add the missing detail to the spec*,
+not to encode the decision only in code where the next reader cannot find it.
+
+### Step 2: Decide whether to ask or to proceed
+
+**Proceed, and record it**, when all of these hold:
+
+- A reasonable default clearly exists
+- The choice is not user-visible in a way that changes scope
+- It touches neither security nor data loss
+- It is cheap to reverse later
+
+Record it by adding to the spec's `## Assumptions` section (or the plan's
+decision log for technical choices), then continue. Mention it in your summary.
+
+**Stop and ask** when any of these hold:
+
+- Multiple reasonable answers with materially different outcomes
+- Scope changes: something moves in or out of the feature
+- Security or path-safety is involved
+- Data loss is possible
+- User-visible behaviour is being invented
+- The fix means contradicting an existing requirement
+- Cost is about to increase substantially
+
+When you ask, do not ask an open question. Present the options, each with its
+real consequence, and say which you would choose and why. Prefer offering 2–4
+concrete choices over "what would you like?".
+
+### Step 3: Never do these
+
+- Silently widen path validation to make a test pass
+- Skip a confirmation prompt because it is inconvenient
+- Delete, weaken, or `skip` a test to get green
+- Catch an error and continue as if it succeeded
+- Implement something the spec forbids without saying so
+- Leave a deviation recorded only in a code comment
+- Claim a task is done when part of it is stubbed
+
+If a test covering path containment or data loss fails, the code is wrong until
+proven otherwise. Those tests encode Principles II and III and are not
+negotiable.
+
+### Step 4: Record the deviation
+
+Every departure from the artifacts gets written down:
+
+- **Requirement changed or added**: edit `spec.md`; if it resolves an
+  ambiguity, add a bullet under `## Clarifications` with today's date
+- **Technical decision changed**: edit `plan.md`, with the evidence in
+  `research.md`
+- **Principle violated deliberately**: `plan.md` section `Complexity Tracking`,
+  stating the violation, why it is needed, and the simpler alternative rejected
+- **New work discovered**: add to `tasks.md` rather than quietly expanding an
+  existing task
+
+An undocumented deviation is a defect, even when the code is correct.
+
+### Worked example
+
+While planning, the Crepe editor API turned out to have no `setMarkdown`
+method, so content can only be set at construction. That broke the assumed
+"one editor instance, swap content per tab" approach.
+
+The right handling, and the pattern to follow:
+
+1. **Diagnose the layer**: the *plan* was wrong. The spec's requirement (tabs
+   preserve undo history) was still correct and desirable.
+2. **Get evidence**: read the published type definitions rather than guess.
+3. **Re-decide with cost stated**: one instance per tab, which costs memory,
+   and cap it.
+4. **Record it**: `research.md` R1/R2, with the rejected alternative and why.
+5. **Leave the spec alone**: no user-visible behaviour changed.
+
+Note what did *not* happen: the requirement was not quietly downgraded to "tabs
+may lose undo history" to fit the easier implementation. When implementation
+difficulty pushes back on a requirement, that is a decision for the user, not
+for the agent.
+
+## Non-negotiable invariants
+
+Restated from the constitution because these are the ones most easily lost:
+
+- Renderer gets **no** Node, **no** `fs`, **no** Electron module.
+  `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`.
+- The preload API is a **fixed list of named operations**. Never add a generic
+  `invoke(channel, ...args)` escape hatch.
+- Every path is validated in the **main process** against the resolved real
+  path of the workspace root. Renderer-side checks are never trusted.
+- Saves are **atomic**: temp file in the same directory, then rename.
+- A failed save leaves the document **dirty**.
+- Unsaved changes are never discarded without explicit confirmation.
+
+## Repository layout
+
+```text
+.specify/memory/constitution.md   Principles (authority 1)
+specs/                            Active feature specs (not yet implemented)
+specs/archive/                    Completed and archived specs
+docs/DESIGN_DECISIONS.md          Fixed stack decisions, pre-dates the specs
+docs/codingstandards.md           Code style and standards (@codingstandards.md)
+.opencode/commands/               Spec Kit slash commands
+AGENTS.md                         This file
+```
+
+## Working practice
+
+- Verify before asserting. Check the registry, read the type definitions, run
+  the command. Do not state version numbers or API shapes from memory.
+- Prefer reading an artifact over asking the user something already written
+  down.
+- Keep changes scoped to the task in hand. Note unrelated problems, do not
+  opportunistically fix them.
+- Use Beck's **"Tidy First"** methodology: separate structural changes from
+  behavioral changes into distinct commits.
+- **Never mix structural and behavioral changes in the same commit.**
+  - **Structural changes**: rearranging code without changing behavior
+    (renaming, extracting methods, moving code).
+  - **Behavioral changes**: adding or modifying actual functionality.
+  This separation makes code reviews easier, reduces bugs, and creates clearer
+  git history.
+- Report honestly. If something is stubbed, partly done, or unverified, say so plainly. A confident wrong summary is worse than an uncertain accurate one.
+- Comments explain a local, non-obvious behavior, constraint, or safety reason. Delete comments that only restate the code, requirement IDs, or project history.
+- Do not write AI filler. Avoid slogans, performative certainty, self-grandiosity, ceremonial all-caps emphasis, and attempts to sound like an expert.
+- Do not use labels such as "single source of truth", "authoritative", "canonical", "structural", or "fail closed" as rhetoric. State the precise local behavior instead.
+- Do not speculate about external implementation details. Cite a stable source only when the detail is necessary to maintain the code.
+- Do not use em dashes in authored prose or comments. Use a period, comma, colon, or parentheses instead.
+- **Do not hard-wrap lines in Markdown files to ~80 columns.** Write prose as flowing paragraphs with a single newline between blocks; let the renderer wrap. This keeps diffs clean (same rule as PR bodies below).
+- **Source code lines: aim for 100–120 columns, never over 120.** Match the surrounding file's existing width rather than imposing a strict style, but hard-limit at 120.
+- **Write Playwright e2e tests for every spec implementation, and run them.**
+  Each spec that adds user-visible behaviour gets an e2e suite in
+  `tests/e2e/` covering its acceptance scenarios against the real built app
+  (`npm run test:e2e`, which builds then launches Electron via Playwright).
+  Native dialogs are stubbed in the main process with
+  `electronApp.evaluate`; the tree/editor are driven with normal locators.
+  The suite must pass before the implementation is declared complete,
+  alongside `npm run lint`, `npm run typecheck`, and `npm run test`.
+- Generate standard English test document content with
+  [claudem-ipsum](https://github.com/zcaceres/claudem-ipsum)
+  (`npm install -g claudem-ipsum`, then for example
+  `claudem-ipsum 1500 > test-long.md` or
+  `claudem-ipsum 3 --unit paragraphs --seed demo`). Use it for placeholder
+  prose in manual testing, bug reproductions, and any fixture that just needs
+  ordinary filler text. Keep hand-writing content for tests that need exact
+  bytes or precise small fixtures (for example the round-trip fixtures and
+  inline e2e documents), and for constructs the generator does not produce
+  (frontmatter, code blocks, tables, task lists), and keep a `--seed` when
+  the document must be reproducible.
+- Every pull request description MUST end with a single line naming the model
+  that generated it. Do not use a heading or section for this; it is the last
+  line of the description. Use the form:
+
+  ```text
+  Generated by <model name>.
+  ```
+
+  For example:
+
+  ```text
+  Generated by DeepSeek V4 Pro.
+  ```
+
+  Use the actual model name (e.g. "DeepSeek V4 Pro"), NOT the tool name
+  (e.g. "opencode").
+
+## Branching and PR workflow
+
+- **Whenever asked to make changes, work on a new branch**: never implement
+  on `main`. Create the branch before any work begins, then commit to the
+  branch after finishing each to-do item.
+- There is **no persistent feature branch**. Each spec gets its own branch
+  created from `main` and is merged straight back into `main`.
+- **The spec branch MUST be created before any implementation work begins**:
+  `git checkout -b spec-<N>-<name>` from a clean `main` is the first step of
+  every spec implementation. Implementing on `main` is a workflow violation:
+  commits that land on `main` directly bypass the PR review gate.
+- Branch naming: `spec-<N>-<name>`, where `<N>` matches the spec directory
+  number (`specs/044-settings-search` → `spec-044-settings-search`).
+- Terminology: in speckit artifacts, a **phase** is a group of related tasks
+  inside one spec's `tasks.md` (for example `Phase 1: Setup`,
+  `Phase 3: User Story 1`), as produced by `/speckit.tasks`. It is an
+  ordering unit within a single implementation, never a branch or PR name.
+  Branches and PRs are named after the **spec**, not after any phase.
+- Each spec branch is committed, pushed, and a PR is opened against `main`
+  before the next spec begins.
+- After an implementation PR is created, **before merging**, launch 5 agent-based code reviews.
+  Each review subagent reviews the changes for a distinct concern: correctness,
+  security, spec compliance, code quality, and tests. It posts its findings as
+  a comment on the GitHub PR.
+- Documentation-only and specification-only PRs MUST receive exactly one artifact-compliance review before merging; they MUST NOT receive the five agent-based code reviews.
+- Each review comment MUST end with a single `Generated by <model name>.` line
+  naming the model that produced it, using the actual model name (e.g.
+  "DeepSeek V4 Pro"), never the tool name (e.g. "opencode").
+- After all required reviews have posted, **address their findings before merging**:
+  - Every **critical** and **major** finding MUST be fixed in this PR (code,
+    tests, or spec, per the "Diagnose the layer" table above). Fix it and reply
+    to the comment with the commit hash of the fix.
+  - Every **minor** finding SHOULD be fixed; if it is deliberately deferred,
+    reply to the comment with a one-line justification.
+  - **Nit** findings may be fixed or acknowledged in the same reply.
+  - Reply to every review comment, including "no action needed", so no
+    comment is left without a disposition.
+  - After addressing findings on an implementation PR, re-run `npm run lint`,
+    `npm run typecheck`, `npm run test`, and `npm run test:e2e`; the PR is not
+    ready to merge until all four are green.
+- **Check the GitHub checks before declaring any PR ready.** Run
+  `gh pr checks <number>` (or `gh pr checks` on the checked-out branch), wait
+  for in-progress runs to finish, and treat a failed check as blocking. The CI
+  gate (`quality.yml`) runs `format:check`, `lint`, `typecheck`, the
+  maintainability check, unit tests, and e2e tests, but only on PRs that touch
+  `src/`, `tests/`, `scripts/`, `package.json`, `package-lock.json`, or the
+  build and test config files (`electron-builder.yml`, `electron.vite.config.ts`,
+  `eslint.config.mjs`, `playwright.config.ts`, `tsconfig*.json`,
+  `vitest.config.ts`); a documentation-only or specification-only PR
+  usually triggers no checks, which is fine. If checks did run, they must be
+  green before a readiness summary or a merge request is appropriate. The
+  gate's `format:check` step compares against `.prettierrc`, so a code-touching
+  PR must be prettier-clean; on Windows a local prettier check can misreport
+  clean files because checkout line endings differ, so confirm the gate on
+  GitHub rather than trusting a red local result.
+- **Never merge a pull request yourself.** When every requirement above is satisfied, post a short readiness summary (reviews addressed, local gates green, GitHub checks green) and stop. The user merges the PR in GitHub's UI or gives an explicit instruction in that session to merge that specific PR. Running `gh pr merge` (or any equivalent command) without that explicit per-PR instruction is a workflow violation, even when all reviews are addressed and every gate is green. This applies equally to implementation, documentation, and specification PRs.
+- **Archive the spec as part of the implementation PR.** When a spec's feature
+  is fully implemented and its PR is opened, move the spec directory from
+  `specs/<n>-<name>/` to `specs/archive/<n>-<name>/` in the same change (use
+  `git mv`), set the spec's `**Status**` to `Archived`. Do not leave implemented
+  specs in the active `specs/` directory.
+- PR title format: `feat(spec-N): <description>`. The `Generated by <model name>.`
+  line belongs in the PR description, not the title.
+
+### Pull Request Descriptions
+
+- Every PR description MUST use the headings `## Summary`, `## Changes`, and `## Testing`; descriptions missing any of these headings are invalid.
+  Keep `## Summary` to one short paragraph explaining the user-visible outcome and why it matters.
+- Group `## Changes` with descriptive `###` category headings, such as `### Source Editing` or `### Documentation`.
+  Each change is a flat bullet containing one or two complete sentences that state what changed and its effect; do not use nested bullets.
+- `## Testing` MUST list the checks run and their result, one flat bullet per command or verification.
+  If no automated checks apply, state `Not run (documentation/specification-only change)` and name the manual verification performed instead.
+- **Do not manually wrap PR body text.** GitHub renders the body verbatim, so line-wrapping prose by hand creates ragged, hard-to-diff text. Write each paragraph as a single line, with one blank line between blocks.
+- For multiline PR bodies, use `gh pr create --body-file <path>` rather than passing escaped `\n` sequences to `--body` or `gh api -f`.
+  If `gh pr edit` fails because of a GitHub CLI GraphQL issue, PATCH the pull request through `gh api --method PATCH` using a JSON input file with a real JSON string body; do not send a literal backslash-n sequence as the body content.
+- After creating or editing a PR description, retrieve it with `gh api "repos/{owner}/{repo}/pulls/{number}" --jq '.body'` and confirm its headings, bullets, blank lines, and final attribution render as actual Markdown rather than literal escape sequences.
+  Correct formatting before reporting the PR as ready.
+- Once merged, the next spec branch is created from the updated `main`.
