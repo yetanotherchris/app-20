@@ -1,50 +1,64 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report (2026-09-06)
+- Version change: unversioned template -> 1.0.0
+- Modified principles: none (first fill-in of the template; no prior principles to rename)
+- Added: five principles (I. Process Isolation, II. Path Trust, III. No Data Loss, IV. Fixed and Typed Preload API, V. Non-Negotiable Test Coverage), Technology & Security Constraints, Development Workflow & Quality Gates, Governance
+- Removed: template placeholder tokens and example comments
+- Follow-up TODOs: none; RATIFICATION_DATE set to today as the initial adoption date
+-->
+
+# app-20 Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Process Isolation
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+The renderer has no access to Node, `fs`, or Electron modules. Every window runs with `contextIsolation: true`, `nodeIntegration: false`, and `sandbox: true`. All privileged operations are reachable only through the fixed preload API. This boundary is the trust line between UI code and the host; it is never relaxed to make a feature easier.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### II. Path Trust
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+Every path is validated in the main process against the resolved real path of the workspace root. Renderer-side checks are never trusted. Path containment and resolution failures abort the operation. Renderer-visible error messages never leak absolute paths.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### III. No Data Loss
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+Saves are atomic: write a temporary file in the same directory, then rename it over the target. A failed save leaves the document dirty and the prior content intact. Unsaved changes are never discarded without explicit confirmation.
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+### IV. Fixed and Typed Preload API
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+The preload API is a fixed list of named operations with explicit request and response types. A generic `invoke(channel, ...args)` escape hatch is forbidden. `any` is not permitted at the IPC boundary; every channel is typed in a shared contract.
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+### V. Non-Negotiable Test Coverage
+
+Tests for path containment, atomic writes and save failure, dirty/close/quit confirmation, and IPC contract shape must exist and pass. They are never skipped, deleted, or weakened to make the suite green. These tests encode Principles I through IV.
+
+## Technology & Security Constraints
+
+- Desktop is Electron with React and React Native Web; iOS is Expo React Native. TypeScript strict mode is mandatory across main, preload, and renderer.
+- The chat component is a standalone package shared across iOS and desktop, with React, React Native, and React Native Web as peer dependencies.
+- Beta conversation storage is one JSON file per conversation plus a JSON manifest; SQLite is excluded from beta releases. Conversations persist to S3 as JSON without data conversion.
+- AI requests go to OpenRouter's chat-completions endpoint using model `openrouter/auto`. API keys and S3 credentials are imported through a file chooser and stored locally.
+- Accessibility output targets WCAG 2.2 AA. Raw HTML and remote images are disabled by default in rendered chat content; the component never executes code.
+
+## Development Workflow & Quality Gates
+
+- Work follows the spec-first workflow: constitution, specify, clarify, plan, tasks, analyze, implement. Implementation happens on a `spec-<N>-<name>` branch created from `main`, never on `main`.
+- Structural and behavioral changes are never mixed in one commit. Tidy first, then change behavior.
+- Every spec that adds user-visible behavior gets a Playwright e2e suite run against the built app. `npm run lint`, `npm run typecheck`, `npm run test`, and `npm run test:e2e` must all pass before a PR is merged.
+- Review comments and PR descriptions end with a `Generated by <model name>.` attribution line.
+- Artifacts are living documents: when reality changes the code, update the spec or plan and record the deviation. An undocumented deviation is a defect even when the code is correct.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution supersedes all other practices in this repository. When guidance conflicts, this file wins, followed by `specs/<feature>/spec.md`, `specs/<feature>/plan.md`, `AGENTS.md`, and `docs/codingstandards.md`.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+Amendments are proposed by editing this file and are adopted when the project maintains them in a PR with the version bumped and the amendment recorded in the Sync Impact Report. The constitution uses semantic versioning:
+
+- MAJOR for backward-incompatible principle removals or redefinitions.
+- MINOR for new principles or materially expanded guidance.
+- PATCH for clarifications, wording, and typo fixes.
+
+Every PR that touches security boundaries, path handling, or save behavior must verify compliance with Principles I through IV in review. Deliberate complexity is documented with the simpler alternative rejected, in the plan's Complexity Tracking section or the PR description.
+
+`AGENTS.md` provides the day-to-day working practice and authority order. Use it for runtime development guidance.
+
+**Version**: 1.0.0 | **Ratified**: 2026-09-06 | **Last Amended**: 2026-09-06
