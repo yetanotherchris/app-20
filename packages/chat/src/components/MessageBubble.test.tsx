@@ -31,6 +31,12 @@ beforeEach(() => {
   mockUseMarkdown.mockReturnValue(null)
 })
 
+function bubbleAlign(bubbleId: string): string | null {
+  const bubble = screen.getByTestId(bubbleId)
+  const styles = getComputedStyle(bubble)
+  return styles.alignSelf
+}
+
 describe('MessageBubble', () => {
   it('renders a user message right-aligned with a stable test id', () => {
     const userMsg = message('user', 'hello')
@@ -38,17 +44,23 @@ describe('MessageBubble', () => {
     expect(screen.getByTestId(`chat.message.${userMsg.id}`)).toBeInTheDocument()
     // Plain user text renders literally, not parsed.
     expect(mockUseMarkdown).not.toHaveBeenCalled()
+    // FR-004: user prompts align right.
+    expect(bubbleAlign(`chat.message.${userMsg.id}`)).toBe('flex-end')
   })
 
-  it('renders an assistant message through the markdown path', () => {
+  it('renders an assistant message left-aligned through the markdown path', () => {
     const assistantMsg = message('assistant', '**bold**')
     render(<MessageBubble message={assistantMsg} />)
     expect(mockUseMarkdown).toHaveBeenCalledWith('**bold**', expect.anything())
+    // FR-004: assistant responses align left.
+    expect(bubbleAlign(`chat.message.${assistantMsg.id}`)).toBe('flex-start')
   })
 
-  it('renders a system message without breaking', () => {
+  it('renders a system message with a distinct non-conversational treatment', () => {
     const systemMsg = message('system', 'system notice')
     render(<MessageBubble message={systemMsg} />)
     expect(screen.getByTestId(`chat.message.${systemMsg.id}`)).toBeInTheDocument()
+    // FR-004: system messages use a distinct stretch treatment, not left/right.
+    expect(bubbleAlign(`chat.message.${systemMsg.id}`)).toBe('stretch')
   })
 })

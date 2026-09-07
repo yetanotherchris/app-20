@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test'
-import { launchElectron, closeElectron, getScrollHeight, type LaunchedApp } from './launch'
+import { launchElectron, closeElectron, type LaunchedApp } from './launch'
 
 let launched: LaunchedApp
 let page: Page
@@ -45,15 +45,26 @@ test.describe('US1: read assistant responses as formatted Markdown', () => {
     await expect(page.getByText('const answer = 42')).toBeVisible()
     const copyButtons = page.getByRole('button', { name: /copy code/i })
     expect(await copyButtons.count()).toBeGreaterThan(0)
+    // Copying succeeds and shows the copied state.
+    await copyButtons.first().click()
+    await expect(page.getByText('Copied').first()).toBeVisible()
   })
 
   test('activating a link delegates to the host and never navigates internally', async () => {
     await loadMarkdownSuite()
-    // The demo logs link presses; the URL never changes and no navigation occurs.
+    // The demo's onLinkPress records the href; the URL never changes.
     const urlBefore = page.url()
-    await page.getByText('example').first().click({ trial: false })
-    await page.waitForTimeout(200)
+    await page.getByText('example').first().click()
+    await expect(page.getByTestId('demo.last-link')).toHaveText('link: https://example.com')
     expect(page.url()).toBe(urlBefore)
+  })
+
+  test('denied clipboard copy shows a visible failure state', async () => {
+    await loadMarkdownSuite()
+    await page.getByTestId('demo.toggle-copy').click()
+    const copyButtons = page.getByRole('button', { name: /copy code/i })
+    await copyButtons.first().click()
+    await expect(page.getByText('Copy failed').first()).toBeVisible()
   })
 
   test('a table renders without broken layout', async () => {
@@ -86,20 +97,29 @@ test.describe('US3: safe by default', () => {
     // Remote images are not loaded: no <img> element is present.
     const imgs = await page.evaluate(() => document.querySelectorAll('img').length)
     expect(imgs).toBe(0)
+    // Raw HTML is inert text, not live DOM: no script/iframe/onclick from the
+    // fixture's markup inside any message bubble, and no element executes.
+    const liveMarkup = await page.evaluate(() => {
+      const bubbles = Array.from(document.querySelectorAll('[data-testid^="chat.message."]'))
+      const script = bubbles.reduce((n, el) => n + el.querySelectorAll('script').length, 0)
+      const iframe = bubbles.reduce((n, el) => n + el.querySelectorAll('iframe').length, 0)
+      const onclick = bubbles.reduce((n, el) => n + el.querySelectorAll('[onclick]').length, 0)
+      return { script, iframe, onclick }
+    })
+    expect(liveMarkup.script).toBe(0)
+    expect(liveMarkup.iframe).toBe(0)
+    expect(liveMarkup.onclick).toBe(0)
   })
 })
 
 test.describe('SC-002: 6 KB markdown renders without freezing', () => {
-  test('a large markdown response renders within budget', async () => {
+  test('a single ~6 KB markdown response renders within budget', async () => {
     await resetApp()
     const start = Date.now()
-    await page.getByTestId('demo.load-1000-large').click()
-    await expect(page.locator('[data-testid^="chat.message."]').first()).toBeVisible({
-      timeout: 10_000,
-    })
+    await page.getByTestId('demo.large-markdown').click()
+    // The single large markdown assistant message renders within the budget.
+    await expect(page.getByText('Long response')).toBeVisible({ timeout: 10_000 })
     const elapsed = Date.now() - start
     expect(elapsed).toBeLessThan(2000)
-    const scrollHeight = await getScrollHeight(page)
-    expect(scrollHeight).toBeGreaterThan(100_000)
   })
 })

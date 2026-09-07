@@ -9,11 +9,18 @@ export interface MarkdownRendererOptions {
   messageId: string
 }
 
+function isSafeLink(href: string): boolean {
+  const scheme = href.trim().toLowerCase()
+  return scheme.startsWith('http:') || scheme.startsWith('https:') || scheme.startsWith('#')
+}
+
 /**
  * react-native-marked's Renderer subclass for this component's invariants:
  * - fenced code renders through CodeBlock (selectable, h-scroll, copy control)
  * - images render nothing (remote images are not loaded, FR-007)
- * - links invoke onLinkPress and never navigate internally (FR-012)
+ * - links invoke onLinkPress only for safe schemes and never navigate
+ *   internally; `javascript:` and other non-http links are inert (FR-008,
+ *   FR-012)
  * - raw HTML stays the base class's plain-text rendering (FR-006)
  */
 export class MarkdownRenderer extends Renderer {
@@ -23,6 +30,15 @@ export class MarkdownRenderer extends Renderer {
   constructor(options: MarkdownRendererOptions) {
     super()
     this.options = options
+  }
+
+  get messageId(): string {
+    return this.options.messageId
+  }
+
+  /** Resets the per-parse block counter so streaming re-parses keep stable test ids. */
+  reset(): void {
+    this.codeIndex = 0
   }
 
   override code(text: string, language?: string): ReactNode {
@@ -47,11 +63,12 @@ export class MarkdownRenderer extends Renderer {
 
   override link(children: string | ReactNode[], href: string): ReactNode {
     const { onLinkPress } = this.options
-    if (!onLinkPress) {
+    if (!onLinkPress || !isSafeLink(href)) {
       return <>{children}</>
     }
     return (
       <Text
+        accessibilityRole="link"
         onPress={() => onLinkPress(href)}
         style={{ textDecorationLine: 'underline', color: '#2563eb' }}
       >

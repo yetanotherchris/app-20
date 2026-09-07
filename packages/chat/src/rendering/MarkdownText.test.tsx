@@ -45,8 +45,7 @@ describe('MarkdownText', () => {
     )
     const options = mockUseMarkdown.mock.calls[0]?.[1]
     expect(options.renderer).toBeInstanceOf(MarkdownRenderer)
-    const renderer = options.renderer as MarkdownRenderer & { options: { messageId: string } }
-    expect(renderer.options.messageId).toBe('m1')
+    expect((options.renderer as MarkdownRenderer).messageId).toBe('m1')
   })
 
   it('returns a stable renderer across re-renders of the same message', () => {

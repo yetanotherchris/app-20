@@ -1,10 +1,10 @@
-import { StyleSheet } from 'react-native'
+import { StyleSheet, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
 import type { MessageRole } from '../types'
 
 export interface RoleTreatment {
   alignSelf: 'flex-start' | 'flex-end' | 'stretch'
-  bubble: object
-  text: object
+  bubble: StyleProp<ViewStyle>
+  text: StyleProp<TextStyle>
 }
 
 const styles = StyleSheet.create({

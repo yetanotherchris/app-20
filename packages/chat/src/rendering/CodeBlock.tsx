@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 
 export interface CodeBlockProps {
@@ -13,6 +13,12 @@ export type CopyState = 'idle' | 'copied' | 'failed'
 export function CodeBlock({ code, language, onCopyCode, testID }: CodeBlockProps) {
   const [copyState, setCopyState] = useState<CopyState>('idle')
   const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    return () => {
+      if (resetTimerRef.current) clearTimeout(resetTimerRef.current)
+    }
+  }, [])
 
   const scheduleReset = useCallback(() => {
     if (resetTimerRef.current) clearTimeout(resetTimerRef.current)

@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { MessageList, MessageBubble, type Message } from '@app-20/chat'
 import { largeMessageText } from './fixtures/large-message'
@@ -66,6 +66,11 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
   const [loadingEarlier, setLoadingEarlier] = useState(false)
   const [atBottom, setAtBottom] = useState(true)
   const [unread, setUnread] = useState(0)
+  const [lastLinkPress, setLastLinkPress] = useState<string | null>(null)
+  const [copyResult, setCopyResult] = useState<'idle' | 'ok' | 'denied'>('idle')
+  // The copy callback is stable (rows are recycled); read the live state via a ref.
+  const copyResultRef = useRef(copyResult)
+  copyResultRef.current = copyResult
 
   const appendMessage = useCallback(() => {
     setMessages((current) => [
@@ -145,10 +150,13 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
         key={message.id}
         message={message}
         onLinkPress={(href) => {
-          console.log(`[demo] link press: ${href}`)
+          setLastLinkPress(href)
         }}
-        onCopyCode={(code) => {
-          console.log(`[demo] copy code: ${code.slice(0, 40)}...`)
+        onCopyCode={(_code) => {
+          if (copyResultRef.current === 'denied') {
+            return Promise.reject(new Error('clipboard denied'))
+          }
+          return Promise.resolve()
         }}
       />
     ),
@@ -161,6 +169,14 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
       makeMessage('user', 'Please show me the full markdown suite.'),
       makeMessage('assistant', markdownSuite),
       makeMessage('assistant', unsafeMarkdown),
+    ])
+    setHasEarlier(false)
+  }, [])
+
+  const loadLargeMarkdown = useCallback(() => {
+    setMessages([
+      makeMessage('user', 'Give me a very long answer, please.'),
+      makeMessage('assistant', `# Long response\n\n${largeMessageText}`),
     ])
     setHasEarlier(false)
   }, [])
@@ -183,9 +199,29 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
           onPress={loadMarkdownSuite}
           testID="demo.markdown-suite"
         />
+        <DemoButton
+          label={copyResult === 'denied' ? 'Copy: denied' : 'Copy: allow'}
+          onPress={() => setCopyResult((prev) => (prev === 'denied' ? 'idle' : 'denied'))}
+          testID="demo.toggle-copy"
+        />
+        <DemoButton
+          label="Single large markdown"
+          onPress={loadLargeMarkdown}
+          testID="demo.large-markdown"
+        />
       </View>
     ),
-    [appendMessage, streamNextChunk, loadEarlier, exhaustEarlier, loadThousand, loadThousandLarge, loadMarkdownSuite],
+    [
+      appendMessage,
+      streamNextChunk,
+      loadEarlier,
+      exhaustEarlier,
+      loadThousand,
+      loadThousandLarge,
+      loadMarkdownSuite,
+      copyResult,
+      loadLargeMarkdown,
+    ],
   )
 
   return (
@@ -197,6 +233,9 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
         </Text>
         <Text testID="demo.unread" style={styles.statusText}>
           unread: {unread}
+        </Text>
+        <Text testID="demo.last-link" style={styles.statusText}>
+          link: {lastLinkPress ?? 'none'}
         </Text>
       </View>
       <MessageList
