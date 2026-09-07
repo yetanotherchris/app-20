@@ -4,33 +4,27 @@
 
 ## R1: Virtualization engine
 
-**Decision**: `@shopify/flash-list` v2 as the list engine on native and web.
+**Decision**: `@legendapp/list` v3 (LegendList) as the list engine on native and web.
 
-**Rationale**: FlashList v2 is a JS-only rewrite for the React Native New Architecture, so it runs on `react-native-web` without native modules (Expo registry lists web as a supported platform; `inverted` prop docs explicitly cover web via CSS transforms). It is the only recycler with first-class chat primitives: built-in `maintainVisibleContentPosition` (enabled by default), `autoscrollToBottomThreshold`, `onStartReached` for earlier-message loading, `getItemType` for heterogeneous rows, and `keyExtractor` required for stable identity when layouts change. It markets 5x UI-thread FPS and 10x JS-thread FPS over FlatList, which matters for the 1,000-message success criterion. FlatList's practical ceiling is a few hundred rows, and RN's `maintainVisibleContentPosition` is not implemented on react-native-web.
+**Rationale**: FlashList v2 was the initial choice, but its web path proved broken in the Electron harness (task T026 evidence): all 1,000 rows render in the DOM yet the scroll content container stays 0-height, so the list cannot scroll or virtualize. This matches FlashList v2's documented beta web support (GitHub issues #870, #1697, #2334). LegendList is 100% JS, works on react-native-web and Expo iOS, and ships the chat primitives this spec needs: `maintainScrollAtEnd` with a threshold, `maintainVisibleContentPosition` data anchoring, `initialScrollAtEnd`, and an `onScroll`-based distance predicate. It exposes `scrollToOffset`, `scrollToEnd`, and a stable `LegendListRef`.
 
-**Alternatives considered**: FlatList (insufficient at 1,000 rows, no web MVCP); `@legendapp/list` (JS-only, cross-platform chat primitives; viable fallback if FlashList v2's beta web path proves unacceptable, but adds a second engine and its web import is a separate path).
+**Alternatives considered**: FlashList v2 (web layout broken, evidence above); RN `FlatList` (insufficient at 1,000 rows, no web MVCP).
 
-**Risks**: FlashList v2 web support is described as beta. Web layout measurement is async and can layout-shift; known GitHub issues cover v1 height-0 on expo-web and a v2 web crash. Mitigation: verify the web path early in the Electron harness (Phase 3 of tasks.md), and keep the list-adapter seam (`useMessageList`) so the engine can be swapped without touching row code. Fallback is LegendList.
-
-**Source**: shopify.github.io/flash-list; npmjs.com/package/@shopify/flash-list; docs.expo.dev/versions/latest/sdk/flash-list; GitHub issues #870, #1697.
+**Source**: shopify.github.io/flash-list; npmjs.com/package/@legendapp/list; Electron harness diagnostics (task T026).
 
 ## R2: Auto-follow at the bottom
 
-**Decision**: Follow decision from an `onScroll` predicate: `distanceFromBottom = contentSize.height - (contentOffset.y + layoutMeasurement.height)`, auto-follow only when `distanceFromBottom < followThreshold`, where `followThreshold` is the FR-003 "within one message height" boundary.
+**Decision**: LegendList's `maintainScrollAtEnd` keeps the list pinned to the newest content when the user is at the bottom; an `onScroll`-derived distance predicate (`distanceFromBottom = contentHeight - (offsetY + viewportHeight)`) tracks the FR-003 "within one message height" boundary for the unread and scroll-to-latest state.
 
-**Rationale**: RN `ScrollView.maintainVisibleContentPosition.autoscrollToTopThreshold` is pixel-based and platform-inconsistent; FlashList's `autoscrollToBottomThreshold` is a ratio. The spec pins the boundary as "one message height", so an explicit pixel predicate derived from scroll metrics is the faithful implementation. New content is followed by `scrollToEnd`/`scrollToOffset` when inside the threshold; beyond it the list pins.
-
-**Alternatives considered**: `maintainVisibleContentPosition` alone (does not cover the follow decision); `scrollToEnd` unconditionally (violates FR-002).
+**Rationale**: `maintainScrollAtEnd` is the engine's tested JS implementation of follow-on-append, which works on web where RN's pixel-based `maintainVisibleContentPosition` does not. The spec's follow threshold stays explicit: the list follows while inside the threshold and pins (showing unread state) beyond it.
 
 ## R3: Preserving the visible anchor when prepending (load earlier) and when rows above resize
 
-**Decision**: Manual offset-correction on web; FlashList v2 `maintainVisibleContentPosition` on native.
+**Decision**: LegendList's `maintainVisibleContentPosition` data anchoring on native and web.
 
-**Rationale**: Neither RN's MVCP nor FlashList's MVCP is reliable on react-native-web. The documented cross-platform workaround is to capture content height before the prepend, compare after, and add the delta to the scroll offset in `useLayoutEffect` (via `scrollToOffset` on native, `scrollTop += delta` on the DOM scrollable node). On native (Expo iOS) FlashList v2 MVCP handles resize-above-viewport and prepend anchoring.
+**Rationale**: LegendList anchors the visible content across data changes in JS, so a prepend (load earlier) keeps the viewport fixed on both targets without a manual correction. This replaced the originally planned manual offset-correction hook (`usePrependAnchor`): that hook corrected only the web path and duplicated what the engine already does; keeping both caused double offset adjustment. The hook was removed in implementation.
 
-**Alternatives considered**: RN `maintainVisibleContentPosition` (iOS-only historically, Android behavior inconsistent, not on web); `@stream-io/flat-list-mvcp` (a patch library around RN internals, adds a dependency for a problem the manual approach already solves).
-
-**Note**: This is the highest-risk area for spec 001 on the web target. The anchor-correction logic lives in its own hook (`usePrependAnchor`) so it is unit-testable in isolation.
+**Alternatives considered**: Manual offset-correction hook on web (rejected: double-adjusts against LegendList's own anchoring); RN `maintainVisibleContentPosition` (not on web).
 
 ## R4: Unread count and scroll-to-latest
 

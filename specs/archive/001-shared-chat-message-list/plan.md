@@ -12,7 +12,7 @@ Build the message list for the shared chat component: a virtualized, variable-he
 
 **Language/Version**: TypeScript strict mode (mandatory per constitution), React 19.2, React Native 0.86 (Expo SDK 57), react-native-web 0.21.
 
-**Primary Dependencies**: `@shopify/flash-list` v2 (list engine), `react-native`, `react-native-web` (peer deps of the component), Vitest 5, `@testing-library/react-native` 14 (native tests), `@testing-library/react` 16 (web tests), Playwright 1.63, Electron (e2e harness). No Markdown library in this spec; spec 002 selects it.
+**Primary Dependencies**: `@legendapp/list` v3 (list engine), `react-native`, `react-native-web` (peer deps of the component), Vitest 5, `@testing-library/react-native` 14 (native tests), `@testing-library/react` 16 (web tests), Playwright 1.63, Electron (e2e harness). No Markdown library in this spec; spec 002 selects it.
 
 **Storage**: N/A. The component is purely presentational; conversation persistence is spec 101.
 
@@ -68,9 +68,8 @@ packages/chat/                      # Shared chat component (this spec: message 
 │   │   ├── LoadEarlierControl.tsx
 │   │   └── UnreadBadge.tsx
 │   └── hooks/
-│       ├── useAtBottom.ts          # R2 follow predicate
-│       ├── usePrependAnchor.ts     # R3 web anchor correction
-│       └── useUnreadCount.ts       # R4 derived unread state
+│       ├── useAtBottom.ts          # FR-003 distance predicate
+│       └── useUnreadCount.ts       # Derived unread state
 ├── package.json                    # Peer deps react/rn/rnw; deps flash-list
 └── tsconfig.json
 
@@ -104,4 +103,4 @@ playwright.config.ts, electron.vite.config.ts, .gitignore
 
 ## Complexity Tracking
 
-No constitution violations. The only deliberate complexity is the manual web anchor-correction in `usePrependAnchor` (research R3): FlashList v2's `maintainVisibleContentPosition` is not reliable on react-native-web, so the web path captures content height before a prepend and adds the delta to the scroll offset in `useLayoutEffect`. The simpler alternative (trusting FlashList MVCP on web) is rejected because it violates FR-004 (loading earlier messages does not move the visible anchor) on the Electron target, which is a required acceptance scenario.
+No constitution violations. The engine choice changed during implementation: FlashList v2's web path rendered rows with a 0-height scroll container (evidence in `research.md` R1 and task T026), so the engine is `@legendapp/list` v3, whose JS-only `maintainScrollAtEnd` and `maintainVisibleContentPosition` work on react-native-web. The simpler alternative (FlashList v2 with a manual web offset-correction in `usePrependAnchor`) was rejected because the manual correction double-adjusted against the engine's own anchoring and FlashList v2's web layout could not scroll. `usePrependAnchor` remains an exported utility but is not wired into `MessageList`.

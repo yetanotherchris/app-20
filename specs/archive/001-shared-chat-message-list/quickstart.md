@@ -23,7 +23,6 @@ Validation guide for spec 001. Contract details live in [contracts/message-list.
 Run `npm test`. Spec 001 suites cover:
 
 - `useAtBottom`: the FR-003 predicate flips correctly at the one-message-height boundary.
-- `usePrependAnchor`: prepending messages preserves the scroll offset (web path).
 - `useUnreadCount`: appends while not at bottom increment the count; return to bottom clears it.
 - `MessageList`: renders rows with stable keys, no remount on streaming updates; load-earlier and scroll-to-latest controls fire their callbacks and toggle per `hasEarlierMessages` / `isLoadingEarlier`; controls expose the stable `testID`s in [contracts/message-list.md](./contracts/message-list.md).
 
