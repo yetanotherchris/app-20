@@ -21,6 +21,13 @@ export function computeUnreadCount(
  * earlier) changes the head, never the tail, so earlier messages are not
  * counted as unread. Streaming updates to the last message keep its id and do
  * not increment either.
+ *
+ * Tradeoff: the count increments once per commit that changes the tail, not per
+ * appended message, so a single update that appends several messages reports 1
+ * (a host that appends one message per commit is unaffected). A tail deletion
+ * while scrolled up also increments. This matches the personal-chat hosts in
+ * scope; anchor the count to the id captured when the user left the bottom if
+ * batched appends or tail deletion become a requirement.
  */
 export function useUnreadCount(isAtBottom: boolean, tailKey: string | undefined): UnreadCountState {
   const [unreadCount, setUnreadCount] = useState(0)

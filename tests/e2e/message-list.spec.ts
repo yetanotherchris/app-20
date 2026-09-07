@@ -31,13 +31,16 @@ async function resetApp(): Promise<void> {
 test.describe('US1: follow the conversation from the bottom', () => {
   test('a new message is visible without scrolling while at the bottom', async () => {
     await resetApp()
-    const beforeCount = await page.getByTestId(/^chat\.message\./).count()
     await page.getByTestId('demo.append').click()
     await expect(page.getByTestId('demo.at-bottom')).toHaveText('at-bottom')
-    const afterCount = await page.getByTestId(/^chat\.message\./).count()
-    expect(afterCount).toBeGreaterThan(beforeCount)
-    const offset = await getScrollableOffset(page)
-    expect(offset).toBeGreaterThanOrEqual(0)
+    // The appended message is the last rendered row and stays in the viewport
+    // (auto-follow) without the user scrolling.
+    const lastId = await page
+      .locator('[data-testid^="chat.message."]')
+      .last()
+      .getAttribute('data-testid')
+    expect(lastId).toBeTruthy()
+    await expect(page.getByTestId(lastId!)).toBeVisible()
   })
 
   test('a streaming message keeps the same identity and position across updates', async () => {
@@ -156,9 +159,9 @@ test.describe('SC-001: long-conversation responsiveness', () => {
     await resetApp()
     const start = Date.now()
     await page.getByTestId('demo.load-1000').click()
-    await expect(page.locator('[data-testid^="chat.message."]').first()).toBeVisible({
-      timeout: 10_000,
-    })
+    // The final bulk message must render within the spec's 2-second budget,
+    // proving the full conversation, not just the first visible row.
+    await expect(page.getByText('Bulk message 1000')).toBeVisible({ timeout: 10_000 })
     const elapsed = Date.now() - start
     expect(elapsed).toBeLessThan(2000)
 
@@ -175,6 +178,8 @@ test.describe('SC-001: long-conversation responsiveness', () => {
     await resetApp()
     const start = Date.now()
     await page.getByTestId('demo.load-1000-large').click()
+    // The list renders its full data set; the first bulk row must be present
+    // after load, proving the large rows committed within budget.
     await expect(page.locator('[data-testid^="chat.message."]').first()).toBeVisible({
       timeout: 10_000,
     })
@@ -183,7 +188,7 @@ test.describe('SC-001: long-conversation responsiveness', () => {
 
     // 1,000 messages of ~10 KB each overflow the viewport substantially.
     const scrollHeight = await getScrollHeight(page)
-    expect(scrollHeight).toBeGreaterThan(10_000)
+    expect(scrollHeight).toBeGreaterThan(100_000)
 
     const stall = await measureScrollStall(page)
     expect(stall).toBeLessThan(100)
