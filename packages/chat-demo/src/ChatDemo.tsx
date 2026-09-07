@@ -1,7 +1,9 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import { MessageList, type Message } from '@app-20/chat'
+import { MessageList, MessageBubble, type Message } from '@app-20/chat'
 import { largeMessageText } from './fixtures/large-message'
+import markdownSuite from './fixtures/markdown-suite.md?raw'
+import unsafeMarkdown from './fixtures/unsafe-markdown.md?raw'
 
 export interface ChatDemoProps {
   initialMessages?: readonly Message[]
@@ -10,7 +12,7 @@ export interface ChatDemoProps {
 let nextId = 1000
 
 function makeMessage(
-  role: 'user' | 'assistant',
+  role: 'user' | 'assistant' | 'system',
   text: string,
   status: Message['status'] = 'complete',
 ): Message {
@@ -64,6 +66,11 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
   const [loadingEarlier, setLoadingEarlier] = useState(false)
   const [atBottom, setAtBottom] = useState(true)
   const [unread, setUnread] = useState(0)
+  const [lastLinkPress, setLastLinkPress] = useState<string | null>(null)
+  const [copyResult, setCopyResult] = useState<'idle' | 'ok' | 'denied'>('idle')
+  // The copy callback is stable (rows are recycled); read the live state via a ref.
+  const copyResultRef = useRef(copyResult)
+  copyResultRef.current = copyResult
 
   const appendMessage = useCallback(() => {
     setMessages((current) => [
@@ -139,17 +146,40 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
 
   const renderMessage = useCallback(
     (message: Message) => (
-      <View
+      <MessageBubble
         key={message.id}
-        style={[styles.row, message.role === 'user' ? styles.userRow : styles.assistantRow]}
-      >
-        <Text testID={`chat.message.${message.id}`} style={styles.rowText}>
-          {plainText(message)}
-        </Text>
-      </View>
+        message={message}
+        onLinkPress={(href) => {
+          setLastLinkPress(href)
+        }}
+        onCopyCode={(_code) => {
+          if (copyResultRef.current === 'denied') {
+            return Promise.reject(new Error('clipboard denied'))
+          }
+          return Promise.resolve()
+        }}
+      />
     ),
     [],
   )
+
+  const loadMarkdownSuite = useCallback(() => {
+    setMessages([
+      makeMessage('system', 'Conversation started with a markdown suite'),
+      makeMessage('user', 'Please show me the full markdown suite.'),
+      makeMessage('assistant', markdownSuite),
+      makeMessage('assistant', unsafeMarkdown),
+    ])
+    setHasEarlier(false)
+  }, [])
+
+  const loadLargeMarkdown = useCallback(() => {
+    setMessages([
+      makeMessage('user', 'Give me a very long answer, please.'),
+      makeMessage('assistant', `# Long response\n\n${largeMessageText}`),
+    ])
+    setHasEarlier(false)
+  }, [])
 
   const controls = useMemo(
     () => (
@@ -164,9 +194,34 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
           onPress={loadThousandLarge}
           testID="demo.load-1000-large"
         />
+        <DemoButton
+          label="Markdown suite"
+          onPress={loadMarkdownSuite}
+          testID="demo.markdown-suite"
+        />
+        <DemoButton
+          label={copyResult === 'denied' ? 'Copy: denied' : 'Copy: allow'}
+          onPress={() => setCopyResult((prev) => (prev === 'denied' ? 'idle' : 'denied'))}
+          testID="demo.toggle-copy"
+        />
+        <DemoButton
+          label="Single large markdown"
+          onPress={loadLargeMarkdown}
+          testID="demo.large-markdown"
+        />
       </View>
     ),
-    [appendMessage, streamNextChunk, loadEarlier, exhaustEarlier, loadThousand, loadThousandLarge],
+    [
+      appendMessage,
+      streamNextChunk,
+      loadEarlier,
+      exhaustEarlier,
+      loadThousand,
+      loadThousandLarge,
+      loadMarkdownSuite,
+      copyResult,
+      loadLargeMarkdown,
+    ],
   )
 
   return (
@@ -178,6 +233,9 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
         </Text>
         <Text testID="demo.unread" style={styles.statusText}>
           unread: {unread}
+        </Text>
+        <Text testID="demo.last-link" style={styles.statusText}>
+          link: {lastLinkPress ?? 'none'}
         </Text>
       </View>
       <MessageList
@@ -227,25 +285,5 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 12,
     color: '#475569',
-  },
-  row: {
-    marginVertical: 4,
-    marginHorizontal: 12,
-    borderRadius: 10,
-    padding: 10,
-    maxWidth: 520,
-  },
-  userRow: {
-    alignSelf: 'flex-end',
-    backgroundColor: '#2563eb',
-  },
-  assistantRow: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#ffffff',
-  },
-  rowText: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#0f172a',
   },
 })

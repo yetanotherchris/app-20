@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-07
 
-**Status**: Draft
+**Status**: Archived
 
 **Input**: User description: "Message rendering for the shared chat component: distinct roles, formatted assistant responses as Markdown, selectable text, code blocks with copy, a fallback for unsupported content, and no execution of raw HTML or remote images."
 
