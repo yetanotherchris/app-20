@@ -8,8 +8,8 @@
 
 **Purpose**: Dependencies and the RNW validation gate for the markdown library.
 
-- [ ] T001 Add `react-native-marked` and `react-native-svg` to `packages/chat/package.json` and install
-- [ ] T002 Verify react-native-marked renders in the Electron + RNW harness early (research R1 risk gate); record evidence in research.md
+- [x] T001 Add `react-native-marked` and `react-native-svg` to `packages/chat/package.json` and install
+- [x] T002 Verify react-native-marked renders in the Electron + RNW harness early (research R1 risk gate); record evidence in research.md
 
 **Checkpoint**: The library renders markdown in the harness; typecheck passes.
 
@@ -17,10 +17,10 @@
 
 **Purpose**: The renderer map and role treatment every user story needs.
 
-- [ ] T003 [P] Create `roleStyles` in `packages/chat/src/rendering/roleStyles.ts` (user/assistant/system treatments per data-model.md)
-- [ ] T004 Create `PlainText` in `packages/chat/src/rendering/PlainText.tsx` (literal text, FR-003)
-- [ ] T005 Create `ContentRenderer` in `packages/chat/src/rendering/ContentRenderer.tsx` (kind/format -> renderer map + fallback, FR-009)
-- [ ] T006 Export the new rendering surface from `packages/chat/src/index.ts`
+- [x] T003 [P] Create `roleStyles` in `packages/chat/src/rendering/roleStyles.ts` (user/assistant/system treatments per data-model.md)
+- [x] T004 Create `PlainText` in `packages/chat/src/rendering/PlainText.tsx` (literal text, FR-003)
+- [x] T005 Create `ContentRenderer` in `packages/chat/src/rendering/ContentRenderer.tsx` (kind/format -> renderer map + fallback, FR-009)
+- [x] T006 Export the new rendering surface from `packages/chat/src/index.ts`
 
 **Checkpoint**: `ContentRenderer` routes `plain` parts and falls back for unknown kinds.
 
@@ -32,15 +32,15 @@
 
 ### Tests for User Story 1
 
-- [ ] T007 [P] [US1] Unit test `MarkdownText` in `packages/chat/src/rendering/MarkdownText.test.tsx` (elements render; raw HTML inert; images render nothing; `javascript:` links inert; link activation calls `onLinkPress`)
-- [ ] T008 [US1] Unit test `CodeBlock` in `packages/chat/src/rendering/CodeBlock.test.tsx` (copy fires `onCopyCode`; failure state visible on denied copy)
+- [x] T007 [P] [US1] Unit test `MarkdownText` in `packages/chat/src/rendering/MarkdownText.test.tsx` (elements render; raw HTML inert; images render nothing; `javascript:` links inert; link activation calls `onLinkPress`)
+- [x] T008 [US1] Unit test `CodeBlock` in `packages/chat/src/rendering/CodeBlock.test.tsx` (copy fires `onCopyCode`; failure state visible on denied copy)
 
 ### Implementation for User Story 1
 
-- [ ] T009 [P] [US1] Create `CodeBlock` in `packages/chat/src/rendering/CodeBlock.tsx` (selectable, horizontal scroll, copy control, failure state)
-- [ ] T010 [US1] Create `MarkdownRenderer` in `packages/chat/src/rendering/MarkdownRenderer.ts` (react-native-marked Renderer subclass: code -> CodeBlock, images off, links -> onLinkPress)
-- [ ] T011 [US1] Create `MarkdownText` in `packages/chat/src/rendering/MarkdownText.tsx` (useMarkdown hook per row; memoized parse keyed by id+content)
-- [ ] T012 [US1] Add markdown fixtures to `packages/chat-demo/src/fixtures/markdown-suite.md` (all supported elements, SC-001)
+- [x] T009 [P] [US1] Create `CodeBlock` in `packages/chat/src/rendering/CodeBlock.tsx` (selectable, horizontal scroll, copy control, failure state)
+- [x] T010 [US1] Create `MarkdownRenderer` in `packages/chat/src/rendering/MarkdownRenderer.ts` (react-native-marked Renderer subclass: code -> CodeBlock, images off, links -> onLinkPress)
+- [x] T011 [US1] Create `MarkdownText` in `packages/chat/src/rendering/MarkdownText.tsx` (useMarkdown hook per row; memoized parse keyed by id+content)
+- [x] T012 [US1] Add markdown fixtures to `packages/chat-demo/src/fixtures/markdown-suite.md` (all supported elements, SC-001)
 
 **Checkpoint**: Full markdown element set renders; code blocks copy; links delegate.
 
@@ -52,11 +52,11 @@
 
 ### Tests for User Story 2
 
-- [ ] T013 [US2] Unit test `MessageBubble` in `packages/chat/src/components/MessageBubble.test.tsx` (user right, assistant left, system distinct)
+- [x] T013 [US2] Unit test `MessageBubble` in `packages/chat/src/components/MessageBubble.test.tsx` (user right, assistant left, system distinct)
 
 ### Implementation for User Story 2
 
-- [ ] T014 [US2] Create `MessageBubble` in `packages/chat/src/components/MessageBubble.tsx` (role alignment + treatment; composes `ContentRenderer`)
+- [x] T014 [US2] Create `MessageBubble` in `packages/chat/src/components/MessageBubble.tsx` (role alignment + treatment; composes `ContentRenderer`)
 
 **Checkpoint**: Roles are visually distinct and aligned.
 
@@ -68,12 +68,12 @@
 
 ### Tests for User Story 3
 
-- [ ] T015 [US3] Add unit coverage in `packages/chat/src/rendering/MarkdownText.test.tsx` for raw HTML, remote images, `javascript:` links, and event handlers rendering inert
-- [ ] T016 [US3] Add `unsafe-markdown.md` fixture to `packages/chat-demo/src/fixtures/`
+- [x] T015 [US3] Add unit coverage in `packages/chat/src/rendering/MarkdownText.test.tsx` for raw HTML, remote images, `javascript:` links, and event handlers rendering inert
+- [x] T016 [US3] Add `unsafe-markdown.md` fixture to `packages/chat-demo/src/fixtures/`
 
 ### Implementation for User Story 3
 
-- [ ] T017 [US3] Verify `MarkdownRenderer` suppresses images and keeps HTML as text; confirm no execution path exists (structural, per research R1/R2)
+- [x] T017 [US3] Verify `MarkdownRenderer` suppresses images and keeps HTML as text; confirm no execution path exists (structural, per research R1/R2)
 
 **Checkpoint**: Unsafe content renders inert; no network fetch or execution.
 
@@ -83,11 +83,11 @@
 
 ### Tests for User Story 4
 
-- [ ] T018 [US4] Add unit coverage in `CodeBlock.test.tsx` for selection firing no action and denied copy showing the failure state
+- [x] T018 [US4] Add unit coverage in `CodeBlock.test.tsx` for selection firing no action and denied copy showing the failure state
 
 ### Implementation for User Story 4
 
-- [ ] T019 [US4] Wire copy failure state from the host's `onCopyCode` result in `CodeBlock.tsx`
+- [x] T019 [US4] Wire copy failure state from the host's `onCopyCode` result in `CodeBlock.tsx`
 
 **Checkpoint**: Copy failure is visible; selection is side-effect free.
 
@@ -95,9 +95,9 @@
 
 **Purpose**: E2E acceptance coverage and validation.
 
-- [ ] T020 Write e2e suite `tests/e2e/message-rendering.spec.ts` covering spec 002 acceptance scenarios (markdown elements, code copy, role alignment, raw HTML inert, link delegation, table fallback, selection no-op, 6 KB render)
-- [ ] T021 Update `packages/chat-demo/src/ChatDemo.tsx` to render `MessageBubble` rows with markdown fixtures
-- [ ] T022 Run quickstart.md validation end-to-end; confirm `lint`, `typecheck`, `test`, `test:e2e` all green
+- [x] T020 Write e2e suite `tests/e2e/message-rendering.spec.ts` covering spec 002 acceptance scenarios (markdown elements, code copy, role alignment, raw HTML inert, link delegation, table fallback, selection no-op, 6 KB render)
+- [x] T021 Update `packages/chat-demo/src/ChatDemo.tsx` to render `MessageBubble` rows with markdown fixtures
+- [x] T022 Run quickstart.md validation end-to-end; confirm `lint`, `typecheck`, `test`, `test:e2e` all green
 
 ## Dependencies & Execution Order
 
