@@ -81,7 +81,7 @@ export interface MessageAction {
   id: string
   label: string
   group: string
-  available?: (message: import('../types').Message) => boolean
+  available?: boolean | ((message: import('../types').Message) => boolean)
   onAction: (action: MessageAction, message: import('../types').Message) => void
 }
 

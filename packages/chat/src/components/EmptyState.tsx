@@ -1,11 +1,20 @@
 import { StyleSheet, Text, View } from 'react-native'
 import { useTheme } from '../theme/ThemeContext'
+import type { SurfaceStyleOverrides } from '../theme/types'
 
-export function EmptyState() {
+export interface EmptyStateProps {
+  styleOverrides?: SurfaceStyleOverrides
+}
+
+export function EmptyState({ styleOverrides }: EmptyStateProps) {
   const { theme } = useTheme()
   return (
     <View
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      style={[
+        styles.container,
+        { backgroundColor: theme.colors.background },
+        styleOverrides?.empty,
+      ]}
       testID="chat.state.empty"
     >
       <Text style={[styles.text, { color: theme.colors.textSecondary }]}>No messages yet</Text>

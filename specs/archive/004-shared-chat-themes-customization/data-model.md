@@ -53,9 +53,11 @@ The list's empty/loading/typing/error views are replaceable render props on `Cha
 | View | Shown when | Default |
 |---|---|---|
 | Empty | no messages and `status === 'idle'` | `EmptyState` |
-| Loading | response being requested (`status === 'submitting'`) | `LoadingState` |
-| Typing | assistant response being composed (`status === 'streaming'`) | `TypingState` |
-| Error | `status === 'error'` | `ErrorState` |
+| Loading | no messages and `status === 'submitting'` | `LoadingState` |
+| Typing | no messages and `status === 'streaming'` | `TypingState` |
+| Error | `status === 'error'` (conversation-level; replaces the list whenever active) | `ErrorState` |
+
+Empty/loading/typing occupy the list only while there are no messages; once messages exist the list renders normally, so a populated conversation is never hidden behind a transient loading/typing indicator. Error is the exception: it replaces the list whenever the error status is active (US3-A3). This restriction was confirmed during implementation (recorded as a decision; spec 006 owns the full status semantics).
 
 `status` is the chat status shape referenced from spec 006 (`idle | submitting | streaming | stopping | error`). The composer consumes it for Send/Stop as already specified in spec 003.
 

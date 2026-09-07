@@ -1,5 +1,11 @@
 import { test, expect, type Page } from '@playwright/test'
-import { launchElectron, closeElectron, getScrollableOffset, type LaunchedApp } from './launch'
+import {
+  launchElectron,
+  closeElectron,
+  getScrollableOffset,
+  scrollListTo,
+  type LaunchedApp,
+} from './launch'
 
 let launched: LaunchedApp
 let page: Page
@@ -39,18 +45,20 @@ test.describe('US1: light and dark themes', () => {
     await resetApp()
     await page.getByTestId('demo.load-1000').click()
     await expect(page.getByTestId('demo.at-bottom')).toHaveText('at-bottom')
-    // Scroll up so a position change would be visible.
     await page.waitForTimeout(300)
-    const scrollableOffset = await getScrollableOffset(page)
+    // Scroll up so a position change would be visible, and record the offset.
+    await scrollListTo(page, 200)
+    await expect(page.getByTestId('demo.at-bottom')).toHaveText('scrolled-up')
+    const offsetBefore = await getScrollableOffset(page)
+    expect(offsetBefore).toBeGreaterThan(0)
     // Start a streaming update, then switch the theme.
     await page.getByTestId('demo.stream').click()
     await page.getByTestId('demo.toggle-theme').click()
     await page.waitForTimeout(300)
-    // The list is still there and the streamed chunk appeared.
+    // The list is still there and the scroll position is preserved.
     await expect(page.getByTestId('chat.message-list')).toBeVisible()
-    // Scroll position did not reset to the bottom.
-    expect(await getScrollableOffset(page)).toBeGreaterThanOrEqual(0)
-    expect(scrollableOffset).toBeGreaterThanOrEqual(0)
+    const offsetAfter = await getScrollableOffset(page)
+    expect(Math.abs(offsetAfter - offsetBefore)).toBeLessThan(50)
   })
 })
 
@@ -122,22 +130,30 @@ test.describe('US2: replace renderers, controls, and actions', () => {
     await expect(page.getByTestId('chat.message.demo-1000')).toBeVisible()
     await expect(page.getByText('custom-plain:').first()).toHaveCount(0)
   })
+
+  test('a custom Markdown element renderer is used for that element, defaults elsewhere (US2-A3)', async () => {
+    await resetApp()
+    await page.getByTestId('demo.markdown-suite').click()
+    await page.getByTestId('demo.toggle-markdown-elements').click()
+    await page.waitForTimeout(300)
+    // The custom link element renders for links in the markdown suite.
+    await expect(page.getByTestId('demo.custom-markdown-link').first()).toBeVisible()
+    // Other elements still use the default renderer (code blocks remain).
+    await expect(page.getByRole('button', { name: /copy code/i }).first()).toBeVisible()
+  })
 })
 
 test.describe('US3: replace status states', () => {
   test('an empty conversation shows the empty state (US3-A1)', async () => {
     await resetApp()
-    // The default demo has messages; the empty state shows on a fresh reload
-    // only when the demo has none. Reload preserves the fixture, so verify the
-    // empty-state default renders by loading a fresh state is not available;
-    // instead check the state testID exists in the source-driven unit tests.
-    await expect(page.getByTestId('chat.message-list')).toBeVisible()
+    await page.getByTestId('demo.clear-messages').click()
+    await expect(page.getByTestId('chat.state.empty')).toBeVisible()
   })
 
   test('a response being requested shows the loading state (US3-A2)', async () => {
     await resetApp()
-    // Submit a message; during the simulated streaming the assistant reply is
-    // pending, and the composer shows the typing affordance path.
+    // Clear messages, then submit so the submitting state has nothing to show.
+    await page.getByTestId('demo.clear-messages').click()
     await page.getByTestId('chat.composer.input').fill('loading test')
     await page.getByTestId('chat.composer.input').press('Enter')
     await expect(page.getByTestId('demo.submit-count')).toHaveText('submits: 1')
@@ -146,10 +162,10 @@ test.describe('US3: replace status states', () => {
   test('custom state views appear in the right conditions (FR-008)', async () => {
     await resetApp()
     await page.getByTestId('demo.toggle-states').click()
-    // A streamed (typing) condition uses the custom typing state only when the
-    // list is empty; the demo list is populated, so the list renders. Verify
-    // the custom state controls exist and the list stays usable.
-    await expect(page.getByTestId('chat.message-list')).toBeVisible()
+    // Clear messages: the custom empty state renders in place of the default.
+    await page.getByTestId('demo.clear-messages').click()
+    await expect(page.getByTestId('demo.custom-empty-state')).toBeVisible()
+    await expect(page.getByTestId('chat.state.empty')).toHaveCount(0)
   })
 })
 
@@ -174,6 +190,18 @@ test.describe('US4: constrain and disable', () => {
     // Send is disabled when the send capability is off.
     await page.getByTestId('chat.composer.input').fill('cap test')
     await expect(page.getByTestId('chat.composer.send')).toBeDisabled()
+  })
+
+  test('a disabled copy capability hides the code-block copy control (US4-A3)', async () => {
+    await resetApp()
+    await page.getByTestId('demo.markdown-suite').click()
+    await page.waitForTimeout(400)
+    // Code blocks have copy controls by default.
+    await expect(page.getByRole('button', { name: /copy code/i }).first()).toBeVisible()
+    await page.getByTestId('demo.toggle-cap-copy').click()
+    await page.waitForTimeout(400)
+    // With the copy capability off, the copy controls disappear.
+    await expect(page.getByRole('button', { name: /copy code/i })).toHaveCount(0)
   })
 })
 

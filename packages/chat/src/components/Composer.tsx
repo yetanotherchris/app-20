@@ -90,7 +90,7 @@ export function Composer({
   const lastSubmittedRef = useRef<string | null>(null)
 
   const sendEnabled = canSend && !disabled && !readOnly && capabilities?.send !== false
-  const stopEnabled = isBusy && capabilities?.stop !== false
+  const stopEnabled = isBusy && !disabled && !readOnly && capabilities?.stop !== false
   const editable = !disabled && !readOnly
 
   const { height, handleContentSizeChange, handleLayout, handleTextChange } = useAutogrowHeight({

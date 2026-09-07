@@ -85,9 +85,11 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
   const [customIcons, setCustomIcons] = useState(false)
   const [actionsEnabled, setActionsEnabled] = useState(false)
   const [customStates, setCustomStates] = useState(false)
+  const [customMarkdownElements, setCustomMarkdownElements] = useState(false)
   const [disabled, setDisabled] = useState(false)
   const [readOnly, setReadOnly] = useState(false)
   const [sendDisabled, setSendDisabled] = useState(false)
+  const [copyDisabled, setCopyDisabled] = useState(false)
 
   const handleSubmit = useCallback(() => {
     const text = draft.trim()
@@ -167,6 +169,12 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
       setHasEarlier(false)
       setLoadingEarlier(false)
     }, 50)
+  }, [])
+
+  const clearMessages = useCallback(() => {
+    setMessages([])
+    setHasEarlier(false)
+    setChatStatus('idle')
   }, [])
 
   const loadThousand = useCallback(() => {
@@ -252,6 +260,20 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
           }
         : undefined,
     [customContentRenderer],
+  )
+
+  const markdownElementRenderers = useMemo(
+    () =>
+      customMarkdownElements
+        ? {
+            link: (children: React.ReactNode, href: string) => (
+              <Text testID="demo.custom-markdown-link" style={styles.customLink}>
+                [link:{href}]{children}
+              </Text>
+            ),
+          }
+        : undefined,
+    [customMarkdownElements],
   )
 
   const customSend = useCallback(
@@ -406,6 +428,12 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
           testID="demo.toggle-states"
         />
         <DemoButton
+          label={customMarkdownElements ? 'MD elements: custom' : 'MD elements: default'}
+          onPress={() => setCustomMarkdownElements((v) => !v)}
+          testID="demo.toggle-markdown-elements"
+        />
+        <DemoButton label="Clear messages" onPress={clearMessages} testID="demo.clear-messages" />
+        <DemoButton
           label={disabled ? 'Disabled: on' : 'Disabled: off'}
           onPress={() => setDisabled((v) => !v)}
           testID="demo.toggle-disabled"
@@ -419,6 +447,11 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
           label={sendDisabled ? 'Cap send: off' : 'Cap send: on'}
           onPress={() => setSendDisabled((v) => !v)}
           testID="demo.toggle-cap-send"
+        />
+        <DemoButton
+          label={copyDisabled ? 'Cap copy: off' : 'Cap copy: on'}
+          onPress={() => setCopyDisabled((v) => !v)}
+          testID="demo.toggle-cap-copy"
         />
       </View>
     ),
@@ -442,9 +475,12 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
       customIcons,
       actionsEnabled,
       customStates,
+      customMarkdownElements,
+      clearMessages,
       disabled,
       readOnly,
       sendDisabled,
+      copyDisabled,
     ],
   )
 
@@ -492,6 +528,7 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
         }
         renderMessage={renderMessage}
         contentRenderers={contentRenderers}
+        markdownElementRenderers={markdownElementRenderers}
         renderSend={customControls ? customSend : undefined}
         renderStop={customControls ? customStop : undefined}
         renderScrollToLatest={customControls ? customScrollToLatest : undefined}
@@ -505,7 +542,11 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
         renderErrorState={customStates ? customErrorState : undefined}
         disabled={disabled}
         readOnly={readOnly}
-        capabilities={sendDisabled ? { send: false } : undefined}
+        capabilities={
+          sendDisabled || copyDisabled
+            ? { send: sendDisabled ? false : undefined, copy: copyDisabled ? false : undefined }
+            : undefined
+        }
         blurBehavior={blurBehavior}
       />
     </View>
@@ -556,6 +597,10 @@ const styles = StyleSheet.create({
   },
   customMessageText: {
     color: '#78350f',
+  },
+  customLink: {
+    color: '#0d9488',
+    textDecorationLine: 'underline',
   },
   customControl: {
     borderRadius: 20,

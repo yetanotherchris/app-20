@@ -141,16 +141,19 @@ function ChatInner(props: ChatProps) {
   } = props
 
   // Disabled/read-only and a disabled actions capability hide the action
-  // affordance entirely (FR-014).
+  // affordance entirely (FR-014). A disabled copy capability hides the copy
+  // control on code blocks (the control only renders when onCopyCode is set).
   const effectiveActions =
     disabled || readOnly || capabilities?.actions === false ? undefined : messageActions
+  const effectiveOnCopyCode =
+    disabled || readOnly || capabilities?.copy === false ? undefined : onCopyCode
 
   const defaultRenderMessage = useCallback(
     (message: Message) => (
       <MessageBubble
         message={message}
         onLinkPress={onLinkPress}
-        onCopyCode={onCopyCode}
+        onCopyCode={effectiveOnCopyCode}
         messageActions={effectiveActions}
         onMessageAction={onMessageAction}
         contentRenderers={contentRenderers}
@@ -162,7 +165,7 @@ function ChatInner(props: ChatProps) {
     ),
     [
       onLinkPress,
-      onCopyCode,
+      effectiveOnCopyCode,
       effectiveActions,
       onMessageAction,
       contentRenderers,
@@ -252,13 +255,29 @@ function ChatInner(props: ChatProps) {
   const stateView = (() => {
     switch (stateKind) {
       case 'empty':
-        return renderEmptyState ? renderEmptyState() : <EmptyState />
+        return renderEmptyState ? (
+          renderEmptyState()
+        ) : (
+          <EmptyState styleOverrides={styleOverrides} />
+        )
       case 'loading':
-        return renderLoadingState ? renderLoadingState() : <LoadingState />
+        return renderLoadingState ? (
+          renderLoadingState()
+        ) : (
+          <LoadingState styleOverrides={styleOverrides} />
+        )
       case 'typing':
-        return renderTypingState ? renderTypingState() : <TypingState />
+        return renderTypingState ? (
+          renderTypingState()
+        ) : (
+          <TypingState styleOverrides={styleOverrides} />
+        )
       case 'error':
-        return renderErrorState ? renderErrorState() : <ErrorState />
+        return renderErrorState ? (
+          renderErrorState()
+        ) : (
+          <ErrorState styleOverrides={styleOverrides} />
+        )
       default:
         return null
     }

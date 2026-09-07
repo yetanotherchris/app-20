@@ -1,11 +1,20 @@
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
 import { useTheme } from '../theme/ThemeContext'
+import type { SurfaceStyleOverrides } from '../theme/types'
 
-export function LoadingState() {
+export interface LoadingStateProps {
+  styleOverrides?: SurfaceStyleOverrides
+}
+
+export function LoadingState({ styleOverrides }: LoadingStateProps) {
   const { theme } = useTheme()
   return (
     <View
-      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      style={[
+        styles.container,
+        { backgroundColor: theme.colors.background },
+        styleOverrides?.loading,
+      ]}
       testID="chat.state.loading"
     >
       <ActivityIndicator color={theme.colors.primary} />

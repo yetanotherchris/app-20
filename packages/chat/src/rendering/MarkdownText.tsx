@@ -2,6 +2,7 @@ import { useMemo } from 'react'
 import { View, StyleSheet, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
 import { useMarkdown, type RendererInterface } from 'react-native-marked'
 import type { ContentPart } from '../types'
+import { useTheme } from '../theme/ThemeContext'
 import { MarkdownRenderer, type MarkdownElementRenderers } from './MarkdownRenderer'
 
 export interface MarkdownTextProps {
@@ -30,6 +31,11 @@ export function MarkdownText({
   icons,
 }: MarkdownTextProps) {
   const text = part.text
+  const { theme } = useTheme()
+
+  // The link color comes from the theme token by default so no surface
+  // hardcodes a color (SC-001); a host-supplied linkColor wins over it.
+  const resolvedLinkColor = linkColor ?? theme.colors.primary
 
   // One renderer instance per message keeps the callback wiring stable; reset()
   // re-bases the per-parse block counter so streaming updates keep stable
@@ -43,7 +49,7 @@ export function MarkdownText({
       messageId,
       onLinkPress,
       onCopyCode,
-      linkColor,
+      linkColor: resolvedLinkColor,
       elementRenderers: markdownElementRenderers,
       icons,
     })
@@ -51,7 +57,7 @@ export function MarkdownText({
     messageId,
     onLinkPress,
     onCopyCode,
-    linkColor,
+    resolvedLinkColor,
     markdownElementRenderers,
     markdownRenderer,
     icons,
