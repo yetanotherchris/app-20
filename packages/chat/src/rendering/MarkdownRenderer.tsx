@@ -53,11 +53,11 @@ export class MarkdownRenderer extends Renderer {
     )
   }
 
-  override image(): ReactNode {
+  override image(_uri: string, _alt?: string): ReactNode {
     return null
   }
 
-  override linkImage(): ReactNode {
+  override linkImage(_href: string, _imageUrl: string): ReactNode {
     return null
   }
 
