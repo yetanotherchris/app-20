@@ -100,6 +100,53 @@ test.describe('US4: compose with an input-method editor', () => {
     await input.fill('pasted\nmultiline\ntext')
     expect(await input.inputValue()).toBe('pasted\nmultiline\ntext')
   })
+
+  test('IME composition does not trigger a premature send', async () => {
+    await resetApp()
+    const input = page.getByTestId('chat.composer.input')
+    await typeDraft('composed')
+    // Dispatch an Enter keydown during composition (isComposing true). RNW's
+    // guard must keep it from submitting.
+    await input.evaluate((el) => {
+      const node = el as HTMLTextAreaElement
+      const composing = new KeyboardEvent('keydown', {
+        key: 'Enter',
+        bubbles: true,
+        cancelable: true,
+      })
+      Object.defineProperty(composing, 'isComposing', { value: true })
+      node.dispatchEvent(composing)
+    })
+    await page.waitForTimeout(300)
+    expect(await page.getByTestId('demo.submit-count').textContent()).toBe('submits: 0')
+    // A non-composing Enter submits normally.
+    await input.press('Enter')
+    await expect(page.getByTestId('demo.submit-count')).toHaveText('submits: 1')
+  })
+})
+
+test.describe('US5: configure blur and dismissal behavior', () => {
+  test('blur-to-keep keeps the draft on blur', async () => {
+    await resetApp()
+    await typeDraft('keep me')
+    await page.getByTestId('demo.toggle-blur').click()
+    // Toggle label confirms blur-to-send; switch back is not needed here.
+    await page.getByTestId('demo.toggle-blur').click()
+    await page.getByTestId('chat.composer.input').blur()
+    await page.waitForTimeout(300)
+    expect(await page.getByTestId('demo.submit-count').textContent()).toBe('submits: 0')
+    expect(await page.getByTestId('chat.composer.input').inputValue()).toBe('keep me')
+  })
+
+  test('blur-to-send sends the draft on blur', async () => {
+    await resetApp()
+    await typeDraft('send on blur')
+    await page.getByTestId('demo.toggle-blur').click()
+    // Focus the input, then click elsewhere to blur it.
+    await page.getByTestId('chat.composer.input').click()
+    await page.getByTestId('demo.append').click()
+    await expect(page.getByTestId('demo.submit-count')).toHaveText('submits: 1')
+  })
 })
 
 test.describe('SC-003: draft survives unrelated updates', () => {

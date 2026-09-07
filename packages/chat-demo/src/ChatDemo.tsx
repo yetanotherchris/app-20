@@ -75,6 +75,9 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
   const [chatStatus, setChatStatus] = useState<'idle' | 'submitting' | 'streaming' | 'stopping'>(
     'idle',
   )
+  const replyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [blurBehavior, setBlurBehavior] = useState<'send' | 'keep'>('keep')
+  const [submitCount, setSubmitCount] = useState(0)
 
   const canSend = draft.trim().length > 0 && chatStatus === 'idle'
   const isBusy =
@@ -83,11 +86,13 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
   const handleSubmit = useCallback(() => {
     const text = draft.trim()
     if (!text) return
+    setSubmitCount((n) => n + 1)
     setMessages((current) => [...current, makeMessage('user', text)])
     setDraft('')
     setChatStatus('streaming')
-    // Simulate a streaming response; the composer returns to idle.
-    setTimeout(() => {
+    // Simulate a streaming response; the composer returns to idle. The reply
+    // timer is tracked so Stop can cancel it.
+    replyTimerRef.current = setTimeout(() => {
       setMessages((current) => [
         ...current,
         makeMessage('assistant', `Reply to: ${text.slice(0, 40)}`),
@@ -97,8 +102,11 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
   }, [draft])
 
   const handleStop = useCallback(() => {
-    setChatStatus('stopping')
-    setTimeout(() => setChatStatus('idle'), 300)
+    if (replyTimerRef.current) {
+      clearTimeout(replyTimerRef.current)
+      replyTimerRef.current = null
+    }
+    setChatStatus('idle')
   }, [])
 
   const appendMessage = useCallback(() => {
@@ -238,6 +246,11 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
           onPress={loadLargeMarkdown}
           testID="demo.large-markdown"
         />
+        <DemoButton
+          label={blurBehavior === 'send' ? 'Blur: send' : 'Blur: keep'}
+          onPress={() => setBlurBehavior((prev) => (prev === 'send' ? 'keep' : 'send'))}
+          testID="demo.toggle-blur"
+        />
       </View>
     ),
     [
@@ -250,6 +263,7 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
       loadMarkdownSuite,
       copyResult,
       loadLargeMarkdown,
+      blurBehavior,
     ],
   )
 
@@ -265,6 +279,9 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
         </Text>
         <Text testID="demo.last-link" style={styles.statusText}>
           link: {lastLinkPress ?? 'none'}
+        </Text>
+        <Text testID="demo.submit-count" style={styles.statusText}>
+          submits: {submitCount}
         </Text>
       </View>
       <MessageList
@@ -283,6 +300,7 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
         onChangeText={setDraft}
         onSubmit={handleSubmit}
         onStop={handleStop}
+        blurBehavior={blurBehavior}
       />
     </View>
   )

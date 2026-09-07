@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 
 export interface AutogrowHeightOptions {
   minHeight: number
@@ -21,45 +21,41 @@ function clamp(value: number, min: number, max: number): number {
  * clamped to [minHeight, maxHeight]. Past maxHeight the input scrolls
  * internally.
  *
- * `handleTextChange(measuredHeight?)` re-measures: on web the DOM node's
- * scrollHeight is passed directly because react-native-web's
- * onContentSizeChange does not fire when content shrinks and can lag on
- * programmatic value changes. `handleLayout` covers iOS Fabric where
- * onContentSizeChange may fire only once on mount.
+ * The content height is tracked in a ref so the callback identities stay
+ * stable across renders. `handleTextChange(measuredHeight?)` accepts a direct
+ * web scrollHeight because react-native-web's onContentSizeChange lags
+ * programmatic changes and misses shrink; `handleLayout` covers iOS Fabric
+ * where onContentSizeChange may fire only once on mount.
  */
 export function useAutogrowHeight({
   minHeight,
   maxHeight,
 }: AutogrowHeightOptions): AutogrowHeightState {
   const [height, setHeight] = useState(minHeight)
-  const [contentHeight, setContentHeight] = useState(minHeight)
+  const contentHeightRef = useRef(minHeight)
 
-  const handleContentSizeChange = useCallback(
-    (heightValue: number) => {
-      setContentHeight(heightValue)
-      setHeight(clamp(heightValue, minHeight, maxHeight))
+  const applyContentHeight = useCallback(
+    (next: number) => {
+      contentHeightRef.current = next
+      setHeight(clamp(next, minHeight, maxHeight))
     },
     [minHeight, maxHeight],
+  )
+
+  const handleContentSizeChange = useCallback(
+    (heightValue: number) => applyContentHeight(heightValue),
+    [applyContentHeight],
   )
 
   const handleLayout = useCallback(
-    (event: { nativeEvent: { layout: { height: number } } }) => {
-      setContentHeight(event.nativeEvent.layout.height)
-      setHeight(clamp(event.nativeEvent.layout.height, minHeight, maxHeight))
-    },
-    [minHeight, maxHeight],
+    (event: { nativeEvent: { layout: { height: number } } }) =>
+      applyContentHeight(event.nativeEvent.layout.height),
+    [applyContentHeight],
   )
 
-  // When a measured height is supplied (web scrollHeight), use it directly so
-  // growth and shrink both track the real content; otherwise re-apply the
-  // clamp from the last known content height.
   const handleTextChange = useCallback(
-    (measuredHeight?: number) => {
-      const next = measuredHeight ?? contentHeight
-      setContentHeight(next)
-      setHeight(clamp(next, minHeight, maxHeight))
-    },
-    [contentHeight, minHeight, maxHeight],
+    (measuredHeight?: number) => applyContentHeight(measuredHeight ?? contentHeightRef.current),
+    [applyContentHeight],
   )
 
   return { height, handleContentSizeChange, handleLayout, handleTextChange }

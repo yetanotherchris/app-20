@@ -61,11 +61,12 @@ describe('Composer', () => {
     expect(props.onSubmit).not.toHaveBeenCalled()
   })
 
-  it('does not fire duplicate submits on repeated button presses', () => {
+  it('does not fire duplicate submits for the same draft value', () => {
     const { props } = renderComposer({ value: 'hello', canSend: true })
     fireEvent.click(screen.getByTestId('chat.composer.send'))
     fireEvent.click(screen.getByTestId('chat.composer.send'))
-    expect(props.onSubmit).toHaveBeenCalledTimes(2)
+    // A repeated press of the same value is a duplicate send (FR-012).
+    expect(props.onSubmit).toHaveBeenCalledTimes(1)
   })
 
   it('does not discard the draft on re-render (controlled value preserved)', () => {
@@ -119,6 +120,27 @@ describe('Composer blur behaviour', () => {
 
   it('does not send on blur when the draft is empty', () => {
     const { props } = renderComposer({ value: '', canSend: false, blurBehavior: 'send' })
+    fireEvent.blur(screen.getByTestId('chat.composer.input'))
+    expect(props.onSubmit).not.toHaveBeenCalled()
+  })
+
+  it('does not double-submit when clicking Send under blur-to-send', () => {
+    // Real click order: the input blurs (firing blur-to-send), then the
+    // button press fires. Both act on the same draft value, so only one
+    // submit must fire.
+    const { props } = renderComposer({ value: 'hello', canSend: true, blurBehavior: 'send' })
+    fireEvent.blur(screen.getByTestId('chat.composer.input'))
+    fireEvent.click(screen.getByTestId('chat.composer.send'))
+    expect(props.onSubmit).toHaveBeenCalledTimes(1)
+  })
+
+  it('does not submit on blur while busy', () => {
+    const { props } = renderComposer({
+      value: 'hello',
+      canSend: true,
+      isBusy: true,
+      blurBehavior: 'send',
+    })
     fireEvent.blur(screen.getByTestId('chat.composer.input'))
     expect(props.onSubmit).not.toHaveBeenCalled()
   })

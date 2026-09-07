@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import {
   Keyboard,
   Platform,
@@ -39,6 +39,7 @@ const DEFAULT_MIN_HEIGHT = 44
 interface WebKeyPressEventData extends TextInputKeyPressEventData {
   shiftKey?: boolean
   isComposing?: boolean
+  keyCode?: number
   preventDefault?: () => void
 }
 
@@ -63,10 +64,15 @@ export function Composer({
   sendLabel = 'Send',
   stopLabel = 'Stop',
 }: ComposerProps) {
-  const touchTarget = useRef(isTouchTarget()).current
-  const busyRef = useRef(isBusy)
-  busyRef.current = isBusy
+  const isTouch = useRef(isTouchTarget()).current
+  const isBusyRef = useRef(isBusy)
+  isBusyRef.current = isBusy
   const inputRef = useRef<TextInput | null>(null)
+  // The last draft value that was submitted. A second submit of the same
+  // value within one render (e.g. blur-to-send plus the button press that
+  // triggered the blur) is suppressed; the value changes when the host
+  // clears the draft after the first submit.
+  const lastSubmittedRef = useRef<string | null>(null)
 
   const { height, handleContentSizeChange, handleLayout, handleTextChange } = useAutogrowHeight({
     minHeight,
@@ -74,33 +80,38 @@ export function Composer({
   })
 
   const performSubmit = useCallback(() => {
-    if (!canSend) return
+    if (!canSend || isBusyRef.current) return
+    if (lastSubmittedRef.current === value) return
+    lastSubmittedRef.current = value
     onSubmit()
-    if (dismissKeyboardOnSend && touchTarget) {
+    if (dismissKeyboardOnSend && isTouch) {
       Keyboard.dismiss()
     }
-  }, [canSend, onSubmit, dismissKeyboardOnSend, touchTarget])
+  }, [canSend, value, onSubmit, dismissKeyboardOnSend, isTouch])
+
+  const measureAndApply = useCallback(() => {
+    if (Platform.OS !== 'web') return
+    const host = inputRef.current as unknown as { scrollHeight?: number } | null
+    if (host?.scrollHeight) handleTextChange(host.scrollHeight)
+  }, [handleTextChange])
+
+  // Re-measure when the draft changes programmatically (e.g. clears after a
+  // send), which fires neither onChangeText nor RNW's onContentSizeChange.
+  useEffect(() => {
+    measureAndApply()
+  }, [value, measureAndApply])
 
   const handleChangeText = useCallback(
     (next: string) => {
-      // On web, measure the DOM node's scrollHeight directly because RNW's
-      // onContentSizeChange can lag programmatic changes and misses shrink.
-      let measured: number | undefined
-      if (Platform.OS === 'web') {
-        const node = inputRef.current
-        const host = node as unknown as { scrollHeight?: number } | null
-        if (host?.scrollHeight) measured = host.scrollHeight
-      }
-      handleTextChange(measured)
+      measureAndApply()
       onChangeText(next)
     },
-    [handleTextChange, onChangeText],
+    [measureAndApply, onChangeText],
   )
 
   const handleSubmitEditing = useCallback(() => {
-    // Native path: onSubmitEditing fires only on an actual submit, after IME
-    // composition ends, so it is IME-safe. A multiline input with
-    // submitBehavior="newline" only fires this on the explicit submit trigger.
+    // Native IME-safe path: onSubmitEditing fires only on an actual submit,
+    // after composition ends. send via the button or explicit submit trigger.
     performSubmit()
   }, [performSubmit])
 
@@ -109,22 +120,27 @@ export function Composer({
       if (Platform.OS !== 'web') return
       const nativeEvent = event.nativeEvent as WebKeyPressEventData
       if (nativeEvent.key !== 'Enter') return
-      // IME composition must not submit (FR-009).
-      if (nativeEvent.isComposing) return
+      // IME composition must not submit (FR-009). RNW's own guard checks both
+      // isComposing and keyCode 229; mirror it.
+      if (nativeEvent.isComposing || nativeEvent.keyCode === 229) return
       // Desktop Enter submits; Shift+Enter and touch-return insert a newline.
-      if (!nativeEvent.shiftKey && !touchTarget) {
+      if (!nativeEvent.shiftKey && !isTouch) {
         nativeEvent.preventDefault?.()
         performSubmit()
       }
     },
-    [performSubmit, touchTarget],
+    [performSubmit, isTouch],
   )
 
   const handleBlur = useCallback(() => {
-    if (blurBehavior === 'send' && value.trim().length > 0 && !busyRef.current) {
+    if (blurBehavior === 'send' && value.trim().length > 0 && !isBusyRef.current) {
       performSubmit()
     }
   }, [blurBehavior, value, performSubmit])
+
+  const handleSendPress = useCallback(() => {
+    performSubmit()
+  }, [performSubmit])
 
   return (
     <View style={styles.container}>
@@ -148,7 +164,7 @@ export function Composer({
       {isBusy ? (
         <StopButton label={stopLabel} onPress={onStop} />
       ) : (
-        <SendButton label={sendLabel} disabled={!canSend} onPress={performSubmit} />
+        <SendButton label={sendLabel} disabled={!canSend} onPress={handleSendPress} />
       )}
     </View>
   )
