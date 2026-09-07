@@ -1,16 +1,29 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
+import { useTheme } from '../theme/ThemeContext'
+import { renderIcon } from '../icons'
+import type { SurfaceStyleOverrides } from '../theme/types'
 
 export interface CodeBlockProps {
   code: string
   language?: string
   onCopyCode?: (code: string, language: string | undefined) => void | Promise<void>
   testID?: string
+  icons?: Partial<Record<'copy', React.ReactNode>>
+  styleOverrides?: SurfaceStyleOverrides
 }
 
 export type CopyState = 'idle' | 'copied' | 'failed'
 
-export function CodeBlock({ code, language, onCopyCode, testID }: CodeBlockProps) {
+export function CodeBlock({
+  code,
+  language,
+  onCopyCode,
+  testID,
+  icons,
+  styleOverrides,
+}: CodeBlockProps) {
+  const { theme } = useTheme()
   const [copyState, setCopyState] = useState<CopyState>('idle')
   const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -59,8 +72,57 @@ export function CodeBlock({ code, language, onCopyCode, testID }: CodeBlockProps
   const copyLabel =
     copyState === 'failed' ? 'Copy failed' : copyState === 'copied' ? 'Copied' : 'Copy'
 
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          backgroundColor: theme.colors.codeBackground,
+          borderRadius: 8,
+          marginVertical: 6,
+          overflow: 'hidden',
+        },
+        header: {
+          flexDirection: 'row',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          paddingHorizontal: 10,
+          paddingVertical: 6,
+          backgroundColor: theme.colors.codeHeader,
+        },
+        language: {
+          color: theme.colors.textSecondary,
+          fontSize: 12,
+        },
+        copyButton: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 4,
+          paddingHorizontal: 8,
+          paddingVertical: 4,
+          borderRadius: 4,
+          backgroundColor: theme.colors.codeHeader,
+        },
+        copyButtonFailed: {
+          backgroundColor: theme.colors.danger,
+        },
+        copyLabel: {
+          color: theme.colors.codeText,
+          fontSize: 12,
+        },
+        scroll: {
+          padding: 10,
+        },
+        code: {
+          color: theme.colors.codeText,
+          fontSize: 13,
+          fontFamily: 'monospace',
+        },
+      }),
+    [theme],
+  )
+
   return (
-    <View style={styles.container} testID={testID}>
+    <View style={[styles.container, styleOverrides?.codeBlock]} testID={testID}>
       <View style={styles.header}>
         {language ? (
           <Text style={styles.language}>{language}</Text>
@@ -75,6 +137,7 @@ export function CodeBlock({ code, language, onCopyCode, testID }: CodeBlockProps
             style={[styles.copyButton, copyState === 'failed' && styles.copyButtonFailed]}
             testID={testID ? `${testID}.copy` : undefined}
           >
+            {renderIcon('copy', icons, { size: 14, color: theme.colors.codeText })}
             <Text style={styles.copyLabel}>{copyLabel}</Text>
           </Pressable>
         )}
@@ -87,45 +150,3 @@ export function CodeBlock({ code, language, onCopyCode, testID }: CodeBlockProps
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  container: {
-    backgroundColor: '#0f172a',
-    borderRadius: 8,
-    marginVertical: 6,
-    overflow: 'hidden',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    backgroundColor: '#1e293b',
-  },
-  language: {
-    color: '#94a3b8',
-    fontSize: 12,
-  },
-  copyButton: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    backgroundColor: '#334155',
-  },
-  copyButtonFailed: {
-    backgroundColor: '#7f1d1d',
-  },
-  copyLabel: {
-    color: '#e2e8f0',
-    fontSize: 12,
-  },
-  scroll: {
-    padding: 10,
-  },
-  code: {
-    color: '#e2e8f0',
-    fontSize: 13,
-    fontFamily: 'monospace',
-  },
-})

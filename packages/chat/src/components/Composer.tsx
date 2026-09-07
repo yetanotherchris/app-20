@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import {
   Keyboard,
   Platform,
@@ -10,8 +10,10 @@ import {
   type TextInputKeyPressEventData,
 } from 'react-native'
 import { useAutogrowHeight } from '../hooks/useAutogrowHeight'
-import { SendButton } from './SendButton'
-import { StopButton } from './StopButton'
+import { useTheme } from '../theme/ThemeContext'
+import { SendButton, type SendButtonProps } from './SendButton'
+import { StopButton, type StopButtonProps } from './StopButton'
+import type { Capabilities, SurfaceStyleOverrides } from '../theme/types'
 
 export interface ComposerProps {
   value: string
@@ -27,6 +29,14 @@ export interface ComposerProps {
   placeholder?: string
   sendLabel?: string
   stopLabel?: string
+  renderSend?: (props: SendButtonProps) => React.ReactElement
+  renderStop?: (props: StopButtonProps) => React.ReactElement
+  renderComposerControls?: () => React.ReactNode
+  disabled?: boolean
+  readOnly?: boolean
+  capabilities?: Capabilities
+  icons?: Partial<Record<'send' | 'stop', React.ReactNode>>
+  styleOverrides?: SurfaceStyleOverrides
 }
 
 const DEFAULT_MAX_HEIGHT = 160
@@ -63,31 +73,78 @@ export function Composer({
   placeholder = 'Message...',
   sendLabel = 'Send',
   stopLabel = 'Stop',
+  renderSend,
+  renderStop,
+  renderComposerControls,
+  disabled = false,
+  readOnly = false,
+  capabilities,
+  icons,
+  styleOverrides,
 }: ComposerProps) {
+  const { theme } = useTheme()
   const isTouch = useRef(isTouchTarget()).current
   const isBusyRef = useRef(isBusy)
   isBusyRef.current = isBusy
   const inputRef = useRef<TextInput | null>(null)
-  // The last draft value that was submitted. A second submit of the same
-  // value within one render (e.g. blur-to-send plus the button press that
-  // triggered the blur) is suppressed; the value changes when the host
-  // clears the draft after the first submit.
   const lastSubmittedRef = useRef<string | null>(null)
+
+  const sendEnabled = canSend && !disabled && !readOnly && capabilities?.send !== false
+  const stopEnabled = isBusy && capabilities?.stop !== false
+  const editable = !disabled && !readOnly
 
   const { height, handleContentSizeChange, handleLayout, handleTextChange } = useAutogrowHeight({
     minHeight,
     maxHeight,
   })
 
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          flexDirection: 'row',
+          alignItems: 'flex-end',
+          gap: 8,
+          paddingHorizontal: theme.spacing.composerPaddingH,
+          paddingVertical: theme.spacing.composerPaddingV,
+          borderTopWidth: 1,
+          borderTopColor: theme.colors.border,
+          backgroundColor: theme.colors.composerSurface,
+        },
+        inputWrap: {
+          flex: 1,
+        },
+        input: {
+          minHeight,
+          borderRadius: theme.radii.composerRadius,
+          borderWidth: 1,
+          borderColor: theme.colors.composerBorder,
+          backgroundColor: theme.colors.composerInput,
+          paddingHorizontal: 14,
+          paddingVertical: 10,
+          fontSize: theme.typography.composerTextSize,
+          lineHeight: 20,
+          color: theme.colors.text,
+          textAlignVertical: 'top',
+        },
+        controls: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          gap: 8,
+        },
+      }),
+    [theme, minHeight],
+  )
+
   const performSubmit = useCallback(() => {
-    if (!canSend || isBusyRef.current) return
+    if (!sendEnabled || isBusyRef.current) return
     if (lastSubmittedRef.current === value) return
     lastSubmittedRef.current = value
     onSubmit()
     if (dismissKeyboardOnSend && isTouch) {
       Keyboard.dismiss()
     }
-  }, [canSend, value, onSubmit, dismissKeyboardOnSend, isTouch])
+  }, [sendEnabled, value, onSubmit, dismissKeyboardOnSend, isTouch])
 
   const measureAndApply = useCallback(() => {
     if (Platform.OS !== 'web') return
@@ -95,8 +152,6 @@ export function Composer({
     if (host?.scrollHeight) handleTextChange(host.scrollHeight)
   }, [handleTextChange])
 
-  // Re-measure when the draft changes programmatically (e.g. clears after a
-  // send), which fires neither onChangeText nor RNW's onContentSizeChange.
   useEffect(() => {
     measureAndApply()
   }, [value, measureAndApply])
@@ -110,8 +165,6 @@ export function Composer({
   )
 
   const handleSubmitEditing = useCallback(() => {
-    // Native IME-safe path: onSubmitEditing fires only on an actual submit,
-    // after composition ends. send via the button or explicit submit trigger.
     performSubmit()
   }, [performSubmit])
 
@@ -120,10 +173,7 @@ export function Composer({
       if (Platform.OS !== 'web') return
       const nativeEvent = event.nativeEvent as WebKeyPressEventData
       if (nativeEvent.key !== 'Enter') return
-      // IME composition must not submit (FR-009). RNW's own guard checks both
-      // isComposing and keyCode 229; mirror it.
       if (nativeEvent.isComposing || nativeEvent.keyCode === 229) return
-      // Desktop Enter submits; Shift+Enter and touch-return insert a newline.
       if (!nativeEvent.shiftKey && !isTouch) {
         nativeEvent.preventDefault?.()
         performSubmit()
@@ -133,66 +183,66 @@ export function Composer({
   )
 
   const handleBlur = useCallback(() => {
-    if (blurBehavior === 'send' && value.trim().length > 0 && !isBusyRef.current) {
+    if (blurBehavior === 'send' && value.trim().length > 0 && !isBusyRef.current && sendEnabled) {
       performSubmit()
     }
-  }, [blurBehavior, value, performSubmit])
+  }, [blurBehavior, value, performSubmit, sendEnabled])
 
   const handleSendPress = useCallback(() => {
     performSubmit()
   }, [performSubmit])
 
+  const sendControl = renderSend ? (
+    renderSend({
+      label: sendLabel,
+      disabled: !sendEnabled,
+      onPress: handleSendPress,
+      icons,
+      styleOverrides,
+    })
+  ) : (
+    <SendButton
+      label={sendLabel}
+      disabled={!sendEnabled}
+      onPress={handleSendPress}
+      icons={icons}
+      styleOverrides={styleOverrides}
+    />
+  )
+
+  const stopControl = renderStop ? (
+    renderStop({ label: stopLabel, onPress: onStop, icons, styleOverrides })
+  ) : (
+    <StopButton label={stopLabel} onPress={onStop} icons={icons} styleOverrides={styleOverrides} />
+  )
+
   return (
-    <View style={styles.container}>
-      <TextInput
-        ref={inputRef}
-        value={value}
-        onChangeText={handleChangeText}
-        onContentSizeChange={(event: TextInputContentSizeChangeEvent) =>
-          handleContentSizeChange(event.nativeEvent.contentSize.height)
-        }
-        onLayout={handleLayout}
-        onKeyPress={handleKeyPress}
-        onBlur={handleBlur}
-        onSubmitEditing={handleSubmitEditing}
-        multiline
-        blurOnSubmit={false}
-        placeholder={placeholder}
-        style={[styles.input, { height }]}
-        testID="chat.composer.input"
-      />
-      {isBusy ? (
-        <StopButton label={stopLabel} onPress={onStop} />
-      ) : (
-        <SendButton label={sendLabel} disabled={!canSend} onPress={handleSendPress} />
-      )}
+    <View style={[styles.container, styleOverrides?.composer]} testID="chat.composer">
+      {renderComposerControls?.()}
+      <View style={styles.inputWrap}>
+        <TextInput
+          ref={inputRef}
+          value={value}
+          onChangeText={handleChangeText}
+          onContentSizeChange={(event: TextInputContentSizeChangeEvent) =>
+            handleContentSizeChange(event.nativeEvent.contentSize.height)
+          }
+          onLayout={handleLayout}
+          onKeyPress={handleKeyPress}
+          onBlur={handleBlur}
+          onSubmitEditing={handleSubmitEditing}
+          multiline
+          blurOnSubmit={false}
+          placeholder={placeholder}
+          placeholderTextColor={theme.colors.textSecondary}
+          editable={editable}
+          style={[styles.input, { height }, styleOverrides?.composerInput]}
+          testID="chat.composer.input"
+        />
+      </View>
+      <View style={styles.controls}>
+        {stopEnabled ? stopControl : sendControl}
+      </View>
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderTopWidth: 1,
-    borderTopColor: '#e2e8f0',
-    backgroundColor: '#f8fafc',
-  },
-  input: {
-    flex: 1,
-    minHeight: 44,
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#cbd5e1',
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#0f172a',
-    textAlignVertical: 'top',
-  },
-})

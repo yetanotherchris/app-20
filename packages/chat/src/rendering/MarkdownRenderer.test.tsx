@@ -57,4 +57,27 @@ describe('MarkdownRenderer', () => {
     render(<div>{renderer.code('c', 'js')}</div>)
     expect(screen.getByTestId('chat.code.m1.0')).toBeInTheDocument()
   })
+
+  it('uses a custom element renderer for that element and defaults elsewhere (FR-006)', () => {
+    const customLink = vi.fn((children: React.ReactNode, href: string) => (
+      <div data-testid="custom-link">{children}</div>
+    ))
+    const renderer = new MarkdownRenderer({
+      messageId: 'm1',
+      elementRenderers: { link: customLink },
+    })
+    render(<div>{renderer.link(['go'], 'https://example.com')}</div>)
+    expect(screen.getByTestId('custom-link')).toBeInTheDocument()
+    expect(customLink).toHaveBeenCalledWith(['go'], 'https://example.com', undefined, undefined)
+    // Non-overridden elements keep defaults: code still renders a CodeBlock.
+    render(<div>{renderer.code('x', 'js')}</div>)
+    expect(screen.getByText('x')).toBeInTheDocument()
+  })
+
+  it('applies the default link behavior when no custom link renderer is supplied', () => {
+    const onLinkPress = vi.fn()
+    const renderer = new MarkdownRenderer({ messageId: 'm1', onLinkPress })
+    render(<div>{renderer.link(['plain'], 'https://example.com')}</div>)
+    expect(screen.getByRole('link', { name: 'plain' })).toBeInTheDocument()
+  })
 })

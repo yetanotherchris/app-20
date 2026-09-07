@@ -1,12 +1,43 @@
+import { useMemo } from 'react'
 import { Pressable, StyleSheet, Text } from 'react-native'
+import { useTheme } from '../theme/ThemeContext'
+import { renderIcon } from '../icons'
+import type { SurfaceStyleOverrides } from '../theme/types'
 
 export interface SendButtonProps {
   label: string
   disabled: boolean
   onPress: () => void
+  icons?: Partial<Record<'send', React.ReactNode>>
+  styleOverrides?: SurfaceStyleOverrides
 }
 
-export function SendButton({ label, disabled, onPress }: SendButtonProps) {
+export function SendButton({ label, disabled, onPress, icons, styleOverrides }: SendButtonProps) {
+  const { theme } = useTheme()
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        button: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 6,
+          backgroundColor: disabled ? theme.colors.sendDisabled : theme.colors.primary,
+          borderRadius: theme.radii.controlRadius,
+          paddingHorizontal: 16,
+          paddingVertical: 8,
+        },
+        label: {
+          color: theme.colors.onPrimary,
+          fontSize: theme.typography.controlTextSize,
+          fontWeight: '600',
+        },
+        labelDisabled: {
+          color: theme.colors.textSecondary,
+        },
+      }),
+    [theme, disabled],
+  )
   return (
     <Pressable
       accessibilityRole="button"
@@ -14,32 +45,11 @@ export function SendButton({ label, disabled, onPress }: SendButtonProps) {
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
-      style={[styles.button, disabled && styles.disabled]}
+      style={[styles.button, styleOverrides?.send]}
       testID="chat.composer.send"
     >
+      {renderIcon('send', icons, { size: 16, color: theme.colors.onPrimary })}
       <Text style={[styles.label, disabled && styles.labelDisabled]}>{label}</Text>
     </Pressable>
   )
 }
-
-const styles = StyleSheet.create({
-  button: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#2563eb',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-  },
-  disabled: {
-    backgroundColor: '#cbd5e1',
-  },
-  label: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  labelDisabled: {
-    color: '#f1f5f9',
-  },
-})
