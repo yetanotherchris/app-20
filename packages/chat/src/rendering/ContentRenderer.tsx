@@ -26,7 +26,7 @@ export interface ContentRendererProps {
 
 function partKey(part: ContentPart): ContentTypeKey | undefined {
   if (part.kind === 'text' && (part.format === 'plain' || part.format === 'markdown')) {
-    return `text.${part.format}` as ContentTypeKey
+    return `text.${part.format}`
   }
   return undefined
 }

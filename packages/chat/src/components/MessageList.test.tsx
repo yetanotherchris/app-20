@@ -148,4 +148,20 @@ describe('MessageList', () => {
     expect(screen.getByTestId('chat.scroll-to-latest')).toBeInTheDocument()
     expect(onAtBottomChange).toHaveBeenLastCalledWith(false)
   })
+
+  it('renders a custom scroll-to-latest control in place of the default (FR-007)', () => {
+    render(
+      <MessageList
+        messages={messages}
+        hasEarlierMessages={false}
+        isLoadingEarlier={false}
+        renderMessage={renderMessage}
+        onLoadEarlier={() => {}}
+        renderScrollToLatest={() => <div data-testid="custom-scroll" />}
+      />,
+    )
+    fireEvent.scroll(screen.getByTestId('mock-legend-list'))
+    expect(screen.getByTestId('custom-scroll')).toBeInTheDocument()
+    expect(screen.queryByTestId('chat.scroll-to-latest')).not.toBeInTheDocument()
+  })
 })

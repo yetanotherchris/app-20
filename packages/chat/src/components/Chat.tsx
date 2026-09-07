@@ -178,17 +178,18 @@ function ChatInner(props: ChatProps) {
 
   // A guaranteed-safe fallback: the default message bubble without any
   // host-supplied renderers, so a throwing custom renderer cannot re-throw
-  // through the fallback path (FR-011).
+  // through the fallback path (FR-011). Capability gating matches the primary
+  // path (copy control hidden when the copy capability is off).
   const safeFallback = useCallback(
     (message: Message) => (
       <MessageBubble
         message={message}
         onLinkPress={onLinkPress}
-        onCopyCode={onCopyCode}
+        onCopyCode={effectiveOnCopyCode}
         styleOverrides={styleOverrides}
       />
     ),
-    [onLinkPress, onCopyCode, styleOverrides],
+    [onLinkPress, effectiveOnCopyCode, styleOverrides],
   )
 
   // Every row renders through a per-message boundary. The effective renderer

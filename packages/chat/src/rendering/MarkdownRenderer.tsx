@@ -116,6 +116,10 @@ export class MarkdownRenderer extends Renderer implements RendererInterface {
     return this.options.messageId
   }
 
+  get linkColor(): string | undefined {
+    return this.options.linkColor
+  }
+
   /** Resets the per-parse block counter so streaming re-parses keep stable test ids. */
   reset(): void {
     this.codeIndex = 0

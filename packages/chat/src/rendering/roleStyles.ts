@@ -8,8 +8,6 @@ export interface RoleTreatment {
   text: StyleProp<TextStyle>
 }
 
-export type MessageRoleName = 'user' | 'assistant' | 'system'
-
 export interface RoleStyles {
   user: RoleTreatment
   assistant: RoleTreatment

@@ -61,4 +61,25 @@ describe('MessageRendererBoundary', () => {
     )
     expect(screen.getByTestId('custom.b')).toBeInTheDocument()
   })
+
+  it('resets the failure state when the renderer changes for the same message', () => {
+    const { rerender } = render(
+      <MessageRendererBoundary
+        message={message('a')}
+        renderMessage={() => {
+          throw new Error('boom')
+        }}
+        renderFallback={(m) => <div data-testid={`fallback.${m.id}`} />}
+      />,
+    )
+    expect(screen.getByTestId('fallback.a')).toBeInTheDocument()
+    rerender(
+      <MessageRendererBoundary
+        message={message('a')}
+        renderMessage={(m) => <div data-testid={`custom.${m.id}`} />}
+        renderFallback={(m) => <div data-testid={`fallback.${m.id}`} />}
+      />,
+    )
+    expect(screen.getByTestId('custom.a')).toBeInTheDocument()
+  })
 })

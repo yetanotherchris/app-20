@@ -1,4 +1,5 @@
 import type { StyleProp, TextStyle, ViewStyle } from 'react-native'
+import type { Message } from '../types'
 
 export type DeepPartial<T> = {
   [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K]
@@ -81,8 +82,8 @@ export interface MessageAction {
   id: string
   label: string
   group: string
-  available?: boolean | ((message: import('../types').Message) => boolean)
-  onAction: (action: MessageAction, message: import('../types').Message) => void
+  available?: boolean | ((message: Message) => boolean)
+  onAction: (action: MessageAction, message: Message) => void
 }
 
 export type IconName = 'send' | 'stop' | 'scrollToLatest' | 'more' | 'copy'

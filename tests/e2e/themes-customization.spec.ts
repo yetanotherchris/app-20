@@ -29,8 +29,13 @@ async function resetApp(): Promise<void> {
 test.describe('US1: light and dark themes', () => {
   test('every surface follows the theme switch (US1-A1)', async () => {
     await resetApp()
+    const root = page.getByTestId('chat.root')
+    // Light theme: the root background is the light token.
+    await expect(root).toHaveCSS('background-color', 'rgb(248, 250, 252)')
     await page.getByTestId('demo.toggle-theme').click()
-    // The root exists and the message list still renders after the switch.
+    // Dark theme: the root background is the dark token, proving surfaces
+    // actually consume theme tokens rather than hardcoding a color.
+    await expect(root).toHaveCSS('background-color', 'rgb(15, 23, 42)')
     await expect(page.getByTestId('chat.message-list')).toBeVisible()
     await expect(page.getByTestId('chat.message.demo-1000')).toBeVisible()
   })
@@ -38,7 +43,12 @@ test.describe('US1: light and dark themes', () => {
   test('a custom theme overriding a token reflects the override (US1-A2)', async () => {
     await resetApp()
     await page.getByTestId('demo.toggle-custom-theme').click()
-    await expect(page.getByTestId('chat.message-list')).toBeVisible()
+    // The custom theme overrides primary and userBubble to #9333ea; the user
+    // message bubble reflects it, proving the override reaches surfaces.
+    await expect(page.getByTestId('chat.message.demo-1000')).toHaveCSS(
+      'background-color',
+      'rgb(147, 51, 234)',
+    )
   })
 
   test('a theme switch while streaming preserves the stream and scroll position (US1-A3)', async () => {
@@ -152,11 +162,14 @@ test.describe('US3: replace status states', () => {
 
   test('a response being requested shows the loading state (US3-A2)', async () => {
     await resetApp()
-    // Clear messages, then submit so the submitting state has nothing to show.
-    await page.getByTestId('demo.clear-messages').click()
-    await page.getByTestId('chat.composer.input').fill('loading test')
-    await page.getByTestId('chat.composer.input').press('Enter')
-    await expect(page.getByTestId('demo.submit-count')).toHaveText('submits: 1')
+    await page.getByTestId('demo.simulate-submitting').click()
+    await expect(page.getByTestId('chat.state.loading')).toBeVisible()
+  })
+
+  test('an error status shows the error state (US3-A3)', async () => {
+    await resetApp()
+    await page.getByTestId('demo.simulate-error').click()
+    await expect(page.getByTestId('chat.state.error')).toBeVisible()
   })
 
   test('custom state views appear in the right conditions (FR-008)', async () => {

@@ -230,6 +230,37 @@ describe('Chat state views (US3)', () => {
     expect(screen.queryByTestId('chat.state.empty')).not.toBeInTheDocument()
   })
 
+  it('renders custom loading, typing, and error state views (FR-008)', () => {
+    renderChat({
+      messages: [],
+      status: 'submitting',
+      renderLoadingState: () => <div data-testid="custom-loading" />,
+    })
+    expect(screen.getByTestId('custom-loading')).toBeInTheDocument()
+    renderChat({
+      messages: [],
+      status: 'streaming',
+      renderTypingState: () => <div data-testid="custom-typing" />,
+    })
+    expect(screen.getByTestId('custom-typing')).toBeInTheDocument()
+    renderChat({
+      messages: [],
+      status: 'error',
+      renderErrorState: () => <div data-testid="custom-error" />,
+    })
+    expect(screen.getByTestId('custom-error')).toBeInTheDocument()
+  })
+
+  it('applies styleOverrides to themed surfaces (FR-003)', () => {
+    renderChat({
+      draft: 'hello',
+      styleOverrides: { composerInput: { backgroundColor: '#123456' } },
+    })
+    const input = screen.getByTestId('chat.composer.input')
+    // The override flows into the composer input's style array.
+    expect(input).toHaveStyle({ backgroundColor: '#123456' })
+  })
+
   it('shows the message list when there are messages and status is idle', () => {
     renderChat({ status: 'idle' })
     expect(screen.queryByTestId('chat.state.empty')).not.toBeInTheDocument()
@@ -269,5 +300,12 @@ describe('Chat constraint modes (US4)', () => {
       messageActions: [{ id: 'copy', label: 'Copy', group: 'A', onAction: () => {} }],
     })
     expect(screen.queryByTestId('chat.action-menu')).not.toBeInTheDocument()
+  })
+
+  it('hides Stop when the stop capability is off (FR-014)', () => {
+    renderChat({ status: 'streaming', capabilities: { stop: false } })
+    expect(screen.queryByTestId('chat.composer.stop')).not.toBeInTheDocument()
+    // Send renders again (busy without Stop).
+    expect(screen.getByTestId('chat.composer.send')).toBeInTheDocument()
   })
 })

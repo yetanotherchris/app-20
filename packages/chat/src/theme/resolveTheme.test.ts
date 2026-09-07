@@ -31,7 +31,14 @@ describe('resolveTheme', () => {
     // Cast simulates an override carrying keys the type does not know about.
     const override = { colors: { notAToken: '#123456' } } as Parameters<typeof resolveTheme>[1]
     const theme = resolveTheme('light', override)
-    // Unknown key is ignored; the theme object still has every real token.
+    // Extra keys are inert: every real token keeps its value and no real
+    // token is disturbed.
+    expect(theme.colors.primary).toBe(lightTheme.colors.primary)
+    expect(theme.colors.text).toBe(lightTheme.colors.text)
+  })
+
+  it('an explicitly undefined override falls back to the base', () => {
+    const theme = resolveTheme('light', { colors: { primary: undefined } })
     expect(theme.colors.primary).toBe(lightTheme.colors.primary)
   })
 })

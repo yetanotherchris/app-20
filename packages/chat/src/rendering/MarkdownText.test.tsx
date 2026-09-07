@@ -72,7 +72,14 @@ describe('MarkdownText', () => {
     render(<MarkdownText part={markdownPart} messageId="m1" />)
     const options = mockUseMarkdown.mock.calls[0]?.[1]
     const renderer = options.renderer as MarkdownRenderer
-    // The default renderer's link color resolves from the light theme primary.
-    expect(renderer.messageId).toBe('m1')
+    // The default renderer resolves its link color from the light theme primary
+    // (no surface hardcodes a color, SC-001).
+    expect(renderer.linkColor).toBe('#2563eb')
+  })
+
+  it('a host-supplied linkColor wins over the theme default', () => {
+    render(<MarkdownText part={markdownPart} messageId="m1" linkColor="#ff0000" />)
+    const options = mockUseMarkdown.mock.calls[0]?.[1]
+    expect((options.renderer as MarkdownRenderer).linkColor).toBe('#ff0000')
   })
 })

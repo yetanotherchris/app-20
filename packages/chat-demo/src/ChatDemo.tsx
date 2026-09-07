@@ -177,6 +177,18 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
     setChatStatus('idle')
   }, [])
 
+  const simulateSubmitting = useCallback(() => {
+    setMessages([])
+    setHasEarlier(false)
+    setChatStatus('submitting')
+  }, [])
+
+  const simulateError = useCallback(() => {
+    setMessages([])
+    setHasEarlier(false)
+    setChatStatus('error')
+  }, [])
+
   const loadThousand = useCallback(() => {
     const bulk: Message[] = Array.from({ length: 1000 }, (_, i) =>
       makeMessage(i % 2 === 0 ? 'user' : 'assistant', `Bulk message ${i + 1}`),
@@ -434,6 +446,12 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
         />
         <DemoButton label="Clear messages" onPress={clearMessages} testID="demo.clear-messages" />
         <DemoButton
+          label="Simulate submitting"
+          onPress={simulateSubmitting}
+          testID="demo.simulate-submitting"
+        />
+        <DemoButton label="Simulate error" onPress={simulateError} testID="demo.simulate-error" />
+        <DemoButton
           label={disabled ? 'Disabled: on' : 'Disabled: off'}
           onPress={() => setDisabled((v) => !v)}
           testID="demo.toggle-disabled"
@@ -477,6 +495,8 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
       customStates,
       customMarkdownElements,
       clearMessages,
+      simulateSubmitting,
+      simulateError,
       disabled,
       readOnly,
       sendDisabled,
