@@ -8,7 +8,7 @@
 
 **Purpose**: No new dependencies; verify the existing stack supports the composer's needs.
 
-- [ ] T001 Verify RNW TextInput `onContentSizeChange` + `onKeyPress` behaviour in the Electron harness early (research R1/R2 risk gate); record evidence in research.md
+- [x] T001 Verify RNW TextInput `onContentSizeChange` + `onKeyPress` behaviour in the Electron harness early (research R1/R2 risk gate); record evidence in research.md
 
 **Checkpoint**: The harness confirms the RNW input events the composer depends on.
 
@@ -16,10 +16,10 @@
 
 **Purpose**: The height-measurement hook and the two controls every user story needs.
 
-- [ ] T002 [P] Create `useAutogrowHeight` in `packages/chat/src/hooks/useAutogrowHeight.ts` (clamp content height to [minHeight, maxHeight]; onContentSizeChange + onLayout + onChangeText fallbacks, research R1)
-- [ ] T003 [P] Create `SendButton` in `packages/chat/src/components/SendButton.tsx` (disabled state, stable test id)
-- [ ] T004 [P] Create `StopButton` in `packages/chat/src/components/StopButton.tsx` (stable test id)
-- [ ] T005 Export the new surface from `packages/chat/src/index.ts`
+- [x] T002 [P] Create `useAutogrowHeight` in `packages/chat/src/hooks/useAutogrowHeight.ts` (clamp content height to [minHeight, maxHeight]; onContentSizeChange + onLayout + onChangeText fallbacks, research R1)
+- [x] T003 [P] Create `SendButton` in `packages/chat/src/components/SendButton.tsx` (disabled state, stable test id)
+- [x] T004 [P] Create `StopButton` in `packages/chat/src/components/StopButton.tsx` (stable test id)
+- [x] T005 Export the new surface from `packages/chat/src/index.ts`
 
 **Checkpoint**: Hook clamps heights; both controls render with stable ids.
 
@@ -31,11 +31,11 @@
 
 ### Tests for User Story 1
 
-- [ ] T006 [P] [US1] Unit test `Composer` send paths in `packages/chat/src/components/Composer.test.tsx` (button send, Enter send, empty/whitespace disabled, no submit while busy, draft preserved on re-render)
+- [x] T006 [P] [US1] Unit test `Composer` send paths in `packages/chat/src/components/Composer.test.tsx` (button send, Enter send, empty/whitespace disabled, no submit while busy, draft preserved on re-render)
 
 ### Implementation for User Story 1
 
-- [ ] T007 [US1] Implement `Composer` in `packages/chat/src/components/Composer.tsx` (controlled input, Send control, `onSubmit` once per send, no duplicate while busy)
+- [x] T007 [US1] Implement `Composer` in `packages/chat/src/components/Composer.tsx` (controlled input, Send control, `onSubmit` once per send, no duplicate while busy)
 
 **Checkpoint**: Button and Enter both send; empty draft disables Send.
 
@@ -47,11 +47,11 @@
 
 ### Tests for User Story 2
 
-- [ ] T008 [US2] Unit test `useAutogrowHeight` in `packages/chat/src/hooks/useAutogrowHeight.test.ts` (growth, clamp at max, internal-scroll height, text-change fallback)
+- [x] T008 [US2] Unit test `useAutogrowHeight` in `packages/chat/src/hooks/useAutogrowHeight.test.ts` (growth, clamp at max, internal-scroll height, text-change fallback)
 
 ### Implementation for User Story 2
 
-- [ ] T009 [US2] Wire `useAutogrowHeight` into `Composer`; Shift+Enter inserts a newline on desktop (FR-005)
+- [x] T009 [US2] Wire `useAutogrowHeight` into `Composer`; Shift+Enter inserts a newline on desktop (FR-005)
 
 **Checkpoint**: Composer grows then scrolls; Shift+Enter adds a newline without sending.
 
@@ -63,11 +63,11 @@
 
 ### Tests for User Story 3
 
-- [ ] T010 [US3] Unit test Stop visibility in `Composer.test.tsx` (busy shows Stop + disables Send; idle hides Stop)
+- [x] T010 [US3] Unit test Stop visibility in `Composer.test.tsx` (busy shows Stop + disables Send; idle hides Stop)
 
 ### Implementation for User Story 3
 
-- [ ] T011 [US3] Wire `isBusy` to StopButton visibility and SendButton disable in `Composer`
+- [x] T011 [US3] Wire `isBusy` to StopButton visibility and SendButton disable in `Composer`
 
 **Checkpoint**: Busy shows Stop and disables Send; idle hides Stop.
 
@@ -79,11 +79,11 @@
 
 ### Tests for User Story 4
 
-- [ ] T012 [US4] Unit test IME + paste behaviour in `Composer.test.tsx` (composition does not send; confirmed text sends; pasted newlines kept)
+- [x] T012 [US4] Unit test IME + paste behaviour in `Composer.test.tsx` (composition does not send; confirmed text sends; pasted newlines kept)
 
 ### Implementation for User Story 4
 
-- [ ] T013 [US4] Implement web `onKeyPress` IME guard (`!nativeEvent.isComposing`, FR-009) and native `onSubmitEditing` path; ensure paste keeps newlines (FR-010)
+- [x] T013 [US4] Implement web `onKeyPress` IME guard (`!nativeEvent.isComposing`, FR-009) and native `onSubmitEditing` path; ensure paste keeps newlines (FR-010)
 
 **Checkpoint**: IME never sends prematurely; pasted multiline keeps newlines.
 
@@ -95,11 +95,11 @@
 
 ### Tests for User Story 5
 
-- [ ] T014 [US5] Unit test blur + dismissal in `Composer.test.tsx` (blurBehavior send/keep; dismissKeyboardOnSend on touch)
+- [x] T014 [US5] Unit test blur + dismissal in `Composer.test.tsx` (blurBehavior send/keep; dismissKeyboardOnSend on touch)
 
 ### Implementation for User Story 5
 
-- [ ] T015 [US5] Implement `blurBehavior` onBlur handler and `dismissKeyboardOnSend` (Keyboard.dismiss on touch) in `Composer`
+- [x] T015 [US5] Implement `blurBehavior` onBlur handler and `dismissKeyboardOnSend` (Keyboard.dismiss on touch) in `Composer`
 
 **Checkpoint**: Blur behaviour matches config in every case; keyboard dismisses per config on touch.
 
@@ -107,9 +107,9 @@
 
 **Purpose**: E2E acceptance coverage and validation.
 
-- [ ] T016 Update `packages/chat-demo/src/ChatDemo.tsx` to mount `Composer` with a simulated chat status and Send/Stop wiring
-- [ ] T017 Write e2e suite `tests/e2e/composer.spec.ts` covering spec 003 acceptance scenarios (send button/Enter, Shift+Enter newline, empty disabled, grow+scroll, busy Stop, IME, paste newlines, blur config, draft survival)
-- [ ] T018 Run quickstart.md validation end-to-end; confirm `lint`, `typecheck`, `test`, `test:e2e` all green
+- [x] T016 Update `packages/chat-demo/src/ChatDemo.tsx` to mount `Composer` with a simulated chat status and Send/Stop wiring
+- [x] T017 Write e2e suite `tests/e2e/composer.spec.ts` covering spec 003 acceptance scenarios (send button/Enter, Shift+Enter newline, empty disabled, grow+scroll, busy Stop, IME, paste newlines, blur config, draft survival)
+- [x] T018 Run quickstart.md validation end-to-end; confirm `lint`, `typecheck`, `test`, `test:e2e` all green
 
 ## Dependencies & Execution Order
 
