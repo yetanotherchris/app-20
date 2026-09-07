@@ -8,12 +8,31 @@ vi.mock('@legendapp/list/react-native', () => ({
     data,
     renderItem,
     ListHeaderComponent,
+    onScroll,
+    onLayout,
   }: {
     data: readonly Message[]
     renderItem: (info: { item: Message }) => React.ReactElement
     ListHeaderComponent?: React.ReactElement | null
+    onScroll?: (event: {
+      nativeEvent: { contentOffset: { y: number }; contentSize: { height: number } }
+    }) => void
+    onLayout?: (event: { nativeEvent: { layout: { height: number } } }) => void
   }) => (
-    <div>
+    <div
+      data-testid="mock-legend-list"
+      ref={(node) => {
+        if (node) onLayout?.({ nativeEvent: { layout: { height: 600 } } })
+      }}
+      onScroll={() => {
+        onScroll?.({
+          nativeEvent: {
+            contentOffset: { y: 500 },
+            contentSize: { height: 1200 },
+          },
+        })
+      }}
+    >
       {ListHeaderComponent}
       {data.map((item) => renderItem({ item }))}
     </div>
@@ -104,5 +123,26 @@ describe('MessageList', () => {
       />,
     )
     expect(screen.queryByTestId('chat.load-earlier')).not.toBeInTheDocument()
+  })
+
+  it('shows the scroll-to-latest overlay only when scrolled up', () => {
+    const onAtBottomChange = vi.fn()
+    render(
+      <MessageList
+        messages={messages}
+        hasEarlierMessages={false}
+        isLoadingEarlier={false}
+        renderMessage={renderMessage}
+        onLoadEarlier={() => {}}
+        onAtBottomChange={onAtBottomChange}
+      />,
+    )
+    // Starts at the bottom: no overlay.
+    expect(screen.queryByTestId('chat.scroll-to-latest')).not.toBeInTheDocument()
+    // Simulate scrolling up: contentHeight 1200, offsetY 500, viewport 600
+    // puts distanceFromBottom at 100, beyond the 96 px threshold.
+    fireEvent.scroll(screen.getByTestId('mock-legend-list'))
+    expect(screen.getByTestId('chat.scroll-to-latest')).toBeInTheDocument()
+    expect(onAtBottomChange).toHaveBeenLastCalledWith(false)
   })
 })

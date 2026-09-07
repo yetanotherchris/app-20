@@ -54,12 +54,10 @@ export function MessageList({
   const { isAtBottom, update } = useAtBottom(followThreshold, onAtBottomChange)
   const tailKey = messages.length > 0 ? messages[messages.length - 1]?.id : undefined
   const { unreadCount, clearUnread } = useUnreadCount(isAtBottom, tailKey)
-  const onUnreadCountChangeRef = useRef(onUnreadCountChange)
-  onUnreadCountChangeRef.current = onUnreadCountChange
 
   useEffect(() => {
-    onUnreadCountChangeRef.current?.(unreadCount)
-  }, [unreadCount])
+    onUnreadCountChange?.(unreadCount)
+  }, [unreadCount, onUnreadCountChange])
 
   // The engine's follow band must match the hook's FR-003 threshold so the
   // engine does not keep a user pinned in the same band the hook reports as

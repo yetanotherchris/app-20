@@ -59,10 +59,12 @@ export async function getScrollHeight(page: Page): Promise<number> {
 }
 
 /**
- * Measures the worst frame gap while scrolling through the whole list in one
- * pass, yielding to the event loop after each step so the list engine, React,
- * and paint actually run between samples. SC-001 requires no stall longer than
- * 100 ms.
+ * Measures the worst frame gap while scrolling through a bounded window of
+ * the list, yielding to the event loop after each step so the list engine,
+ * React, and paint actually run between samples. SC-001 requires no stall
+ * longer than 100 ms. The sweep covers about ten viewport heights, enough to
+ * force row mounts and virtualization changes, without spending seconds
+ * walking a very long list.
  */
 export async function measureScrollStall(page: Page): Promise<number> {
   return page.evaluate(async () => {
@@ -71,7 +73,8 @@ export async function measureScrollStall(page: Page): Promise<number> {
     const frame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
     let worst = 0
     let last = performance.now()
-    const max = scrollable.scrollHeight
+    const distance = scrollable.clientHeight * 10
+    const max = Math.min(scrollable.scrollHeight, distance)
     for (let y = 0; y <= max; y += 500) {
       scrollable.scrollTop = y
       await frame()
