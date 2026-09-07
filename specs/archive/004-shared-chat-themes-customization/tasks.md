@@ -110,11 +110,11 @@
 
 **Purpose**: Packaging per FR-015, e2e acceptance coverage, and validation.
 
-- [ ] T031 [P] Add `tsconfig.build.json` + `build` script to `packages/chat` (tsc emits ESM + declarations to `dist/`); set `main`/`types`/`exports`, `peerDependencies`, `files`, version, and add `CHANGELOG.md` (FR-015, research R9)
-- [ ] T032 [P] Add `vitest.package.config.ts` importing `packages/chat/dist/index.js` (packaged artifact, not source) with a smoke suite over the documented public surface (FR-015)
-- [ ] T033 Update `packages/chat-demo/src/ChatDemo.tsx` to mount `Chat` with toggle controls for theme, custom renderers/controls/actions/icons/states, and constraint modes
-- [ ] T034 Write e2e suite `tests/e2e/themes-customization.spec.ts` covering spec 004 acceptance scenarios (US1-A1/A2/A3, US2-A1..A8, US3-A1/A2/A3, US4-A1/A2/A3, edge cases: no-actions affordance, custom-Send-keeps-Stop)
-- [ ] T035 Run quickstart.md validation end-to-end; confirm `lint`, `typecheck`, `test`, `test:e2e` all green
+- [x] T031 [P] Add `tsconfig.build.json` + `build` script to `packages/chat` (tsc emits ESM + declarations to `dist/`); set `main`/`types`/`exports`, `peerDependencies`, `files`, version, and add `CHANGELOG.md` (FR-015, research R9)
+- [x] T032 [P] Add `vitest.package.config.ts` importing `packages/chat/dist/index.js` (packaged artifact, not source) with a smoke suite over the documented public surface (FR-015)
+- [x] T033 Update `packages/chat-demo/src/ChatDemo.tsx` to mount `Chat` with toggle controls for theme, custom renderers/controls/actions/icons/states, and constraint modes
+- [x] T034 Write e2e suite `tests/e2e/themes-customization.spec.ts` covering spec 004 acceptance scenarios (US1-A1/A2/A3, US2-A1..A8, US3-A1/A2/A3, US4-A1/A2/A3, edge cases: no-actions affordance, custom-Send-keeps-Stop)
+- [x] T035 Run quickstart.md validation end-to-end; confirm `lint`, `typecheck`, `test`, `test:e2e` all green
 
 ## Dependencies & Execution Order
 
