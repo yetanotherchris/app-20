@@ -174,7 +174,7 @@ test.describe('SC-001: long-conversation responsiveness', () => {
     expect(stall).toBeLessThan(100)
   })
 
-  test('large ~10 KB messages render and scroll without stalling', async () => {
+  test('large ~6 KB messages render and scroll without stalling', async () => {
     await resetApp()
     const start = Date.now()
     await page.getByTestId('demo.load-1000-large').click()
@@ -186,7 +186,7 @@ test.describe('SC-001: long-conversation responsiveness', () => {
     const elapsed = Date.now() - start
     expect(elapsed).toBeLessThan(2000)
 
-    // 1,000 messages of ~10 KB each overflow the viewport substantially.
+    // 1,000 messages of ~6.5 KB each overflow the viewport substantially.
     const scrollHeight = await getScrollHeight(page)
     expect(scrollHeight).toBeGreaterThan(100_000)
 
