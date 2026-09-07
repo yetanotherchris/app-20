@@ -158,6 +158,11 @@ export function Composer({
 
   const handleChangeText = useCallback(
     (next: string) => {
+      // A new draft means a later identical submit is a fresh send, not a
+      // duplicate of the previous one.
+      if (lastSubmittedRef.current !== null && next !== lastSubmittedRef.current) {
+        lastSubmittedRef.current = null
+      }
       measureAndApply()
       onChangeText(next)
     },

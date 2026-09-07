@@ -177,6 +177,19 @@ describe('Chat control replacement', () => {
     // The default send glyph is not rendered.
     expect(screen.queryByText('→')).not.toBeInTheDocument()
   })
+
+  it('falls back to the default bubble when a custom renderMessage throws (FR-011)', () => {
+    // The mock list renders each row through renderItem; a throwing custom
+    // renderer must be caught by the per-message boundary, not crash the list.
+    renderChat({
+      renderMessage: () => {
+        throw new Error('custom renderer exploded')
+      },
+    })
+    // The default fallback bubble renders for every message.
+    expect(screen.getByTestId('chat.message.a')).toBeInTheDocument()
+    expect(screen.getByTestId('chat.message.b')).toBeInTheDocument()
+  })
 })
 
 describe('Chat state views (US3)', () => {

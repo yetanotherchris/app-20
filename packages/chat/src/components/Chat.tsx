@@ -78,6 +78,8 @@ export interface ChatProps {
 type StateViewKind = 'empty' | 'loading' | 'typing' | 'error' | 'none'
 
 function stateKindFor(status: ChatStatus, messages: readonly Message[]): StateViewKind {
+  // Error is a conversation-level state (US3-A3): the configured error view
+  // replaces the list whenever the error status is active.
   if (status === 'error') return 'error'
   // Empty/loading/typing states occupy the list only while there is nothing
   // to show; once messages exist the list renders normally (US3 scenarios).
@@ -138,54 +140,30 @@ function ChatInner(props: ChatProps) {
     renderErrorState,
   } = props
 
+  // Disabled/read-only and a disabled actions capability hide the action
+  // affordance entirely (FR-014).
+  const effectiveActions =
+    disabled || readOnly || capabilities?.actions === false ? undefined : messageActions
+
   const defaultRenderMessage = useCallback(
-    (message: Message) => {
-      // Disabled/read-only and a disabled actions capability hide the action
-      // affordance entirely (FR-014).
-      const effectiveActions =
-        disabled || readOnly || capabilities?.actions === false ? undefined : messageActions
-      return (
-        <MessageRendererBoundary
-          key={message.id}
-          message={message}
-          renderMessage={(m) => (
-            <MessageBubble
-              message={m}
-              onLinkPress={onLinkPress}
-              onCopyCode={onCopyCode}
-              messageActions={effectiveActions}
-              onMessageAction={onMessageAction}
-              contentRenderers={contentRenderers}
-              markdownElementRenderers={markdownElementRenderers}
-              markdownRenderer={markdownRenderer}
-              icons={icons}
-              styleOverrides={styleOverrides}
-            />
-          )}
-          renderFallback={(m) => (
-            <MessageBubble
-              message={m}
-              onLinkPress={onLinkPress}
-              onCopyCode={onCopyCode}
-              messageActions={effectiveActions}
-              onMessageAction={onMessageAction}
-              contentRenderers={contentRenderers}
-              markdownElementRenderers={markdownElementRenderers}
-              markdownRenderer={markdownRenderer}
-              icons={icons}
-              styleOverrides={styleOverrides}
-            />
-          )}
-        />
-      )
-    },
+    (message: Message) => (
+      <MessageBubble
+        message={message}
+        onLinkPress={onLinkPress}
+        onCopyCode={onCopyCode}
+        messageActions={effectiveActions}
+        onMessageAction={onMessageAction}
+        contentRenderers={contentRenderers}
+        markdownElementRenderers={markdownElementRenderers}
+        markdownRenderer={markdownRenderer}
+        icons={icons}
+        styleOverrides={styleOverrides}
+      />
+    ),
     [
-      disabled,
-      readOnly,
-      capabilities,
       onLinkPress,
       onCopyCode,
-      messageActions,
+      effectiveActions,
       onMessageAction,
       contentRenderers,
       markdownElementRenderers,
@@ -195,11 +173,44 @@ function ChatInner(props: ChatProps) {
     ],
   )
 
+  // A guaranteed-safe fallback: the default message bubble without any
+  // host-supplied renderers, so a throwing custom renderer cannot re-throw
+  // through the fallback path (FR-011).
+  const safeFallback = useCallback(
+    (message: Message) => (
+      <MessageBubble
+        message={message}
+        onLinkPress={onLinkPress}
+        onCopyCode={onCopyCode}
+        styleOverrides={styleOverrides}
+      />
+    ),
+    [onLinkPress, onCopyCode, styleOverrides],
+  )
+
+  // Every row renders through a per-message boundary. The effective renderer
+  // (custom if provided, else the default MessageBubble) is the primary; a
+  // throw falls back to the safe default bubble for that message only.
+  const boundedRenderMessage = useCallback(
+    (message: Message) => {
+      const effectiveRenderer = renderMessage ?? defaultRenderMessage
+      return (
+        <MessageRendererBoundary
+          key={message.id}
+          message={message}
+          renderMessage={(m) => effectiveRenderer(m)}
+          renderFallback={safeFallback}
+        />
+      )
+    },
+    [renderMessage, defaultRenderMessage, safeFallback],
+  )
+
   const listProps: MessageListProps = {
     messages,
     hasEarlierMessages,
     isLoadingEarlier,
-    renderMessage: renderMessage ?? defaultRenderMessage,
+    renderMessage: boundedRenderMessage,
     followThreshold,
     loadEarlierLabel,
     scrollToLatestLabel,
