@@ -66,6 +66,7 @@ export function Composer({
   const touchTarget = useRef(isTouchTarget()).current
   const busyRef = useRef(isBusy)
   busyRef.current = isBusy
+  const inputRef = useRef<TextInput | null>(null)
 
   const { height, handleContentSizeChange, handleLayout, handleTextChange } = useAutogrowHeight({
     minHeight,
@@ -82,7 +83,15 @@ export function Composer({
 
   const handleChangeText = useCallback(
     (next: string) => {
-      handleTextChange()
+      // On web, measure the DOM node's scrollHeight directly because RNW's
+      // onContentSizeChange can lag programmatic changes and misses shrink.
+      let measured: number | undefined
+      if (Platform.OS === 'web') {
+        const node = inputRef.current
+        const host = node as unknown as { scrollHeight?: number } | null
+        if (host?.scrollHeight) measured = host.scrollHeight
+      }
+      handleTextChange(measured)
       onChangeText(next)
     },
     [handleTextChange, onChangeText],
@@ -120,6 +129,7 @@ export function Composer({
   return (
     <View style={styles.container}>
       <TextInput
+        ref={inputRef}
         value={value}
         onChangeText={handleChangeText}
         onContentSizeChange={(event: TextInputContentSizeChangeEvent) =>

@@ -72,10 +72,13 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
   const copyResultRef = useRef(copyResult)
   copyResultRef.current = copyResult
   const [draft, setDraft] = useState('')
-  const [chatStatus, setChatStatus] = useState<'idle' | 'submitting' | 'streaming' | 'stopping'>('idle')
+  const [chatStatus, setChatStatus] = useState<'idle' | 'submitting' | 'streaming' | 'stopping'>(
+    'idle',
+  )
 
   const canSend = draft.trim().length > 0 && chatStatus === 'idle'
-  const isBusy = chatStatus === 'submitting' || chatStatus === 'streaming' || chatStatus === 'stopping'
+  const isBusy =
+    chatStatus === 'submitting' || chatStatus === 'streaming' || chatStatus === 'stopping'
 
   const handleSubmit = useCallback(() => {
     const text = draft.trim()
@@ -85,7 +88,10 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
     setChatStatus('streaming')
     // Simulate a streaming response; the composer returns to idle.
     setTimeout(() => {
-      setMessages((current) => [...current, makeMessage('assistant', `Reply to: ${text.slice(0, 40)}`)])
+      setMessages((current) => [
+        ...current,
+        makeMessage('assistant', `Reply to: ${text.slice(0, 40)}`),
+      ])
       setChatStatus('idle')
     }, 800)
   }, [draft])
