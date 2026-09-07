@@ -48,7 +48,6 @@ export function MessageList({
 }: MessageListProps) {
   const listRef = useRef<LegendListRef>(null)
   const [viewportHeight, setViewportHeight] = useState(0)
-  const contentHeightRef = useRef(0)
   const onVisibleRangeChangeRef = useRef(onVisibleRangeChange)
   onVisibleRangeChangeRef.current = onVisibleRangeChange
 
@@ -77,7 +76,6 @@ export function MessageList({
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       const { contentOffset, contentSize } = event.nativeEvent
-      contentHeightRef.current = contentSize.height
       update({
         contentHeight: contentSize.height,
         offsetY: contentOffset.y,
@@ -86,10 +84,6 @@ export function MessageList({
     },
     [update, viewportHeight],
   )
-
-  const handleContentSizeChange = useCallback((width: number, height: number) => {
-    contentHeightRef.current = height
-  }, [])
 
   const handleLayout = useCallback((event: LayoutChangeEvent) => {
     setViewportHeight(event.nativeEvent.layout.height)
@@ -132,7 +126,6 @@ export function MessageList({
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         onScroll={handleScroll}
-        onContentSizeChange={handleContentSizeChange}
         scrollEventThrottle={16}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
