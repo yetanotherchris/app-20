@@ -34,7 +34,9 @@ export function MarkdownText({
   // One renderer instance per message keeps the callback wiring stable; reset()
   // re-bases the per-parse block counter so streaming updates keep stable
   // code-block test ids instead of drifting. A host-supplied full renderer
-  // replaces the default entirely (FR-006).
+  // replaces the default entirely (FR-006) and must re-apply the safety
+  // invariants itself: no remote images, no raw HTML execution, and link
+  // activation restricted to safe schemes (FR-007/008/012).
   const renderer = useMemo(() => {
     if (markdownRenderer) return markdownRenderer
     return new MarkdownRenderer({

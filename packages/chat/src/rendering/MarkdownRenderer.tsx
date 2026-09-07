@@ -14,7 +14,6 @@ export type MarkdownElementName =
   | 'list'
   | 'escape'
   | 'link'
-  | 'image'
   | 'strong'
   | 'em'
   | 'codespan'
@@ -22,13 +21,20 @@ export type MarkdownElementName =
   | 'del'
   | 'text'
   | 'html'
-  | 'linkImage'
   | 'table'
 
 /**
  * A per-element override map. Each entry replaces the default handling for
  * that Markdown element; elements without an entry keep the default behavior
  * (FR-006). The signatures match react-native-marked's RendererInterface.
+ *
+ * Safety invariants always win over overrides:
+ * - `link` renderers only ever receive http(s) or anchor hrefs; other schemes
+ *   render children inert (FR-008, FR-012).
+ * - `image` and `linkImage` are not overridable: remote images are never
+ *   loaded (FR-007), so an override cannot render them.
+ * - `html` passes the raw HTML string; the host override must not inject it
+ *   as markup. The default renders it as plain text.
  */
 export interface MarkdownElementRenderers {
   paragraph?: (children: ReactNode[], styles?: ViewStyle) => ReactNode
@@ -56,7 +62,6 @@ export interface MarkdownElementRenderers {
     styles?: TextStyle,
     title?: string,
   ) => ReactNode
-  image?: (uri: string, alt?: string, style?: ImageStyle, title?: string) => ReactNode
   strong?: (children: string | ReactNode[], styles?: TextStyle) => ReactNode
   em?: (children: string | ReactNode[], styles?: TextStyle) => ReactNode
   codespan?: (text: string, styles?: TextStyle) => ReactNode
@@ -64,13 +69,6 @@ export interface MarkdownElementRenderers {
   del?: (children: string | ReactNode[], styles?: TextStyle) => ReactNode
   text?: (text: string | ReactNode[], styles?: TextStyle) => ReactNode
   html?: (text: string | ReactNode[], styles?: TextStyle) => ReactNode
-  linkImage?: (
-    href: string,
-    imageUrl: string,
-    alt?: string,
-    style?: ImageStyle,
-    title?: string | null,
-  ) => ReactNode
   table?: (
     header: ReactNode[][],
     rows: ReactNode[][][],
@@ -145,18 +143,22 @@ export class MarkdownRenderer extends Renderer implements RendererInterface {
     )
   }
 
-  override image(_uri: string, _alt?: string, style?: ImageStyle, title?: string): ReactNode {
-    return this.options.elementRenderers?.image?.(_uri, _alt, style, title) ?? null
+  override image(_uri: string, _alt?: string, _style?: ImageStyle, _title?: string): ReactNode {
+    // Remote images are never loaded (FR-007), including under a custom
+    // image renderer: the override must not receive an image to render.
+    return null
   }
 
   override linkImage(
     _href: string,
     _imageUrl: string,
     _alt?: string,
-    style?: ImageStyle,
-    title?: string | null,
+    _style?: ImageStyle,
+    _title?: string | null,
   ): ReactNode {
-    return this.options.elementRenderers?.linkImage?.(_href, _imageUrl, _alt, style, title) ?? null
+    // Remote images are never loaded (FR-007), including under a custom
+    // renderer: the override must not receive an image to render.
+    return null
   }
 
   override link(
@@ -166,10 +168,16 @@ export class MarkdownRenderer extends Renderer implements RendererInterface {
     title?: string,
   ): ReactNode {
     const { elementRenderers, onLinkPress, linkColor } = this.options
+    // The safe-scheme guard applies before any host override, so a custom
+    // link renderer only ever sees http(s)/anchor hrefs; `javascript:` and
+    // other non-http links stay inert (FR-008, FR-012).
+    if (!isSafeLink(href)) {
+      return <>{children}</>
+    }
     if (elementRenderers?.link) {
       return elementRenderers.link(children, href, styles, title)
     }
-    if (!onLinkPress || !isSafeLink(href)) {
+    if (!onLinkPress) {
       return <>{children}</>
     }
     return (

@@ -39,10 +39,14 @@ export class MessageRendererBoundary extends Component<
   }
 
   override componentDidUpdate(prevProps: MessageRendererBoundaryProps): void {
-    // A new message id resets the boundary so a previously failed renderer
-    // gets a fresh chance for a different message.
-    if (prevProps.message.id !== this.props.message.id && this.state.failed) {
-      this.setState({ failed: false })
+    // A new message id or a changed renderer resets the boundary so a
+    // previously failed renderer gets a fresh chance.
+    if (this.state.failed) {
+      const messageChanged = prevProps.message.id !== this.props.message.id
+      const rendererChanged = prevProps.renderMessage !== this.props.renderMessage
+      if (messageChanged || rendererChanged) {
+        this.setState({ failed: false })
+      }
     }
   }
 

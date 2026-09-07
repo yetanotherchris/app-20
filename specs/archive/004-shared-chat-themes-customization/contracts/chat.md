@@ -77,7 +77,7 @@ The top-level entry point for hosts. Owns the theme context and composes `Messag
 | `renderMessage` | `(message: Message) => ReactElement` | no | Default `MessageBubble`. |
 | `contentRenderers` | `Partial<Record<'text.plain' \| 'text.markdown', ComponentType<...>>>` | no | Per-content-type renderers; defaults elsewhere. |
 | `markdownElementRenderers` | `Partial<Record<MarkdownElement, (props) => ReactNode>>` | no | Per-element Markdown renderers; defaults elsewhere. |
-| `markdownRenderer` | `RendererInterface` | no | Complete custom react-native-marked renderer. |
+| `markdownRenderer` | `RendererInterface` | no | Complete custom react-native-marked renderer. Must re-apply the safety invariants (no remote images, no raw HTML execution, safe-scheme links only); the default renderer enforces them unconditionally (FR-007/008/012). |
 
 ### Controls (US2, FR-007/013)
 

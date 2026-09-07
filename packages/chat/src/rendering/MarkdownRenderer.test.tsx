@@ -80,4 +80,25 @@ describe('MarkdownRenderer', () => {
     render(<div>{renderer.link(['plain'], 'https://example.com')}</div>)
     expect(screen.getByRole('link', { name: 'plain' })).toBeInTheDocument()
   })
+
+  it('never passes an unsafe href to a custom link renderer (FR-008, FR-012)', () => {
+    const customLink = vi.fn((children: React.ReactNode, href: string) => (
+      <div data-testid="custom-link" data-href={href}>
+        {children}
+      </div>
+    ))
+    const renderer = new MarkdownRenderer({
+      messageId: 'm1',
+      elementRenderers: { link: customLink },
+    })
+    // A javascript: link must render inert children without reaching the
+    // custom renderer.
+    render(<div>{renderer.link(['bad'], 'javascript:alert(1)')}</div>)
+    expect(customLink).not.toHaveBeenCalled()
+    expect(screen.getByText('bad')).toBeInTheDocument()
+    // A safe href still reaches the custom renderer.
+    render(<div>{renderer.link(['good'], 'https://example.com')}</div>)
+    expect(customLink).toHaveBeenCalledTimes(1)
+    expect(customLink).toHaveBeenCalledWith(['good'], 'https://example.com', undefined, undefined)
+  })
 })
