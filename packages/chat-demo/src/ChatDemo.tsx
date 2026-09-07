@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import { MessageList, MessageBubble, type Message } from '@app-20/chat'
+import { MessageList, MessageBubble, Composer, type Message } from '@app-20/chat'
 import { largeMessageText } from './fixtures/large-message'
 import markdownSuite from './fixtures/markdown-suite.md?raw'
 import unsafeMarkdown from './fixtures/unsafe-markdown.md?raw'
@@ -71,6 +71,29 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
   // The copy callback is stable (rows are recycled); read the live state via a ref.
   const copyResultRef = useRef(copyResult)
   copyResultRef.current = copyResult
+  const [draft, setDraft] = useState('')
+  const [chatStatus, setChatStatus] = useState<'idle' | 'submitting' | 'streaming' | 'stopping'>('idle')
+
+  const canSend = draft.trim().length > 0 && chatStatus === 'idle'
+  const isBusy = chatStatus === 'submitting' || chatStatus === 'streaming' || chatStatus === 'stopping'
+
+  const handleSubmit = useCallback(() => {
+    const text = draft.trim()
+    if (!text) return
+    setMessages((current) => [...current, makeMessage('user', text)])
+    setDraft('')
+    setChatStatus('streaming')
+    // Simulate a streaming response; the composer returns to idle.
+    setTimeout(() => {
+      setMessages((current) => [...current, makeMessage('assistant', `Reply to: ${text.slice(0, 40)}`)])
+      setChatStatus('idle')
+    }, 800)
+  }, [draft])
+
+  const handleStop = useCallback(() => {
+    setChatStatus('stopping')
+    setTimeout(() => setChatStatus('idle'), 300)
+  }, [])
 
   const appendMessage = useCallback(() => {
     setMessages((current) => [
@@ -246,6 +269,14 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
         onLoadEarlier={loadEarlier}
         onAtBottomChange={setAtBottom}
         onUnreadCountChange={setUnread}
+      />
+      <Composer
+        value={draft}
+        canSend={canSend}
+        isBusy={isBusy}
+        onChangeText={setDraft}
+        onSubmit={handleSubmit}
+        onStop={handleStop}
       />
     </View>
   )
