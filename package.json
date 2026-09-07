@@ -1,0 +1,38 @@
+{
+  "name": "app-20",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Desktop and iOS LLM chat application",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "lint": "eslint .",
+    "format:check": "prettier --check .",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "vitest run",
+    "build:electron": "npm run build --workspace apps/electron",
+    "test:e2e": "npm run build:electron && playwright test"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.17.0",
+    "@playwright/test": "^1.63.0",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/jest-dom": "^6.6.0",
+    "@types/node": "^22.10.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "eslint": "^9.17.0",
+    "eslint-plugin-react-hooks": "^5.0.0",
+    "jsdom": "^26.0.0",
+    "prettier": "^3.4.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-native": "^0.86.0",
+    "react-native-web": "^0.21.0",
+    "typescript": "^5.7.0",
+    "typescript-eslint": "^8.18.0",
+    "vitest": "^5.0.0"
+  }
+}

@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-07
 
-**Status**: Draft
+**Status**: Archived
 
 **Input**: User description: "Message list for the shared chat component: stable message identity, automatic follow of streaming content at the bottom, preserved reading position while scrolled up, earlier-message loading, unread indicators, and responsiveness for very long conversations."
 
