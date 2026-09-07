@@ -4,6 +4,8 @@ import {
   closeElectron,
   getScrollableOffset,
   scrollListTo,
+  getScrollHeight,
+  measureScrollStall,
   type LaunchedApp,
 } from './launch'
 
@@ -29,13 +31,16 @@ async function resetApp(): Promise<void> {
 test.describe('US1: follow the conversation from the bottom', () => {
   test('a new message is visible without scrolling while at the bottom', async () => {
     await resetApp()
-    const beforeCount = await page.getByTestId(/^chat\.message\./).count()
     await page.getByTestId('demo.append').click()
     await expect(page.getByTestId('demo.at-bottom')).toHaveText('at-bottom')
-    const afterCount = await page.getByTestId(/^chat\.message\./).count()
-    expect(afterCount).toBeGreaterThan(beforeCount)
-    const offset = await getScrollableOffset(page)
-    expect(offset).toBeGreaterThanOrEqual(0)
+    // The appended message is the last rendered row and stays in the viewport
+    // (auto-follow) without the user scrolling.
+    const lastId = await page
+      .locator('[data-testid^="chat.message."]')
+      .last()
+      .getAttribute('data-testid')
+    expect(lastId).toBeTruthy()
+    await expect(page.getByTestId(lastId!)).toBeVisible()
   })
 
   test('a streaming message keeps the same identity and position across updates', async () => {
@@ -114,44 +119,78 @@ test.describe('US3: load earlier messages', () => {
     await page.waitForTimeout(200)
     await expect(page.getByTestId('demo.at-bottom')).toHaveText('scrolled-up')
 
-    const offsetBefore = await getScrollableOffset(page)
+    // Pick a message that is visible in the viewport and record its screen position.
+    const anchorId = await page
+      .locator('[data-testid^="chat.message."]')
+      .filter({ visible: true })
+      .first()
+      .getAttribute('data-testid')
+    expect(anchorId).toBeTruthy()
+    const anchorLocator = page.getByTestId(anchorId!)
+    const boxBefore = await anchorLocator.boundingBox()
+    expect(boxBefore).toBeTruthy()
 
     await page.getByTestId('demo.load-earlier').click()
     await page.waitForTimeout(500)
 
-    const offsetAfter = await getScrollableOffset(page)
-    // Loading earlier messages must not move the visible anchor.
-    expect(Math.abs(offsetAfter - offsetBefore)).toBeLessThan(80)
+    // The anchor message stays at the same screen position after the prepend.
+    await expect(anchorLocator).toBeVisible()
+    const boxAfter = await anchorLocator.boundingBox()
+    expect(Math.abs((boxAfter?.y ?? 0) - (boxBefore?.y ?? 0))).toBeLessThan(2)
   })
 
   test('the load-earlier control disappears when no earlier messages remain', async () => {
     await resetApp()
     await page.getByTestId('demo.load-1000').click()
     await expect(page.getByTestId('chat.load-earlier')).toHaveCount(0)
+
+    // Make earlier history available: the control appears.
+    await page.getByTestId('demo.load-earlier').click()
+    await expect(page.getByTestId('chat.load-earlier')).toBeVisible()
+
+    // Load the final batch: history is exhausted and the control disappears.
+    await page.getByTestId('demo.exhaust').click()
+    await expect(page.getByTestId('chat.load-earlier')).toHaveCount(0)
   })
 })
 
 test.describe('SC-001: long-conversation responsiveness', () => {
-  test('renders 1,000 messages and scrolls without stalling', async () => {
+  test('renders 1,000 messages within 2 seconds and scrolls without stalling', async () => {
     await resetApp()
     const start = Date.now()
     await page.getByTestId('demo.load-1000').click()
+    // The final bulk message must render within the spec's 2-second budget,
+    // proving the full conversation, not just the first visible row.
+    await expect(page.getByText('Bulk message 1000')).toBeVisible({ timeout: 10_000 })
+    const elapsed = Date.now() - start
+    expect(elapsed).toBeLessThan(2000)
+
+    // A 1,000-message conversation overflows the viewport and is scrollable.
+    const scrollHeight = await getScrollHeight(page)
+    expect(scrollHeight).toBeGreaterThan(1000)
+
+    // Continuous scrolling shows no stall longer than 100 ms.
+    const stall = await measureScrollStall(page)
+    expect(stall).toBeLessThan(100)
+  })
+
+  test('large ~6 KB messages render and scroll without stalling', async () => {
+    await resetApp()
+    const start = Date.now()
+    await page.getByTestId('demo.load-1000-large').click()
+    // The list renders its full data set; the first bulk row must be present
+    // after load, proving the large rows committed within budget.
     await expect(page.locator('[data-testid^="chat.message."]').first()).toBeVisible({
       timeout: 10_000,
     })
     const elapsed = Date.now() - start
-    expect(elapsed).toBeLessThan(10_000)
+    expect(elapsed).toBeLessThan(2000)
 
-    const scrollHeight = await page.evaluate(() => {
-      const root = document.querySelector('[data-testid="chat.message-list"]')
-      if (!root) return 0
-      const sc = Array.from(root.querySelectorAll('div')).filter((d) => {
-        const s = getComputedStyle(d)
-        return s.overflowY === 'auto' || s.overflowY === 'scroll'
-      })
-      return sc.reduce((max, el) => Math.max(max, el.scrollHeight), 0)
-    })
-    // A 1,000-message conversation overflows the viewport and is scrollable.
-    expect(scrollHeight).toBeGreaterThan(1000)
+    // 1,000 messages of ~6.5 KB each overflow the viewport substantially.
+    const scrollHeight = await getScrollHeight(page)
+    expect(scrollHeight).toBeGreaterThan(100_000)
+
+    const stall = await measureScrollStall(page)
+    expect(stall).toBeLessThan(100)
   })
 })

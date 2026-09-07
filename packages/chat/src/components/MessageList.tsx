@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   LegendList,
   type LegendListRef,
@@ -30,6 +30,7 @@ export interface MessageListProps {
 }
 
 const DEFAULT_FOLLOW_THRESHOLD = 96
+const FALLBACK_FOLLOW_FRACTION = 0.2
 
 export function MessageList({
   messages,
@@ -46,22 +47,26 @@ export function MessageList({
   onVisibleRangeChange,
 }: MessageListProps) {
   const listRef = useRef<LegendListRef>(null)
-  const viewportHeightRef = useRef(0)
-  const contentHeightRef = useRef(0)
+  const [viewportHeight, setViewportHeight] = useState(0)
   const onVisibleRangeChangeRef = useRef(onVisibleRangeChange)
   onVisibleRangeChangeRef.current = onVisibleRangeChange
 
   const { isAtBottom, update } = useAtBottom(followThreshold, onAtBottomChange)
-  const { unreadCount, clearUnread } = useUnreadCount(isAtBottom, messages.length)
-  const onUnreadCountChangeRef = useRef(onUnreadCountChange)
-  onUnreadCountChangeRef.current = onUnreadCountChange
+  const tailKey = messages.length > 0 ? messages[messages.length - 1]?.id : undefined
+  const { unreadCount, clearUnread } = useUnreadCount(isAtBottom, tailKey)
 
   useEffect(() => {
-    onUnreadCountChangeRef.current?.(unreadCount)
-  }, [unreadCount])
+    onUnreadCountChange?.(unreadCount)
+  }, [unreadCount, onUnreadCountChange])
+
+  // The engine's follow band must match the hook's FR-003 threshold so the
+  // engine does not keep a user pinned in the same band the hook reports as
+  // scrolled-up (or stop following inside the "at bottom" band).
+  const followFraction =
+    viewportHeight > 0 ? followThreshold / viewportHeight : FALLBACK_FOLLOW_FRACTION
 
   const scrollToLatest = useCallback(() => {
-    void listRef.current?.scrollToOffset({ offset: contentHeightRef.current, animated: true })
+    void listRef.current?.scrollToEnd({ animated: true })
     clearUnread()
     onScrollToLatest?.()
   }, [clearUnread, onScrollToLatest])
@@ -69,22 +74,17 @@ export function MessageList({
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
       const { contentOffset, contentSize } = event.nativeEvent
-      contentHeightRef.current = contentSize.height
       update({
         contentHeight: contentSize.height,
         offsetY: contentOffset.y,
-        viewportHeight: viewportHeightRef.current,
+        viewportHeight,
       })
     },
-    [update],
+    [update, viewportHeight],
   )
 
-  const handleContentSizeChange = useCallback((width: number, height: number) => {
-    contentHeightRef.current = height
-  }, [])
-
   const handleLayout = useCallback((event: LayoutChangeEvent) => {
-    viewportHeightRef.current = event.nativeEvent.layout.height
+    setViewportHeight(event.nativeEvent.layout.height)
   }, [])
 
   const renderItem = useCallback(
@@ -124,14 +124,13 @@ export function MessageList({
         renderItem={renderItem}
         keyExtractor={keyExtractor}
         onScroll={handleScroll}
-        onContentSizeChange={handleContentSizeChange}
         scrollEventThrottle={16}
         onViewableItemsChanged={onViewableItemsChanged}
         viewabilityConfig={viewabilityConfig}
         initialScrollAtEnd
         maintainScrollAtEnd
-        maintainScrollAtEndThreshold={0.2}
-        maintainVisibleContentPosition={false}
+        maintainScrollAtEndThreshold={followFraction}
+        maintainVisibleContentPosition
         ListHeaderComponent={loadEarlierControl}
       />
       {!isAtBottom && (
