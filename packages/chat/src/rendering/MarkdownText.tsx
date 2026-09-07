@@ -12,7 +12,13 @@ export interface MarkdownTextProps {
   style?: object
 }
 
-export function MarkdownText({ part, messageId, onLinkPress, onCopyCode, style }: MarkdownTextProps) {
+export function MarkdownText({
+  part,
+  messageId,
+  onLinkPress,
+  onCopyCode,
+  style,
+}: MarkdownTextProps) {
   const text = 'text' in part ? part.text : ''
 
   // One renderer instance per message keeps code-block indexes stable across

@@ -22,10 +22,16 @@ export function CodeBlock({ code, language, onCopyCode, testID }: CodeBlockProps
   const handleCopy = useCallback(() => {
     if (!onCopyCode) return
     let result: void | Promise<void> | undefined
+    let threw = false
     try {
       result = onCopyCode(code, language)
     } catch {
-      result = undefined
+      threw = true
+    }
+    if (threw) {
+      setCopyState('failed')
+      scheduleReset()
+      return
     }
     if (result instanceof Promise) {
       void result.then(
@@ -44,12 +50,17 @@ export function CodeBlock({ code, language, onCopyCode, testID }: CodeBlockProps
     scheduleReset()
   }, [code, language, onCopyCode, scheduleReset])
 
-  const copyLabel = copyState === 'failed' ? 'Copy failed' : copyState === 'copied' ? 'Copied' : 'Copy'
+  const copyLabel =
+    copyState === 'failed' ? 'Copy failed' : copyState === 'copied' ? 'Copied' : 'Copy'
 
   return (
     <View style={styles.container} testID={testID}>
       <View style={styles.header}>
-        {language ? <Text style={styles.language}>{language}</Text> : <Text style={styles.language}>code</Text>}
+        {language ? (
+          <Text style={styles.language}>{language}</Text>
+        ) : (
+          <Text style={styles.language}>code</Text>
+        )}
         {onCopyCode && (
           <Pressable
             accessibilityRole="button"

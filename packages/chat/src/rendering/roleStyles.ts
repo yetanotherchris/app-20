@@ -44,7 +44,11 @@ const styles = StyleSheet.create({
 
 export const roleTreatments: Record<MessageRole, RoleTreatment> = {
   user: { alignSelf: 'flex-end', bubble: styles.userBubble, text: styles.userText },
-  assistant: { alignSelf: 'flex-start', bubble: styles.assistantBubble, text: styles.assistantText },
+  assistant: {
+    alignSelf: 'flex-start',
+    bubble: styles.assistantBubble,
+    text: styles.assistantText,
+  },
   system: { alignSelf: 'stretch', bubble: styles.systemBubble, text: styles.systemText },
 }
 

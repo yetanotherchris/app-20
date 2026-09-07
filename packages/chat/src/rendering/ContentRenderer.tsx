@@ -40,12 +40,16 @@ function renderPart(
   )
 }
 
-export function ContentRenderer({ parts, messageId, onLinkPress, onCopyCode, textStyle }: ContentRendererProps) {
+export function ContentRenderer({
+  parts,
+  messageId,
+  onLinkPress,
+  onCopyCode,
+  textStyle,
+}: ContentRendererProps) {
   return (
     <View>
-      {parts.map((part) =>
-        renderPart(part, messageId, onLinkPress, onCopyCode, textStyle),
-      )}
+      {parts.map((part) => renderPart(part, messageId, onLinkPress, onCopyCode, textStyle))}
     </View>
   )
 }
