@@ -91,6 +91,7 @@ The user selects and copies message text and code; selection triggers no actions
 - **FR-011**: A Markdown response of 100 KB MUST render without perceptible freezing.
 - **FR-012**: Link activation MUST be delegated to the host application.
 - **FR-013**: Code blocks MAY support optional syntax highlighting.
+- **FR-014**: The component MUST use an existing Markdown library for parsing and rendering; a Markdown parser or renderer MUST NOT be built in this project.
 
 ### Key Entities
 
@@ -109,7 +110,7 @@ The user selects and copies message text and code; selection triggers no actions
 
 ## Assumptions
 
-- An existing Markdown component provides parsing and rendering; no parser or renderer is built in this project.
+- An existing Markdown component provides parsing and rendering (FR-014); the initial candidate is recorded in `docs/react-component-overview.md`, and the choice is made in the plan for this spec.
 - The chosen Markdown component must render acceptably on both the mobile and desktop rendering targets.
 - The host application handles link navigation.
 - Raw HTML and remote images are disabled by default, matching the personal-use and safety posture of the app.
