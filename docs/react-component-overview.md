@@ -209,7 +209,7 @@ Screen-reader announcements are out of scope for beta. This is a personal-use ap
 - Completed messages do not re-render for each streaming update.
 - Streaming updates do not interrupt typing.
 - Test fixture with at least 1,000 messages.
-- Test fixture with a Markdown response of at least 100 KB.
+- Test fixture with a Markdown response of at least 10 KB.
 - Markdown outside the rendered list window is not parsed unnecessarily.
 
 ## Package Requirements

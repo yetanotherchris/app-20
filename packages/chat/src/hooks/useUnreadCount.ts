@@ -7,29 +7,31 @@ export interface UnreadCountState {
 
 export function computeUnreadCount(
   isAtBottom: boolean,
-  messageCount: number,
+  tailChanged: boolean,
   current: number,
-  wasAtBottom: boolean,
-  prevCount: number,
 ): number {
   if (isAtBottom) return 0
-  if (messageCount > prevCount) {
-    return current + (messageCount - prevCount)
-  }
+  if (tailChanged) return current + 1
   return current
 }
 
-export function useUnreadCount(isAtBottom: boolean, messageCount: number): UnreadCountState {
+/**
+ * Counts messages that arrive while the user is scrolled up. The count is keyed
+ * on the tail message identity, not on `messages.length`: a prepend (load
+ * earlier) changes the head, never the tail, so earlier messages are not
+ * counted as unread. Streaming updates to the last message keep its id and do
+ * not increment either.
+ */
+export function useUnreadCount(isAtBottom: boolean, tailKey: string | undefined): UnreadCountState {
   const [unreadCount, setUnreadCount] = useState(0)
-  const prevState = useRef({ wasAtBottom: isAtBottom, prevCount: messageCount })
+  const prevTailKeyRef = useRef(tailKey)
 
   useEffect(() => {
-    const { wasAtBottom, prevCount } = prevState.current
-    prevState.current = { wasAtBottom: isAtBottom, prevCount: messageCount }
-    setUnreadCount((current) =>
-      computeUnreadCount(isAtBottom, messageCount, current, wasAtBottom, prevCount),
-    )
-  }, [isAtBottom, messageCount])
+    const prevTailKey = prevTailKeyRef.current
+    prevTailKeyRef.current = tailKey
+    const tailChanged = tailKey !== undefined && tailKey !== prevTailKey
+    setUnreadCount((current) => computeUnreadCount(isAtBottom, tailChanged, current))
+  }, [isAtBottom, tailKey])
 
   const clearUnread = useCallback(() => {
     setUnreadCount(0)

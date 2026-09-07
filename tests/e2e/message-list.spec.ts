@@ -4,6 +4,8 @@ import {
   closeElectron,
   getScrollableOffset,
   scrollListTo,
+  getScrollHeight,
+  measureScrollStall,
   type LaunchedApp,
 } from './launch'
 
@@ -114,25 +116,43 @@ test.describe('US3: load earlier messages', () => {
     await page.waitForTimeout(200)
     await expect(page.getByTestId('demo.at-bottom')).toHaveText('scrolled-up')
 
-    const offsetBefore = await getScrollableOffset(page)
+    // Pick a message that is visible in the viewport and record its screen position.
+    const anchorId = await page
+      .locator('[data-testid^="chat.message."]')
+      .filter({ visible: true })
+      .first()
+      .getAttribute('data-testid')
+    expect(anchorId).toBeTruthy()
+    const anchorLocator = page.getByTestId(anchorId!)
+    const boxBefore = await anchorLocator.boundingBox()
+    expect(boxBefore).toBeTruthy()
 
     await page.getByTestId('demo.load-earlier').click()
     await page.waitForTimeout(500)
 
-    const offsetAfter = await getScrollableOffset(page)
-    // Loading earlier messages must not move the visible anchor.
-    expect(Math.abs(offsetAfter - offsetBefore)).toBeLessThan(80)
+    // The anchor message stays at the same screen position after the prepend.
+    await expect(anchorLocator).toBeVisible()
+    const boxAfter = await anchorLocator.boundingBox()
+    expect(Math.abs((boxAfter?.y ?? 0) - (boxBefore?.y ?? 0))).toBeLessThan(2)
   })
 
   test('the load-earlier control disappears when no earlier messages remain', async () => {
     await resetApp()
     await page.getByTestId('demo.load-1000').click()
     await expect(page.getByTestId('chat.load-earlier')).toHaveCount(0)
+
+    // Make earlier history available: the control appears.
+    await page.getByTestId('demo.load-earlier').click()
+    await expect(page.getByTestId('chat.load-earlier')).toBeVisible()
+
+    // Load the final batch: history is exhausted and the control disappears.
+    await page.getByTestId('demo.exhaust').click()
+    await expect(page.getByTestId('chat.load-earlier')).toHaveCount(0)
   })
 })
 
 test.describe('SC-001: long-conversation responsiveness', () => {
-  test('renders 1,000 messages and scrolls without stalling', async () => {
+  test('renders 1,000 messages within 2 seconds and scrolls without stalling', async () => {
     await resetApp()
     const start = Date.now()
     await page.getByTestId('demo.load-1000').click()
@@ -140,18 +160,32 @@ test.describe('SC-001: long-conversation responsiveness', () => {
       timeout: 10_000,
     })
     const elapsed = Date.now() - start
-    expect(elapsed).toBeLessThan(10_000)
+    expect(elapsed).toBeLessThan(2000)
 
-    const scrollHeight = await page.evaluate(() => {
-      const root = document.querySelector('[data-testid="chat.message-list"]')
-      if (!root) return 0
-      const sc = Array.from(root.querySelectorAll('div')).filter((d) => {
-        const s = getComputedStyle(d)
-        return s.overflowY === 'auto' || s.overflowY === 'scroll'
-      })
-      return sc.reduce((max, el) => Math.max(max, el.scrollHeight), 0)
-    })
     // A 1,000-message conversation overflows the viewport and is scrollable.
+    const scrollHeight = await getScrollHeight(page)
     expect(scrollHeight).toBeGreaterThan(1000)
+
+    // Continuous scrolling shows no stall longer than 100 ms.
+    const stall = await measureScrollStall(page)
+    expect(stall).toBeLessThan(100)
+  })
+
+  test('large ~10 KB messages render and scroll without stalling', async () => {
+    await resetApp()
+    const start = Date.now()
+    await page.getByTestId('demo.load-1000-large').click()
+    await expect(page.locator('[data-testid^="chat.message."]').first()).toBeVisible({
+      timeout: 10_000,
+    })
+    const elapsed = Date.now() - start
+    expect(elapsed).toBeLessThan(2000)
+
+    // 1,000 messages of ~10 KB each overflow the viewport substantially.
+    const scrollHeight = await getScrollHeight(page)
+    expect(scrollHeight).toBeGreaterThan(10_000)
+
+    const stall = await measureScrollStall(page)
+    expect(stall).toBeLessThan(100)
   })
 })

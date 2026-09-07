@@ -1,6 +1,7 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { MessageList, type Message } from '@app-20/chat'
+import { largeMessageText } from './fixtures/large-message'
 
 export interface ChatDemoProps {
   initialMessages?: readonly Message[]
@@ -23,7 +24,7 @@ function makeMessage(
 }
 
 function plainText(message: Message): string {
-  return message.contentParts.map((part) => ('text' in part ? part.text : '')).join(' ')
+  return message.contentParts.map((part) => part.text).join(' ')
 }
 
 function DemoButton({
@@ -63,7 +64,6 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
   const [loadingEarlier, setLoadingEarlier] = useState(false)
   const [atBottom, setAtBottom] = useState(true)
   const [unread, setUnread] = useState(0)
-  const scrollRequestsRef = useRef(0)
 
   const appendMessage = useCallback(() => {
     setMessages((current) => [
@@ -107,9 +107,31 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
     }, 50)
   }, [])
 
+  const exhaustEarlier = useCallback(() => {
+    setLoadingEarlier(true)
+    setTimeout(() => {
+      setMessages((current) => {
+        const earlier = Array.from({ length: 20 }, (_, i) =>
+          makeMessage(i % 2 === 0 ? 'user' : 'assistant', `Final earlier message ${i + 1}`),
+        )
+        return [...earlier, ...current]
+      })
+      setHasEarlier(false)
+      setLoadingEarlier(false)
+    }, 50)
+  }, [])
+
   const loadThousand = useCallback(() => {
     const bulk: Message[] = Array.from({ length: 1000 }, (_, i) =>
       makeMessage(i % 2 === 0 ? 'user' : 'assistant', `Bulk message ${i + 1}`),
+    )
+    setMessages(bulk)
+    setHasEarlier(false)
+  }, [])
+
+  const loadThousandLarge = useCallback(() => {
+    const bulk: Message[] = Array.from({ length: 1000 }, (_, i) =>
+      makeMessage(i % 2 === 0 ? 'user' : 'assistant', largeMessageText),
     )
     setMessages(bulk)
     setHasEarlier(false)
@@ -135,10 +157,16 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
         <DemoButton label="Append" onPress={appendMessage} testID="demo.append" />
         <DemoButton label="Stream chunk" onPress={streamNextChunk} testID="demo.stream" />
         <DemoButton label="Load earlier" onPress={loadEarlier} testID="demo.load-earlier" />
+        <DemoButton label="Exhaust" onPress={exhaustEarlier} testID="demo.exhaust" />
         <DemoButton label="Load 1000" onPress={loadThousand} testID="demo.load-1000" />
+        <DemoButton
+          label="Load 1000 large"
+          onPress={loadThousandLarge}
+          testID="demo.load-1000-large"
+        />
       </View>
     ),
-    [appendMessage, streamNextChunk, loadEarlier, loadThousand],
+    [appendMessage, streamNextChunk, loadEarlier, exhaustEarlier, loadThousand, loadThousandLarge],
   )
 
   return (
@@ -160,9 +188,6 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
         onLoadEarlier={loadEarlier}
         onAtBottomChange={setAtBottom}
         onUnreadCountChange={setUnread}
-        onScrollToLatest={() => {
-          scrollRequestsRef.current += 1
-        }}
       />
     </View>
   )

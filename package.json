@@ -13,6 +13,8 @@
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "vitest run",
     "build:electron": "npm run build --workspace apps/electron",
+    "dev:web": "npm run dev --workspace apps/web",
+    "dev:electron": "npm run dev --workspace apps/electron",
     "test:e2e": "npm run build:electron && playwright test"
   },
   "devDependencies": {

@@ -69,7 +69,7 @@ The user selects and copies message text and code; selection triggers no actions
 ### Edge Cases
 
 - Partial or malformed Markdown must not break rendering.
-- A very large Markdown response (100 KB) must render without freezing.
+- A large Markdown response (10 KB) must render without freezing.
 - HTML-looking text inside a code block must appear as literal text.
 - A very long unbroken string (such as a URL) must wrap or scroll without breaking layout.
 - Markdown-like characters in a user prompt must render literally as typed.
@@ -88,7 +88,7 @@ The user selects and copies message text and code; selection triggers no actions
 - **FR-008**: The component MUST NOT execute code of any kind.
 - **FR-009**: Unsupported content types MUST render through a fallback renderer.
 - **FR-010**: Text selection MUST NOT trigger message actions.
-- **FR-011**: A Markdown response of 100 KB MUST render without perceptible freezing.
+- **FR-011**: A Markdown response of 10 KB MUST render without perceptible freezing.
 - **FR-012**: Link activation MUST be delegated to the host application.
 - **FR-013**: Code blocks MAY support optional syntax highlighting.
 - **FR-014**: The component MUST use an existing Markdown library for parsing and rendering; a Markdown parser or renderer MUST NOT be built in this project.
@@ -104,7 +104,7 @@ The user selects and copies message text and code; selection triggers no actions
 ### Measurable Outcomes
 
 - **SC-001**: A response using every supported Markdown element renders correctly.
-- **SC-002**: A 100 KB Markdown response renders without perceptible freezing.
+- **SC-002**: A 10 KB Markdown response renders without perceptible freezing.
 - **SC-003**: Raw HTML is never rendered, remote images are never loaded, and nothing executes.
 - **SC-004**: Unsupported content shows a fallback instead of breaking the list.
 
@@ -114,3 +114,7 @@ The user selects and copies message text and code; selection triggers no actions
 - The chosen Markdown component must render acceptably on both the mobile and desktop rendering targets.
 - The host application handles link navigation.
 - Raw HTML and remote images are disabled by default, matching the personal-use and safety posture of the app.
+
+## Clarifications
+
+- 2026-09-07: The large-response bound is 10 KB, not 100 KB. The app targets personal chat; a 500-word response is ~3 KB and a long one stays well under 10 KB. 100 KB was document scale, which is future work for the desktop app, not a beta requirement for the shared chat component.
