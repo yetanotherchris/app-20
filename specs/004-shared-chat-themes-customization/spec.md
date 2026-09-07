@@ -98,6 +98,7 @@ The host disables the component, sets it read-only, or limits capabilities; the 
 - **FR-013**: The host MUST be able to add composer controls.
 - **FR-014**: The component MUST support disabled, read-only, and capability-controlled states.
 - **FR-015**: The component MUST ship as a versioned package consumable by host applications on both platforms, and automated tests MUST exercise the packaged artifact, not only source imports.
+- **FR-016**: The component MUST run unmodified as a single implementation on both the mobile and desktop hosts. Host differences MUST enter only through the component's documented inputs (configuration, themes, controls, renderers), never through forks or host-specific branches of the component.
 
 ### Key Entities
 
@@ -114,6 +115,7 @@ The host disables the component, sets it read-only, or limits capabilities; the 
 - **SC-003**: The component remains fully usable with no customization.
 - **SC-004**: A failing custom renderer falls back to the default without breaking the list.
 - **SC-005**: Disabled, read-only, and capability-limited states are each reflected in the composer and actions.
+- **SC-006**: Every behavior specified in specs 001 through 006 passes on both hosts from the same component code, with no host-specific forks.
 
 ## Assumptions
 
