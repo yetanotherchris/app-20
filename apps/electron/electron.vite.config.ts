@@ -1,6 +1,8 @@
 import { defineConfig } from 'electron-vite'
 import react from '@vitejs/plugin-react'
-import { webPlatformResolution } from '../../packages/chat/src/vite/web-platform-resolution'
+import { resolve } from 'node:path'
+
+const svgStub = resolve(__dirname, '../../packages/chat/src/vite/stubs/react-native-svg.tsx')
 
 export default defineConfig({
   main: {
@@ -14,21 +16,19 @@ export default defineConfig({
     },
   },
   renderer: {
-    plugins: [react(), webPlatformResolution()],
+    plugins: [react()],
     resolve: {
       alias: [
         { find: 'react-native', replacement: 'react-native-web' },
-        { find: 'react-native-svg', replacement: 'react-native-svg/src/index.ts' },
+        // The chat component never renders SVG on web (FR-007); stubbing avoids
+        // bundling react-native-svg's Fabric source, which imports react-native
+        // modules react-native-web does not provide and which Vite's dev
+        // optimizer cannot pre-bundle.
+        { find: 'react-native-svg', replacement: svgStub },
       ],
     },
     define: {
       global: 'globalThis',
-    },
-    optimizeDeps: {
-      // react-native-svg uses Metro-style .web platform resolution; the dev
-      // optimizer (esbuild) cannot resolve its Fabric deep imports, so process
-      // it through Vite's normal pipeline where webPlatformResolution applies.
-      exclude: ['react-native-svg'],
     },
     build: {
       outDir: 'out/renderer',
