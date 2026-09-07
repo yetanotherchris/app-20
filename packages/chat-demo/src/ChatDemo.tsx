@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import { MessageList, MessageBubble, type Message } from '@app-20/chat'
+import { MessageList, MessageBubble, Composer, type Message } from '@app-20/chat'
 import { largeMessageText } from './fixtures/large-message'
 import markdownSuite from './fixtures/markdown-suite.md?raw'
 import unsafeMarkdown from './fixtures/unsafe-markdown.md?raw'
@@ -71,6 +71,43 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
   // The copy callback is stable (rows are recycled); read the live state via a ref.
   const copyResultRef = useRef(copyResult)
   copyResultRef.current = copyResult
+  const [draft, setDraft] = useState('')
+  const [chatStatus, setChatStatus] = useState<'idle' | 'submitting' | 'streaming' | 'stopping'>(
+    'idle',
+  )
+  const replyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [blurBehavior, setBlurBehavior] = useState<'send' | 'keep'>('keep')
+  const [submitCount, setSubmitCount] = useState(0)
+
+  const canSend = draft.trim().length > 0 && chatStatus === 'idle'
+  const isBusy =
+    chatStatus === 'submitting' || chatStatus === 'streaming' || chatStatus === 'stopping'
+
+  const handleSubmit = useCallback(() => {
+    const text = draft.trim()
+    if (!text) return
+    setSubmitCount((n) => n + 1)
+    setMessages((current) => [...current, makeMessage('user', text)])
+    setDraft('')
+    setChatStatus('streaming')
+    // Simulate a streaming response; the composer returns to idle. The reply
+    // timer is tracked so Stop can cancel it.
+    replyTimerRef.current = setTimeout(() => {
+      setMessages((current) => [
+        ...current,
+        makeMessage('assistant', `Reply to: ${text.slice(0, 40)}`),
+      ])
+      setChatStatus('idle')
+    }, 800)
+  }, [draft])
+
+  const handleStop = useCallback(() => {
+    if (replyTimerRef.current) {
+      clearTimeout(replyTimerRef.current)
+      replyTimerRef.current = null
+    }
+    setChatStatus('idle')
+  }, [])
 
   const appendMessage = useCallback(() => {
     setMessages((current) => [
@@ -209,6 +246,11 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
           onPress={loadLargeMarkdown}
           testID="demo.large-markdown"
         />
+        <DemoButton
+          label={blurBehavior === 'send' ? 'Blur: send' : 'Blur: keep'}
+          onPress={() => setBlurBehavior((prev) => (prev === 'send' ? 'keep' : 'send'))}
+          testID="demo.toggle-blur"
+        />
       </View>
     ),
     [
@@ -221,6 +263,7 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
       loadMarkdownSuite,
       copyResult,
       loadLargeMarkdown,
+      blurBehavior,
     ],
   )
 
@@ -237,6 +280,9 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
         <Text testID="demo.last-link" style={styles.statusText}>
           link: {lastLinkPress ?? 'none'}
         </Text>
+        <Text testID="demo.submit-count" style={styles.statusText}>
+          submits: {submitCount}
+        </Text>
       </View>
       <MessageList
         messages={messages}
@@ -246,6 +292,15 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
         onLoadEarlier={loadEarlier}
         onAtBottomChange={setAtBottom}
         onUnreadCountChange={setUnread}
+      />
+      <Composer
+        value={draft}
+        canSend={canSend}
+        isBusy={isBusy}
+        onChangeText={setDraft}
+        onSubmit={handleSubmit}
+        onStop={handleStop}
+        blurBehavior={blurBehavior}
       />
     </View>
   )

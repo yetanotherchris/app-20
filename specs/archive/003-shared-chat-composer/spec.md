@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-07
 
-**Status**: Draft
+**Status**: Archived
 
 **Input**: User description: "Composer for the shared chat component: a multiline input that grows and scrolls, Send and Stop controls, Enter and Shift+Enter behavior, input-method editor support, and sensible disabled states."
 
