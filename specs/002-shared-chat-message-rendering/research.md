@@ -14,7 +14,9 @@
 - `react-native-enriched-markdown` (Software Mansion): Fabric text view on native (no replaceable component tree, so no per-code-block copy button); web path renders semantic DOM HTML with default image loading. Rejected.
 - `react-native-nitro-markdown` (JSI/md4c): fast, chat-oriented, but no web or Expo Go support. Rejected.
 
-**Risks**: No RNW CI claim exists for react-native-marked; it renders RN core components plus `react-native-svg` (which has an official web compatibility layer). The deciding test is running it in the Electron + RNW harness early (task T0xx), matching the overview doc's "subject to React Native Web validation" requirement. Fallback is the RonRadtke fork.
+**Risks**: No RNW CI claim exists for react-native-marked; it renders RN core components plus `react-native-svg` (which has an official web compatibility layer). The deciding test is running it in the Electron + RNW harness early (task T002), matching the overview doc's "subject to React Native Web validation" requirement. Fallback is the RonRadtke fork.
+
+**Validation result (task T002, 2026-09-07)**: react-native-marked renders correctly in the Electron + RNW harness. react-native-svg needed a Metro-style `.web` resolution plugin in the Vite configs (`packages/chat/src/vite/web-platform-resolution.ts`): its web entry still imports `./elements` (not `./elements.web`), which only Metro resolves to the web variant; without the plugin Vite bundles the Fabric entry that imports `react-native/Libraries/...` modules react-native-web does not provide. With the plugin, the Fabric path is excluded from the bundle and no page errors occur.
 
 **Source**: npm registry; github.com/gmsgowtham/react-native-marked (README, src/lib/Renderer.tsx, src/lib/types.ts, src/lib/Markdown.tsx); github.com/RonRadtke/react-native-marked-display; github.com/software-mansion-labs/react-native-enriched-markdown; github.com/iamacup/react-native-markdown-display; github.com/software-mansion/react-native-svg.
 

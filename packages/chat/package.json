@@ -14,7 +14,9 @@
     "react-native-web": "^0.21.0"
   },
   "dependencies": {
-    "@legendapp/list": "^3.3.10"
+    "@legendapp/list": "^3.3.10",
+    "react-native-marked": "^8.1.1",
+    "react-native-svg": "^15.15.0"
   },
   "devDependencies": {
     "@types/react": "^19.0.0"

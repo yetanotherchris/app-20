@@ -66,7 +66,7 @@ export function MessageList({
     viewportHeight > 0 ? followThreshold / viewportHeight : FALLBACK_FOLLOW_FRACTION
 
   const scrollToLatest = useCallback(() => {
-    void listRef.current?.scrollToEnd({ animated: true })
+    void listRef.current?.scrollToEnd({ animated: false })
     clearUnread()
     onScrollToLatest?.()
   }, [clearUnread, onScrollToLatest])

@@ -1,7 +1,9 @@
 import { useCallback, useMemo, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import { MessageList, type Message } from '@app-20/chat'
+import { MessageList, MessageBubble, type Message } from '@app-20/chat'
 import { largeMessageText } from './fixtures/large-message'
+import markdownSuite from './fixtures/markdown-suite.md?raw'
+import unsafeMarkdown from './fixtures/unsafe-markdown.md?raw'
 
 export interface ChatDemoProps {
   initialMessages?: readonly Message[]
@@ -10,7 +12,7 @@ export interface ChatDemoProps {
 let nextId = 1000
 
 function makeMessage(
-  role: 'user' | 'assistant',
+  role: 'user' | 'assistant' | 'system',
   text: string,
   status: Message['status'] = 'complete',
 ): Message {
@@ -139,17 +141,29 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
 
   const renderMessage = useCallback(
     (message: Message) => (
-      <View
+      <MessageBubble
         key={message.id}
-        style={[styles.row, message.role === 'user' ? styles.userRow : styles.assistantRow]}
-      >
-        <Text testID={`chat.message.${message.id}`} style={styles.rowText}>
-          {plainText(message)}
-        </Text>
-      </View>
+        message={message}
+        onLinkPress={(href) => {
+          console.log(`[demo] link press: ${href}`)
+        }}
+        onCopyCode={(code) => {
+          console.log(`[demo] copy code: ${code.slice(0, 40)}...`)
+        }}
+      />
     ),
     [],
   )
+
+  const loadMarkdownSuite = useCallback(() => {
+    setMessages([
+      makeMessage('system', 'Conversation started with a markdown suite'),
+      makeMessage('user', 'Please show me the full markdown suite.'),
+      makeMessage('assistant', markdownSuite),
+      makeMessage('assistant', unsafeMarkdown),
+    ])
+    setHasEarlier(false)
+  }, [])
 
   const controls = useMemo(
     () => (
@@ -164,9 +178,14 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
           onPress={loadThousandLarge}
           testID="demo.load-1000-large"
         />
+        <DemoButton
+          label="Markdown suite"
+          onPress={loadMarkdownSuite}
+          testID="demo.markdown-suite"
+        />
       </View>
     ),
-    [appendMessage, streamNextChunk, loadEarlier, exhaustEarlier, loadThousand, loadThousandLarge],
+    [appendMessage, streamNextChunk, loadEarlier, exhaustEarlier, loadThousand, loadThousandLarge, loadMarkdownSuite],
   )
 
   return (
@@ -227,25 +246,5 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 12,
     color: '#475569',
-  },
-  row: {
-    marginVertical: 4,
-    marginHorizontal: 12,
-    borderRadius: 10,
-    padding: 10,
-    maxWidth: 520,
-  },
-  userRow: {
-    alignSelf: 'flex-end',
-    backgroundColor: '#2563eb',
-  },
-  assistantRow: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#ffffff',
-  },
-  rowText: {
-    fontSize: 14,
-    lineHeight: 20,
-    color: '#0f172a',
   },
 })
