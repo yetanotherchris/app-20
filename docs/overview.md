@@ -39,7 +39,7 @@ Below are thoughts for an initial beta phase, a proof of concept.
 
 - No file uploads.
 - No vectorization.
-- No chat history or search UI.
+- No search UI. History is limited to the small recent-conversations list described under Conversation Storage.
 - No model selection control.
 - No left-side drawer menu.
 

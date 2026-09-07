@@ -34,7 +34,7 @@ React, React Native, and React Native Web are peer dependencies. The package doc
 - Loading, streaming, stopped, and error states.
 - Light, dark, and custom themes.
 - Mobile and desktop layouts.
-- Keyboard and screen-reader support.
+- Keyboard support.
 
 ## Main Component
 
@@ -201,8 +201,8 @@ Event payloads include relevant IDs and the interaction source. Re-rendering and
 - Dynamic type and browser zoom support.
 - Reduced-motion and high-contrast support.
 - Status information that does not rely on color.
-- Throttled announcements during streaming.
-- Announcements for completion, Stop, and Error.
+
+Screen-reader announcements are out of scope for beta. This is a personal-use app; read-aloud via text-to-speech may be added later if needed.
 
 ## Performance
 
@@ -265,7 +265,6 @@ Playwright runs against the React Native Web and Electron test applications.
 - Navigate using only the keyboard.
 - Verify focus behavior.
 - Run automated accessibility checks.
-- Verify streaming announcements.
 - Verify light, dark, high-contrast, narrow, and wide layouts.
 - Verify browser zoom and increased text size.
 - Verify raw HTML and unsafe links are not activated.
@@ -277,7 +276,7 @@ Playwright runs against the React Native Web and Electron test applications.
 
 Playwright visual tests use fixed mobile and desktop viewports. Dynamic timestamps and streaming indicators are frozen for screenshots.
 
-Playwright does not test native iOS views. iOS release checks cover safe areas, software and hardware keyboards, input composition, dynamic type, VoiceOver, focus, text selection, composer growth, scrolling, streaming, and Stop behavior.
+Playwright does not test native iOS views. iOS release checks cover safe areas, software and hardware keyboards, input composition, dynamic type, focus, text selection, composer growth, scrolling, streaming, and Stop behavior.
 
 ## Future Features
 
