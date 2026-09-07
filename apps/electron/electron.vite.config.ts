@@ -24,6 +24,12 @@ export default defineConfig({
     define: {
       global: 'globalThis',
     },
+    optimizeDeps: {
+      // react-native-svg uses Metro-style .web platform resolution; the dev
+      // optimizer (esbuild) cannot resolve its Fabric deep imports, so process
+      // it through Vite's normal pipeline where webPlatformResolution applies.
+      exclude: ['react-native-svg'],
+    },
     build: {
       outDir: 'out/renderer',
     },
