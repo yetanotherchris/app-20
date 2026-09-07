@@ -59,7 +59,7 @@ describe('MarkdownRenderer', () => {
   })
 
   it('uses a custom element renderer for that element and defaults elsewhere (FR-006)', () => {
-    const customLink = vi.fn((children: React.ReactNode, href: string) => (
+    const customLink = vi.fn((children: React.ReactNode, _href: string) => (
       <div data-testid="custom-link">{children}</div>
     ))
     const renderer = new MarkdownRenderer({

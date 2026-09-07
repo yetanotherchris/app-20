@@ -4,8 +4,13 @@ import { useTheme } from '../theme/ThemeContext'
 export function TypingState() {
   const { theme } = useTheme()
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]} testID="chat.state.typing">
-      <Text style={[styles.text, { color: theme.colors.textSecondary }]}>Assistant is typing...</Text>
+    <View
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      testID="chat.state.typing"
+    >
+      <Text style={[styles.text, { color: theme.colors.textSecondary }]}>
+        Assistant is typing...
+      </Text>
     </View>
   )
 }

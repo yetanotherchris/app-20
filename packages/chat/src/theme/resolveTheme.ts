@@ -19,10 +19,7 @@ function mergeTheme(base: ChatTheme, override: ThemeInput | undefined): ChatThem
  * resolved base. Absent override keys fall back to the base; unknown keys are
  * not expressible in the ThemeInput type and cannot break rendering.
  */
-export function resolveTheme(
-  base: ResolvedThemeBase,
-  override: ThemeInput | undefined,
-): ChatTheme {
+export function resolveTheme(base: ResolvedThemeBase, override: ThemeInput | undefined): ChatTheme {
   return mergeTheme(baseThemes[base], override)
 }
 

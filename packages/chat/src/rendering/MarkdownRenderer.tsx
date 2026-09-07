@@ -34,12 +34,28 @@ export interface MarkdownElementRenderers {
   paragraph?: (children: ReactNode[], styles?: ViewStyle) => ReactNode
   blockquote?: (children: ReactNode[], styles?: ViewStyle) => ReactNode
   heading?: (text: string | ReactNode[], styles?: TextStyle, depth?: number) => ReactNode
-  code?: (text: string, language?: string, containerStyle?: ViewStyle, textStyle?: TextStyle) => ReactNode
+  code?: (
+    text: string,
+    language?: string,
+    containerStyle?: ViewStyle,
+    textStyle?: TextStyle,
+  ) => ReactNode
   hr?: (styles?: ViewStyle) => ReactNode
   listItem?: (children: ReactNode[], styles?: ViewStyle) => ReactNode
-  list?: (ordered: boolean, li: ReactNode[], listStyle?: ViewStyle, textStyle?: TextStyle, startIndex?: number) => ReactNode
+  list?: (
+    ordered: boolean,
+    li: ReactNode[],
+    listStyle?: ViewStyle,
+    textStyle?: TextStyle,
+    startIndex?: number,
+  ) => ReactNode
   escape?: (text: string, styles?: TextStyle) => ReactNode
-  link?: (children: string | ReactNode[], href: string, styles?: TextStyle, title?: string) => ReactNode
+  link?: (
+    children: string | ReactNode[],
+    href: string,
+    styles?: TextStyle,
+    title?: string,
+  ) => ReactNode
   image?: (uri: string, alt?: string, style?: ImageStyle, title?: string) => ReactNode
   strong?: (children: string | ReactNode[], styles?: TextStyle) => ReactNode
   em?: (children: string | ReactNode[], styles?: TextStyle) => ReactNode
@@ -48,8 +64,20 @@ export interface MarkdownElementRenderers {
   del?: (children: string | ReactNode[], styles?: TextStyle) => ReactNode
   text?: (text: string | ReactNode[], styles?: TextStyle) => ReactNode
   html?: (text: string | ReactNode[], styles?: TextStyle) => ReactNode
-  linkImage?: (href: string, imageUrl: string, alt?: string, style?: ImageStyle, title?: string | null) => ReactNode
-  table?: (header: ReactNode[][], rows: ReactNode[][][], tableStyle?: ViewStyle, rowStyle?: ViewStyle, cellStyle?: ViewStyle) => ReactNode
+  linkImage?: (
+    href: string,
+    imageUrl: string,
+    alt?: string,
+    style?: ImageStyle,
+    title?: string | null,
+  ) => ReactNode
+  table?: (
+    header: ReactNode[][],
+    rows: ReactNode[][][],
+    tableStyle?: ViewStyle,
+    rowStyle?: ViewStyle,
+    cellStyle?: ViewStyle,
+  ) => ReactNode
 }
 
 export interface MarkdownRendererOptions {
@@ -95,7 +123,12 @@ export class MarkdownRenderer extends Renderer implements RendererInterface {
     this.codeIndex = 0
   }
 
-  override code(text: string, language?: string, containerStyle?: ViewStyle, textStyle?: TextStyle): ReactNode {
+  override code(
+    text: string,
+    language?: string,
+    containerStyle?: ViewStyle,
+    textStyle?: TextStyle,
+  ): ReactNode {
     const { elementRenderers, onCopyCode, icons, messageId } = this.options
     if (elementRenderers?.code) {
       return elementRenderers.code(text, language, containerStyle, textStyle)
@@ -151,17 +184,22 @@ export class MarkdownRenderer extends Renderer implements RendererInterface {
   }
 
   override paragraph(children: ReactNode[], styles?: ViewStyle): ReactNode {
-    return this.options.elementRenderers?.paragraph?.(children, styles) ?? super.paragraph(children, styles)
+    return (
+      this.options.elementRenderers?.paragraph?.(children, styles) ??
+      super.paragraph(children, styles)
+    )
   }
 
   override blockquote(children: ReactNode[], styles?: ViewStyle): ReactNode {
-    return this.options.elementRenderers?.blockquote?.(children, styles) ?? super.blockquote(children, styles)
+    return (
+      this.options.elementRenderers?.blockquote?.(children, styles) ??
+      super.blockquote(children, styles)
+    )
   }
 
   override heading(text: string | ReactNode[], styles?: TextStyle, depth?: number): ReactNode {
     return (
-      this.options.elementRenderers?.heading?.(text, styles, depth) ??
-      super.heading(text, styles)
+      this.options.elementRenderers?.heading?.(text, styles, depth) ?? super.heading(text, styles)
     )
   }
 
@@ -170,7 +208,10 @@ export class MarkdownRenderer extends Renderer implements RendererInterface {
   }
 
   override listItem(children: ReactNode[], styles?: ViewStyle): ReactNode {
-    return this.options.elementRenderers?.listItem?.(children, styles) ?? super.listItem(children, styles)
+    return (
+      this.options.elementRenderers?.listItem?.(children, styles) ??
+      super.listItem(children, styles)
+    )
   }
 
   override list(
@@ -191,7 +232,9 @@ export class MarkdownRenderer extends Renderer implements RendererInterface {
   }
 
   override strong(children: string | ReactNode[], styles?: TextStyle): ReactNode {
-    return this.options.elementRenderers?.strong?.(children, styles) ?? super.strong(children, styles)
+    return (
+      this.options.elementRenderers?.strong?.(children, styles) ?? super.strong(children, styles)
+    )
   }
 
   override em(children: string | ReactNode[], styles?: TextStyle): ReactNode {

@@ -37,8 +37,23 @@ export function MarkdownText({
   // replaces the default entirely (FR-006).
   const renderer = useMemo(() => {
     if (markdownRenderer) return markdownRenderer
-    return new MarkdownRenderer({ messageId, onLinkPress, onCopyCode, linkColor, elementRenderers: markdownElementRenderers, icons })
-  }, [messageId, onLinkPress, onCopyCode, linkColor, markdownElementRenderers, markdownRenderer, icons])
+    return new MarkdownRenderer({
+      messageId,
+      onLinkPress,
+      onCopyCode,
+      linkColor,
+      elementRenderers: markdownElementRenderers,
+      icons,
+    })
+  }, [
+    messageId,
+    onLinkPress,
+    onCopyCode,
+    linkColor,
+    markdownElementRenderers,
+    markdownRenderer,
+    icons,
+  ])
   if (renderer instanceof MarkdownRenderer) {
     renderer.reset()
   }

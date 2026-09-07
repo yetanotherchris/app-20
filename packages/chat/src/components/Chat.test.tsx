@@ -19,12 +19,14 @@ vi.mock('@legendapp/list/react-native', () => ({
     data,
     renderItem,
     ListHeaderComponent,
+    extraData,
   }: {
     data: readonly Message[]
     renderItem: (info: { item: Message }) => React.ReactElement
     ListHeaderComponent?: React.ReactElement | null
+    extraData?: unknown
   }) => (
-    <div data-testid="mock-legend-list">
+    <div data-testid="mock-legend-list" data-extradata={String(extraData != null)}>
       {ListHeaderComponent}
       {data.map((item) => renderItem({ item }))}
     </div>
@@ -190,13 +192,19 @@ describe('Chat state views (US3)', () => {
   })
 
   it('shows the typing state while an assistant response is being composed', () => {
-    renderChat({ status: 'streaming' })
+    renderChat({ messages: [], status: 'streaming' })
     expect(screen.getByTestId('chat.state.typing')).toBeInTheDocument()
   })
 
   it('shows the error state when the error status is active', () => {
     renderChat({ messages: [], status: 'error' })
     expect(screen.getByTestId('chat.state.error')).toBeInTheDocument()
+  })
+
+  it('shows the message list normally once messages exist during streaming', () => {
+    renderChat({ status: 'streaming' })
+    expect(screen.queryByTestId('chat.state.typing')).not.toBeInTheDocument()
+    expect(screen.getByTestId('mock-legend-list')).toBeInTheDocument()
   })
 
   it('renders custom state views in the right conditions (FR-008)', () => {

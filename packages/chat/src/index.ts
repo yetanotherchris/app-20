@@ -35,7 +35,11 @@ export type { PlainTextProps } from './rendering/PlainText'
 export { CodeBlock } from './rendering/CodeBlock'
 export type { CodeBlockProps, CopyState } from './rendering/CodeBlock'
 export { MarkdownRenderer } from './rendering/MarkdownRenderer'
-export type { MarkdownRendererOptions, MarkdownElementRenderers, MarkdownElementName } from './rendering/MarkdownRenderer'
+export type {
+  MarkdownRendererOptions,
+  MarkdownElementRenderers,
+  MarkdownElementName,
+} from './rendering/MarkdownRenderer'
 export { useAtBottom, distanceFromBottom, isNearBottom } from './hooks/useAtBottom'
 export type { ScrollMetrics, AtBottomState } from './hooks/useAtBottom'
 export { useUnreadCount, computeUnreadCount } from './hooks/useUnreadCount'
@@ -47,13 +51,7 @@ export type { ResolvedThemeBase } from './theme/resolveTheme'
 export { lightTheme, darkTheme, baseThemes } from './theme/themes'
 export { defaultIcons, renderIcon } from './icons'
 export type { IconProps } from './icons'
-export type {
-  Message,
-  MessageRole,
-  MessageStatus,
-  ContentPart,
-  VisibleRange,
-} from './types'
+export type { Message, MessageRole, MessageStatus, ContentPart, VisibleRange } from './types'
 export type {
   ChatTheme,
   ChatThemeColors,

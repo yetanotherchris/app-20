@@ -40,7 +40,13 @@ describe('ActionMenu', () => {
   it('hides actions whose availability predicate returns false for the message', () => {
     const withUnavailable: readonly MessageAction[] = [
       { id: 'copy', label: 'Copy', group: 'Actions', available: () => true, onAction: vi.fn() },
-      { id: 'delete', label: 'Delete', group: 'Actions', available: () => false, onAction: vi.fn() },
+      {
+        id: 'delete',
+        label: 'Delete',
+        group: 'Actions',
+        available: () => false,
+        onAction: vi.fn(),
+      },
     ]
     render(<ActionMenu actions={withUnavailable} message={message('a')} onAction={vi.fn()} />)
     fireEvent.click(screen.getByTestId('chat.action-menu'))

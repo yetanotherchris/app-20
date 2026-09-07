@@ -162,6 +162,7 @@ export function MessageList({
         data={messages}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
+        extraData={renderMessage}
         onScroll={handleScroll}
         scrollEventThrottle={16}
         onViewableItemsChanged={onViewableItemsChanged}

@@ -10,6 +10,7 @@ vi.mock('@legendapp/list/react-native', () => ({
     ListHeaderComponent,
     onScroll,
     onLayout,
+    extraData,
   }: {
     data: readonly Message[]
     renderItem: (info: { item: Message }) => React.ReactElement
@@ -18,9 +19,11 @@ vi.mock('@legendapp/list/react-native', () => ({
       nativeEvent: { contentOffset: { y: number }; contentSize: { height: number } }
     }) => void
     onLayout?: (event: { nativeEvent: { layout: { height: number } } }) => void
+    extraData?: unknown
   }) => (
     <div
       data-testid="mock-legend-list"
+      data-extradata={String(extraData != null)}
       ref={(node) => {
         if (node) onLayout?.({ nativeEvent: { layout: { height: 600 } } })
       }}

@@ -50,8 +50,6 @@ export class MessageRendererBoundary extends Component<
     if (this.state.failed) {
       return this.props.renderFallback(this.props.message)
     }
-    return (
-      <BoundaryContent message={this.props.message} renderMessage={this.props.renderMessage} />
-    )
+    return <BoundaryContent message={this.props.message} renderMessage={this.props.renderMessage} />
   }
 }

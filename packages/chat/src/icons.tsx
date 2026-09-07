@@ -17,7 +17,11 @@ export interface IconProps {
 function makeGlyph(glyph: string) {
   return function GlyphIcon({ size = 16, color, style }: IconProps) {
     return (
-      <Text accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={[{ fontSize: size, color }, style]}>
+      <Text
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        style={[{ fontSize: size, color }, style]}
+      >
         {glyph}
       </Text>
     )

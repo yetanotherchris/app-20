@@ -1,13 +1,14 @@
 import { useMemo } from 'react'
 import { StyleSheet, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
 import { useTheme } from '../theme/ThemeContext'
-import type { MessageRole } from '../types'
 
 export interface RoleTreatment {
   alignSelf: 'flex-start' | 'flex-end' | 'stretch'
   bubble: StyleProp<ViewStyle>
   text: StyleProp<TextStyle>
 }
+
+export type MessageRoleName = 'user' | 'assistant' | 'system'
 
 export interface RoleStyles {
   user: RoleTreatment

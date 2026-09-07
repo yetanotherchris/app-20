@@ -4,7 +4,10 @@ import { useTheme } from '../theme/ThemeContext'
 export function ErrorState() {
   const { theme } = useTheme()
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]} testID="chat.state.error">
+    <View
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      testID="chat.state.error"
+    >
       <Text style={[styles.text, { color: theme.colors.danger }]}>Something went wrong</Text>
     </View>
   )

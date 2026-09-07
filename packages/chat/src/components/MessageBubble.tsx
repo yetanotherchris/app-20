@@ -35,7 +35,12 @@ export function MessageBubble({
   const treatment = roleStyles[message.role]
   return (
     <View
-      style={[roleStyles.base, treatment.bubble, { alignSelf: treatment.alignSelf }, styleOverrides?.messageBubble]}
+      style={[
+        roleStyles.base,
+        treatment.bubble,
+        { alignSelf: treatment.alignSelf },
+        styleOverrides?.messageBubble,
+      ]}
       testID={`chat.message.${message.id}`}
     >
       <ContentRenderer

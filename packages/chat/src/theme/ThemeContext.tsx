@@ -40,7 +40,11 @@ export function ThemeProvider({
 }: ThemeProviderProps) {
   const colorScheme = useColorScheme()
   const base: ResolvedThemeBase =
-    themeName === 'system' ? (colorScheme === 'dark' ? 'dark' : 'light') : themeBaseForName(themeName)
+    themeName === 'system'
+      ? colorScheme === 'dark'
+        ? 'dark'
+        : 'light'
+      : themeBaseForName(themeName)
 
   const value = useMemo<ThemeContextValue>(
     () => ({

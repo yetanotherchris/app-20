@@ -31,7 +31,11 @@ export function UnreadBadge({ count, styleOverrides }: UnreadBadgeProps) {
     [theme],
   )
   return (
-    <View accessibilityLiveRegion="polite" style={[styles.badge, styleOverrides?.unreadBadge]} testID="chat.unread-badge">
+    <View
+      accessibilityLiveRegion="polite"
+      style={[styles.badge, styleOverrides?.unreadBadge]}
+      testID="chat.unread-badge"
+    >
       <Text style={styles.count}>{count}</Text>
     </View>
   )

@@ -240,9 +240,7 @@ export function Composer({
           testID="chat.composer.input"
         />
       </View>
-      <View style={styles.controls}>
-        {stopEnabled ? stopControl : sendControl}
-      </View>
+      <View style={styles.controls}>{stopEnabled ? stopControl : sendControl}</View>
     </View>
   )
 }

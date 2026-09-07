@@ -75,9 +75,7 @@ export type SurfaceName =
   | 'error'
   | 'actionMenu'
 
-export type SurfaceStyleOverrides = Partial<
-  Record<SurfaceName, StyleProp<ViewStyle | TextStyle>>
->
+export type SurfaceStyleOverrides = Partial<Record<SurfaceName, StyleProp<ViewStyle | TextStyle>>>
 
 export interface MessageAction {
   id: string

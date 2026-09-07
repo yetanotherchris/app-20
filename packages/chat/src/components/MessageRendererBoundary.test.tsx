@@ -33,7 +33,9 @@ describe('MessageRendererBoundary', () => {
         renderMessage={() => {
           throw new Error('custom renderer exploded')
         }}
-        renderFallback={(m) => <div data-testid={`fallback.${m.id}`}>{m.contentParts[0]?.text}</div>}
+        renderFallback={(m) => (
+          <div data-testid={`fallback.${m.id}`}>{m.contentParts[0]?.text}</div>
+        )}
       />,
     )
     expect(screen.getByTestId('fallback.a')).toBeInTheDocument()

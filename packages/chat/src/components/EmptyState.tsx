@@ -4,7 +4,10 @@ import { useTheme } from '../theme/ThemeContext'
 export function EmptyState() {
   const { theme } = useTheme()
   return (
-    <View style={[styles.container, { backgroundColor: theme.colors.background }]} testID="chat.state.empty">
+    <View
+      style={[styles.container, { backgroundColor: theme.colors.background }]}
+      testID="chat.state.empty"
+    >
       <Text style={[styles.text, { color: theme.colors.textSecondary }]}>No messages yet</Text>
     </View>
   )

@@ -79,9 +79,13 @@ type StateViewKind = 'empty' | 'loading' | 'typing' | 'error' | 'none'
 
 function stateKindFor(status: ChatStatus, messages: readonly Message[]): StateViewKind {
   if (status === 'error') return 'error'
-  if (status === 'submitting') return 'loading'
-  if (status === 'streaming') return 'typing'
-  if (messages.length === 0) return 'empty'
+  // Empty/loading/typing states occupy the list only while there is nothing
+  // to show; once messages exist the list renders normally (US3 scenarios).
+  if (messages.length === 0) {
+    if (status === 'submitting') return 'loading'
+    if (status === 'streaming') return 'typing'
+    return 'empty'
+  }
   return 'none'
 }
 
