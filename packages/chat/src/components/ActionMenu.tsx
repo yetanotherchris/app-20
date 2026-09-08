@@ -6,6 +6,7 @@ import { useFocusRing } from '../accessibility/useFocusRing'
 import { minTouchTarget } from '../accessibility/minTouchTarget'
 import type { MessageAction, SurfaceStyleOverrides } from '../theme/types'
 import type { Message } from '../types'
+import { filterAvailableActions } from './actionAvailability'
 
 export interface ActionMenuProps {
   actions: readonly MessageAction[]
@@ -156,10 +157,7 @@ export function ActionMenu({
     [theme, target],
   )
 
-  const availableActions = actions.filter((action) => {
-    if (typeof action.available === 'function') return action.available(message)
-    return action.available !== false
-  })
+  const availableActions = filterAvailableActions(actions, message)
 
   if (availableActions.length === 0) return null
 

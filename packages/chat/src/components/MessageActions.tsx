@@ -5,6 +5,7 @@ import { useFocusRing } from '../accessibility/useFocusRing'
 import { minTouchTarget } from '../accessibility/minTouchTarget'
 import type { MessageAction, SurfaceStyleOverrides } from '../theme/types'
 import type { Message } from '../types'
+import { filterAvailableActions } from './actionAvailability'
 
 export interface MessageActionsProps {
   actions: readonly MessageAction[]
@@ -56,10 +57,10 @@ function ActionButton({ action, testID, onActivate }: ActionButtonProps) {
 }
 
 /**
- * The default message-actions presentation (FR-007, US3-A1): a compact,
- * left-aligned row of buttons beneath assistant content. Availability and
- * grouping semantics match ActionMenu; with no available action nothing
- * renders. ActionMenu stays exported for hosts that want the overflow menu.
+ * The default message-actions presentation: a compact, left-aligned row of
+ * buttons beneath the message content. Availability rules are shared with
+ * ActionMenu; with no available action nothing renders. ActionMenu stays
+ * exported for hosts that prefer the overflow menu.
  */
 export function MessageActions({
   actions,
@@ -68,11 +69,7 @@ export function MessageActions({
   styleOverrides,
 }: MessageActionsProps) {
   const availableActions = useMemo(
-    () =>
-      actions.filter((action) => {
-        if (typeof action.available === 'function') return action.available(message)
-        return action.available !== false
-      }),
+    () => filterAvailableActions(actions, message),
     [actions, message],
   )
 

@@ -16,8 +16,8 @@ export interface SendButtonProps {
 
 /**
  * The reference Send is a circular up-arrow control at the composer's right
- * end (FR-006). The label stays as the accessible name; the arrow is the only
- * visual. The circle never drops below the platform touch-target minimum.
+ * end. The label stays as the accessible name; the arrow is the only visual.
+ * The circle never drops below the platform touch-target minimum.
  */
 export function SendButton({ label, disabled, onPress, icons, styleOverrides }: SendButtonProps) {
   const { theme } = useTheme()
@@ -51,7 +51,7 @@ export function SendButton({ label, disabled, onPress, icons, styleOverrides }: 
     >
       {renderIcon('send', icons, {
         size: 16,
-        color: theme.colors.onPrimary,
+        color: theme.colors.sendForeground,
         style: { lineHeight: 18, textAlign: 'center' },
       })}
     </Pressable>

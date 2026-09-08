@@ -37,14 +37,14 @@ function columnBox() {
 }
 
 test.describe('US1: read a conversation in the reference layout', () => {
-  test('the reading column is centered with whitespace on both sides (US1-A1)', async () => {
+  test('the reading column is centered with whitespace on both sides', async () => {
     await resetApp()
     await resizeWindow(launched, 974, 638)
     const root = await box('chat.root')
     const column = await columnBox()
     expect(root).not.toBeNull()
     expect(column).not.toBeNull()
-    // FR-002: about 540px wide at the reference panel, within 10%.
+    // About 540px wide at the reference panel, within 10%.
     expect(column!.width).toBeGreaterThanOrEqual(540 * 0.9)
     expect(column!.width).toBeLessThanOrEqual(540 * 1.1)
     // Horizontally centered within the panel to within 8px.
@@ -56,7 +56,7 @@ test.describe('US1: read a conversation in the reference layout', () => {
     expect(root!.x + root!.width - (column!.x + column!.width)).toBeGreaterThan(40)
   })
 
-  test('user messages are right-aligned gray bubbles with no tail; assistant text is unboxed (US1-A2/A3)', async () => {
+  test('user bubbles are gray right-aligned with no tail; assistant text is unboxed', async () => {
     await resetApp()
     await resizeWindow(launched, 974, 638)
     const column = await columnBox()
@@ -65,8 +65,10 @@ test.describe('US1: read a conversation in the reference layout', () => {
     const userBubble = page.getByTestId('chat.message.demo-1000')
     const userBox = await userBubble.boundingBox()
     expect(userBox).not.toBeNull()
-    // Light-gray surface.
+    // Light-gray surface with dark readable text.
     await expect(userBubble).toHaveCSS('background-color', 'rgb(236, 236, 236)')
+    const userText = userBubble.getByText('Hello, how do I export a CSV in Node?')
+    await expect(userText).toHaveCSS('color', 'rgb(15, 23, 42)')
     // Right-aligned to the column's right edge.
     expect(Math.abs(userBox!.x + userBox!.width - (column!.x + column!.width))).toBeLessThan(3)
     // No tail: top-right corner equals the shared bubble radius.
@@ -86,7 +88,7 @@ test.describe('US1: read a conversation in the reference layout', () => {
     expect(Math.abs(assistantBox!.x - column!.x)).toBeLessThan(3)
   })
 
-  test('markdown hierarchy, lists, links, and code render without an enclosing response card (US1-A4)', async () => {
+  test('markdown suite renders without an enclosing response card', async () => {
     await resetApp()
     await page.getByTestId('demo.markdown-suite').click()
     await page.waitForTimeout(400)
@@ -99,8 +101,9 @@ test.describe('US1: read a conversation in the reference layout', () => {
     )
   })
 
-  test('a short conversation keeps its first turn near the top and the composer at the bottom (US1-A5)', async () => {
+  test('a short conversation keeps the first turn near the top and the composer at the bottom', async () => {
     await resetApp()
+    await resizeWindow(launched, 974, 638)
     const list = await box('chat.message-list')
     const first = await page.getByTestId('chat.message.demo-1000').boundingBox()
     const pill = await box('chat.composer.pill')
@@ -117,7 +120,7 @@ test.describe('US1: read a conversation in the reference layout', () => {
 })
 
 test.describe('US2: write from the bottom composer', () => {
-  test('the composer is a centered pill wider than the reading column (US2-A1)', async () => {
+  test('the composer is a centered pill wider than the reading column', async () => {
     await resetApp()
     await resizeWindow(launched, 974, 638)
     const root = await box('chat.root')
@@ -140,9 +143,18 @@ test.describe('US2: write from the bottom composer', () => {
       .getByTestId('chat.composer.pill')
       .evaluate((el) => parseFloat(getComputedStyle(el).borderTopLeftRadius))
     expect(radius).toBeGreaterThan(20)
+    // White surface with the thin neutral outline.
+    await expect(page.getByTestId('chat.composer.pill')).toHaveCSS(
+      'background-color',
+      'rgb(255, 255, 255)',
+    )
+    await expect(page.getByTestId('chat.composer.pill')).toHaveCSS(
+      'border-color',
+      'rgb(217, 217, 227)',
+    )
   })
 
-  test('Send is a circular up-arrow control with accessible name Send, enabled per the send rules (US2-A2)', async () => {
+  test('Send is a circular up-arrow control with the accessible name Send', async () => {
     await resetApp()
     const send = page.getByTestId('chat.composer.send')
     // Empty draft: disabled.
@@ -157,7 +169,7 @@ test.describe('US2: write from the bottom composer', () => {
     expect(box!.width).toBeCloseTo(box!.height, 0)
   })
 
-  test('a multiline draft grows the pill to its limit and then scrolls internally (US2-A3)', async () => {
+  test('a multiline draft grows the pill and then scrolls internally', async () => {
     await resetApp()
     const input = page.getByTestId('chat.composer.input')
     const longDraft = `line ${'x'.repeat(60)}\n`.repeat(40)
@@ -173,7 +185,7 @@ test.describe('US2: write from the bottom composer', () => {
     await expect(page.getByTestId('chat.composer.send')).toBeVisible()
   })
 
-  test('Stop occupies the same control area without changing the composer width (US2-A4)', async () => {
+  test('Stop swaps into the same control area without a width change', async () => {
     await resetApp()
     const input = page.getByTestId('chat.composer.input')
     await input.fill('streaming draft')
@@ -188,7 +200,7 @@ test.describe('US2: write from the bottom composer', () => {
     expect(stopBox!.width).toBeCloseTo(stopBox!.height, 0)
   })
 
-  test('only the history scrolls; the composer stays and no plus/microphone placeholder appears (US2-A5/A6)', async () => {
+  test('only the history scrolls; no plus or microphone placeholder appears', async () => {
     await resetApp()
     // No plus/microphone control in the default composer.
     await expect(page.getByTestId('chat.composer.pill').locator('button')).toHaveCount(1)
@@ -202,8 +214,9 @@ test.describe('US2: write from the bottom composer', () => {
 })
 
 test.describe('US3: use existing actions and states', () => {
-  test('message actions render as a compact left-aligned row below assistant content (US3-A1)', async () => {
+  test('message actions are a compact left-aligned row below assistant content', async () => {
     await resetApp()
+    await resizeWindow(launched, 974, 638)
     await page.getByTestId('demo.toggle-actions').click()
     // Actions on an assistant message sit under its content.
     const row = page.getByTestId('chat.message.demo-1001').getByTestId('chat.message-actions')
@@ -219,7 +232,7 @@ test.describe('US3: use existing actions and states', () => {
     expect(rowBox!.y).toBeGreaterThan(contentBox!.y)
   })
 
-  test('actions are reachable by keyboard without hover and copy, retry, regenerate rules hold (US3-A1/US3-A2)', async () => {
+  test('actions are keyboard-reachable and copy, retry, and regenerate rules hold', async () => {
     await resetApp()
     await page.getByTestId('demo.toggle-actions').click()
     const copy = page.getByTestId('chat.action.copy').first()
@@ -229,11 +242,9 @@ test.describe('US3: use existing actions and states', () => {
     await expect(page.getByTestId('demo.last-link')).toHaveText(/action on demo-1000/)
     // No unsupported share action appears.
     await expect(page.getByTestId('chat.action.share')).toHaveCount(0)
-    // No unsupported share action appears (FR-007).
-    await expect(page.getByTestId('chat.action.share')).toHaveCount(0)
   })
 
-  test('streaming and error states stay readable without color and without a boxed wrapper (US3-A3)', async () => {
+  test('streaming states stay readable without color and unboxed', async () => {
     await resetApp()
     await page.getByTestId('demo.simulate-streaming').click()
     await expect(page.getByTestId('chat.message-status.streaming')).toBeVisible()
@@ -244,31 +255,37 @@ test.describe('US3: use existing actions and states', () => {
     await page.evaluate(() => {
       document.body.style.filter = ''
     })
-    // The streaming response row is still unboxed.
-    await expect(page.getByTestId('chat.message.demo-1001')).toHaveCSS(
+    // The streaming response row (the last message) stays unboxed.
+    await expect(page.locator('[data-testid^="chat.message."]').last()).toHaveCSS(
       'background-color',
       'rgba(0, 0, 0, 0)',
     )
   })
 
-  test('return-to-latest stays above the composer and returns to the latest content (US3-A4)', async () => {
+  test('return-to-latest sits above the composer and returns to the latest', async () => {
     await resetApp()
+    await resizeWindow(launched, 974, 638)
     await page.getByTestId('demo.load-1000').click()
     await page.waitForTimeout(400)
     await scrollListTo(page, 200)
     await expect(page.getByTestId('chat.scroll-to-latest')).toBeVisible()
     const scrollBox = await box('chat.scroll-to-latest')
     const pill = await box('chat.composer.pill')
+    const root = await box('chat.root')
     expect(scrollBox).not.toBeNull()
     expect(pill).not.toBeNull()
-    // Above the composer, not covering its controls.
+    expect(root).not.toBeNull()
+    // Centered horizontally, above the composer, not covering its controls.
+    const scrollCenter = scrollBox!.x + scrollBox!.width / 2
+    const panelCenter = root!.x + root!.width / 2
+    expect(Math.abs(scrollCenter - panelCenter)).toBeLessThan(40)
     expect(scrollBox!.y + scrollBox!.height).toBeLessThanOrEqual(pill!.y)
     await page.getByTestId('chat.scroll-to-latest').click()
     await page.waitForTimeout(300)
     await expect(page.getByTestId('demo.at-bottom')).toHaveText('at-bottom')
   })
 
-  test('empty, disabled, and read-only chats keep their restrictions in the new layout (US3-A5)', async () => {
+  test('empty, disabled, and read-only chats keep their restrictions', async () => {
     await resetApp()
     await page.getByTestId('demo.clear-messages').click()
     await expect(page.getByTestId('chat.state.empty')).toBeVisible()
@@ -281,7 +298,7 @@ test.describe('US3: use existing actions and states', () => {
 })
 
 test.describe('US4: use the layout at different sizes and themes', () => {
-  test('a narrow panel reflows without panel-wide horizontal overflow (US4-A1)', async () => {
+  test('a narrow panel reflows without panel-wide horizontal overflow', async () => {
     await resetApp()
     await resizeWindow(launched, 390, 844)
     const metrics = await page.getByTestId('chat.root').evaluate((el) => ({
@@ -301,7 +318,7 @@ test.describe('US4: use the layout at different sizes and themes', () => {
     expect(assistantBox!.x).toBeLessThan(column!.x + column!.width * 0.4)
   })
 
-  test('200% zoom reflows without overlap or loss (US4-A3)', async () => {
+  test('200% zoom reflows without overlap or loss', async () => {
     await resetApp()
     await page.evaluate(() => {
       document.documentElement.style.zoom = '2'
@@ -319,8 +336,9 @@ test.describe('US4: use the layout at different sizes and themes', () => {
     })
   })
 
-  test('dark and high-contrast themes keep the hierarchy with readable surfaces (US4-A4)', async () => {
+  test('dark and high-contrast themes keep the hierarchy readable', async () => {
     await resetApp()
+    await resizeWindow(launched, 974, 638)
     // Dark: gray bubble surface with light text, unboxed assistant.
     await page.getByTestId('demo.toggle-theme').click()
     await expect(page.getByTestId('chat.message.demo-1000')).toHaveCSS(
@@ -340,8 +358,9 @@ test.describe('US4: use the layout at different sizes and themes', () => {
     await expect(page.getByTestId('chat.root')).toHaveCSS('background-color', 'rgb(0, 0, 0)')
   })
 
-  test('a host theme override takes precedence over the new defaults (US4-A5)', async () => {
+  test('a host theme override takes precedence over the defaults', async () => {
     await resetApp()
+    await resizeWindow(launched, 974, 638)
     await page.getByTestId('demo.toggle-custom-theme').click()
     // The override tints the bubble purple and its text white.
     await expect(page.getByTestId('chat.message.demo-1000')).toHaveCSS(
@@ -350,7 +369,7 @@ test.describe('US4: use the layout at different sizes and themes', () => {
     )
   })
 
-  test('a draft and a streaming conversation survive size and theme changes (US4-A6)', async () => {
+  test('draft and streaming survive size and theme changes', async () => {
     await resetApp()
     await page.getByTestId('chat.composer.input').fill('keep my draft')
     await page.getByTestId('demo.simulate-streaming').click()
@@ -363,8 +382,15 @@ test.describe('US4: use the layout at different sizes and themes', () => {
 })
 
 test.describe('SC-002: no overflow and full last-response visibility', () => {
-  test('the last response and its actions scroll fully above the composer at all sizes', async () => {
+  test('the last response and its actions scroll fully above the composer', async () => {
     await resetApp()
+    await resizeWindow(launched, 1440, 900)
+    // SC-002: no panel-wide horizontal overflow at the wide viewport.
+    const overflow = await page.getByTestId('chat.root').evaluate((el) => ({
+      scrollWidth: el.scrollWidth,
+      clientWidth: el.clientWidth,
+    }))
+    expect(overflow.scrollWidth).toBeLessThanOrEqual(overflow.clientWidth + 1)
     await page.getByTestId('demo.toggle-actions').click()
     await page.getByTestId('demo.load-1000').click()
     await page.waitForTimeout(400)

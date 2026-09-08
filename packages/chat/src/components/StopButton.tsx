@@ -15,8 +15,8 @@ export interface StopButtonProps {
 
 /**
  * Stop occupies the same circular control area as Send so the swap does not
- * change the composer's width or lose the draft (US2-A4, FR-006). The square
- * glyph keeps its existing meaning and accessible name.
+ * change the composer's width or lose the draft. The square glyph keeps its
+ * existing meaning and accessible name.
  */
 export function StopButton({ label, onPress, icons, styleOverrides }: StopButtonProps) {
   const { theme } = useTheme()
@@ -48,7 +48,7 @@ export function StopButton({ label, onPress, icons, styleOverrides }: StopButton
     >
       {renderIcon('stop', icons, {
         size: 16,
-        color: theme.colors.onPrimary,
+        color: theme.colors.sendForeground,
         style: { lineHeight: 18, textAlign: 'center' },
       })}
     </Pressable>

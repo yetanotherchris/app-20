@@ -59,7 +59,7 @@ export function ScrollToLatestControl({
     >
       {renderIcon('scrollToLatest', icons, {
         size: 16,
-        color: theme.colors.onPrimary,
+        color: theme.colors.sendForeground,
         style: { lineHeight: 18, textAlign: 'center' },
       })}
       <Text style={styles.label}>{label}</Text>

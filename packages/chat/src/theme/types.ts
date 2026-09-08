@@ -27,6 +27,7 @@ export interface ChatThemeColors {
   composerBorder: string
   sendDisabled: string
   sendBackground: string
+  sendForeground: string
   controlSurface: string
   focus: string
 }

@@ -75,16 +75,13 @@ export function MarkdownText({
 
   const flatTextStyle = textStyle ? StyleSheet.flatten(textStyle) : undefined
 
-  // Body type is token-driven (FR-014): the role text style (color) is merged
-  // with the message size, line height, and weight. Heading sizes scale from
-  // the body size; strong, em, links, and inline code stay visually distinct
-  // (FR-004). The default paragraph padding is replaced by the token gap so
-  // paragraph spacing is owned by the theme.
+  // Body type defaults to the message typography tokens; an explicit
+  // host text style wins over the defaults so customization keeps precedence.
   const base: TextStyle = {
-    ...(flatTextStyle ?? {}),
     fontSize: theme.typography.messageTextSize,
     lineHeight: theme.typography.messageLineHeight,
     fontWeight: theme.typography.messageWeight,
+    ...(flatTextStyle ?? {}),
   }
 
   const headingStyle = (scale: number): TextStyle => ({
@@ -92,11 +89,17 @@ export function MarkdownText({
     fontSize: Math.round(theme.typography.messageTextSize * scale),
     lineHeight: Math.round(theme.typography.messageLineHeight * scale),
     fontWeight: theme.typography.headingWeight,
+    // Replace the library defaults (rule line, padding, large margins) with
+    // the token gap so heading spacing is theme-owned.
+    marginVertical: theme.spacing.paragraphGap,
+    paddingBottom: 0,
+    borderBottomWidth: 0,
   })
 
   const inlineCode: TextStyle = {
     ...base,
     fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
+    fontStyle: 'normal',
     backgroundColor: theme.colors.systemBubble,
     borderRadius: 4,
     paddingHorizontal: 4,

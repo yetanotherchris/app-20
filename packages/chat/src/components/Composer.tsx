@@ -133,8 +133,7 @@ export function Composer({
         },
         // Focus is indicated on the pill, not the input: the border darkens and
         // a 2px neutral outline appears on web, so the textbox itself never
-        // shows a blue border (FR-011 visible focus, without the reference's
-        // blue accent).
+        // shows a colored border.
         pillFocused: {
           borderColor: theme.colors.textSecondary,
           ...(Platform.OS === 'web'

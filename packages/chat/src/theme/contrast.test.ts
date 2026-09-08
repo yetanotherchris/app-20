@@ -19,6 +19,7 @@ function assertThemePairs(name: string, theme: ChatTheme): void {
     { fg: theme.colors.onPrimary, bg: theme.colors.primary, min: NORMAL_TEXT_MIN },
     { fg: theme.colors.userBubbleText, bg: theme.colors.userBubble, min: NORMAL_TEXT_MIN },
     { fg: theme.colors.onPrimary, bg: theme.colors.sendBackground, min: NORMAL_TEXT_MIN },
+    { fg: theme.colors.sendForeground, bg: theme.colors.sendBackground, min: NORMAL_TEXT_MIN },
     { fg: theme.colors.codeText, bg: theme.colors.codeBackground, min: NORMAL_TEXT_MIN },
     { fg: theme.colors.codeText, bg: theme.colors.codeHeader, min: NORMAL_TEXT_MIN },
     { fg: theme.colors.danger, bg: theme.colors.surface, min: NORMAL_TEXT_MIN },
