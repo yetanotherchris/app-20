@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-07
 
-**Status**: Draft
+**Status**: Archived
 
 **Input**: User description: "Accessibility for the shared chat component, usable from the start: keyboard-only operation, visible focus, accessible names, minimum touch targets, dynamic type and browser zoom, reduced motion, high contrast, and status that does not rely on color. Screen-reader announcements are out of scope for beta."
 
