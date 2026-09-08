@@ -30,8 +30,8 @@ test.describe('US1: light and dark themes', () => {
   test('every surface follows the theme switch (US1-A1)', async () => {
     await resetApp()
     const root = page.getByTestId('chat.root')
-    // Light theme: the root background is the light token.
-    await expect(root).toHaveCSS('background-color', 'rgb(248, 250, 252)')
+    // Light theme: the root background is the white reference canvas.
+    await expect(root).toHaveCSS('background-color', 'rgb(255, 255, 255)')
     await page.getByTestId('demo.toggle-theme').click()
     // Dark theme: the root background is the dark token, proving surfaces
     // actually consume theme tokens rather than hardcoding a color.
@@ -109,13 +109,11 @@ test.describe('US2: replace renderers, controls, and actions', () => {
     await expect(page.getByTestId('demo.custom-stop')).toBeVisible()
   })
 
-  test('message actions render grouped and fire with message context (US2-A5)', async () => {
+  test('message actions render as an inline row and fire with message context (US2-A5)', async () => {
     await resetApp()
     await page.getByTestId('demo.toggle-actions').click()
-    await expect(page.getByTestId('chat.action-menu').first()).toBeVisible()
-    await page.getByTestId('chat.action-menu').first().click()
-    await expect(page.getByText('Copy message')).toBeVisible()
-    await page.getByTestId('chat.action.copy').click()
+    await expect(page.getByTestId('chat.message-actions').first()).toBeVisible()
+    await page.getByTestId('chat.action.copy').first().click()
     // The demo records the action in the last-link status.
     await expect(page.getByTestId('demo.last-link')).toHaveText(/action on demo-1000/)
   })
@@ -123,9 +121,9 @@ test.describe('US2: replace renderers, controls, and actions', () => {
   test('removing all actions leaves no action affordance (edge case)', async () => {
     await resetApp()
     await page.getByTestId('demo.toggle-actions').click()
-    await expect(page.getByTestId('chat.action-menu').first()).toBeVisible()
+    await expect(page.getByTestId('chat.message-actions').first()).toBeVisible()
     await page.getByTestId('demo.toggle-actions').click()
-    await expect(page.getByTestId('chat.action-menu')).toHaveCount(0)
+    await expect(page.getByTestId('chat.message-actions')).toHaveCount(0)
   })
 
   test('custom icons replace the defaults (US2-A7)', async () => {

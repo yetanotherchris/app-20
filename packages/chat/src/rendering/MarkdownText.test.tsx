@@ -82,4 +82,19 @@ describe('MarkdownText', () => {
     const options = mockUseMarkdown.mock.calls[0]?.[1]
     expect((options.renderer as MarkdownRenderer).linkColor).toBe('#ff0000')
   })
+
+  it('drives paragraph, heading, and emphasis styles from theme tokens (FR-004/FR-014)', () => {
+    render(<MarkdownText part={markdownPart} messageId="m1" />)
+    const options = mockUseMarkdown.mock.calls[0]?.[1]
+    const styles = options.styles as Record<string, Record<string, unknown>>
+    // Body type comes from the message typography tokens.
+    expect(styles.text).toMatchObject({ fontSize: 16, lineHeight: 24, fontWeight: '400' })
+    // Paragraph spacing is the token gap, not the library default padding.
+    expect(styles.paragraph).toEqual({ paddingVertical: 0, marginBottom: 8 })
+    // Hierarchy and emphasis are visible: scaled bold headings, bold strong,
+    // italic em.
+    expect(styles.h1).toMatchObject({ fontSize: 24, fontWeight: '600' })
+    expect(styles.strong).toMatchObject({ fontWeight: '700' })
+    expect(styles.em).toMatchObject({ fontStyle: 'italic' })
+  })
 })

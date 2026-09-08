@@ -63,4 +63,25 @@ describe('MessageBubble', () => {
     // FR-004: system messages use a distinct stretch treatment, not left/right.
     expect(bubbleAlign(`chat.message.${systemMsg.id}`)).toBe('stretch')
   })
+
+  it('renders a user message as a gray bubble with dark text and no tail (FR-003)', () => {
+    const userMsg = message('user', 'hello')
+    render(<MessageBubble message={userMsg} />)
+    const bubble = screen.getByTestId(`chat.message.${userMsg.id}`)
+    // Light-gray surface, not the old primary bubble.
+    expect(getComputedStyle(bubble).backgroundColor).toBe('rgb(236, 236, 236)')
+    // No tail: the top-right corner matches the shared bubble radius.
+    expect(getComputedStyle(bubble).borderTopRightRadius).toBe(
+      getComputedStyle(bubble).borderTopLeftRadius,
+    )
+  })
+
+  it('renders an assistant message unboxed on the canvas (FR-003)', () => {
+    const assistantMsg = message('assistant', '**bold**')
+    render(<MessageBubble message={assistantMsg} />)
+    const bubble = screen.getByTestId(`chat.message.${assistantMsg.id}`)
+    // No bubble surface, border, or corner radius on the assistant row.
+    expect(getComputedStyle(bubble).backgroundColor).toBe('rgba(0, 0, 0, 0)')
+    expect(['', '0px']).toContain(getComputedStyle(bubble).borderTopLeftRadius)
+  })
 })

@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-08
 
-**Status**: Draft
+**Status**: Archived
 
 **Input**: User request: "The initial chat component is functional now, however it doesn't look like a conventional LLM chat UI. Create Spec Kit specs to copy the attached screenshot's look and feel. The left-side drawer is not part of the component; use the right-side main panel/window."
 
@@ -111,7 +111,7 @@ The user gets the same message hierarchy on narrow and wide panels, in dark mode
 
 ## Clarifications
 
-- 2026-09-08: By product direction, the composer text input intentionally has no visual focus indicator in any theme. This is a temporary exception to FR-011, FR-006 (which keeps distinguishable focused states for Send and Stop), and SC-004. Focus remains visible on the keyboard-operable controls surrounding the input, including Send and Stop. The composer exception does not conform to WCAG focus-appearance guidance and must be revisited before any accessibility-conformance claim.
+- 2026-09-08: By product direction, the composer text input intentionally has no visual focus indicator in any theme. This is a temporary exception to FR-011 and SC-004. Focus remains visible on the keyboard-operable controls surrounding it, including Send and Stop. The composer exception does not conform to WCAG focus-appearance guidance and must be revisited before an accessibility-conformance claim.
 
 ## Requirements
 
@@ -127,7 +127,7 @@ The user gets the same message hierarchy on narrow and wide panels, in dark mode
 - **FR-008**: The history MUST remain independently scrollable with sufficient bottom clearance to reveal the entire last message and its actions above the composer. Earlier-history and return-to-latest controls MUST remain reachable without obscuring composer controls.
 - **FR-009**: Empty, loading, streaming, stopped, error, disabled, and read-only states MUST preserve their existing semantics and recovery actions within the new presentation. Normal completed responses MUST NOT show persistent diagnostic status labels or debug panels by default; host-requested metadata remains supported.
 - **FR-010**: The component MUST preserve the message ordering, identity, scrolling, Markdown, draft, keyboard, composition, cancellation, and message-operation requirements of specs 001 through 006. This feature MUST NOT change the data or session behavior to obtain a visual match.
-- **FR-011**: Light, dark, custom-theme, high-contrast, reduced-motion, keyboard, touch-target, and enlarged-text requirements MUST remain satisfied. Accessibility takes precedence over the reference's faint text, low-contrast outlines, and small icon appearance.
+- **FR-011**: Light, dark, custom-theme, high-contrast, reduced-motion, keyboard, touch-target, and enlarged-text requirements MUST remain satisfied. Accessibility takes precedence over the reference's faint text, low-contrast outlines, and small icon appearance, except for the temporary composer focus-indicator exception recorded in Clarifications.
 - **FR-012**: The new presentation MUST be the default shared-component appearance and be visible in its existing demonstration surface without host-specific duplicate layouts. Existing replacement renderers, controls, actions, states, icons, labels, and theme overrides MUST remain supported.
 - **FR-013**: The component MUST NOT introduce or reserve layout space for the reference's drawer, product header, account controls, model selector, attachments, voice, sharing, or disclaimer. Host-added controls already supported by customization are unaffected.
 - **FR-014**: Body and control typography (message text, response actions, Send and Stop labels and icons, and visible status text) MUST be driven by the theme's semantic typography tokens so font, size, weight, and line height adapt across light, dark, high-contrast, and enlarged-text settings. The reference's exact type choices MUST be recorded during planning and applied as theme defaults.
@@ -140,7 +140,7 @@ The user gets the same message hierarchy on narrow and wide panels, in dark mode
 - **SC-001**: At a 974 by 638 reference panel in light theme, a fixed conversation satisfies FR-002's width and centering tolerances and all six visual checks: white canvas, gray right-aligned user bubbles, unboxed assistant text, separated paragraphs and turns, compact response actions, and a bottom rounded composer. A reference comparison records a pass or an explicit discrepancy for each check before implementation is accepted.
 - **SC-002**: At panel sizes 390 by 844, 974 by 638, and 1440 by 900, no ordinary message text or composer causes panel-wide horizontal overflow, and the last response and all its actions can be brought fully into view above the composer.
 - **SC-003**: All acceptance scenarios pass, including send by button and keyboard, newline entry, multiline growth, Stop with retained content, copy, retry, regenerate, history loading, and return to latest, without changed operation or draft behavior.
-- **SC-004**: Light, dark, high-contrast, 200% zoom, enlarged-text, and keyboard-only checks show no clipped text, overlapping controls, inaccessible actions, invisible focus, or typography that fails to follow the active theme. Existing accessibility checks pass without weakening them.
+- **SC-004**: Light, dark, high-contrast, 200% zoom, enlarged-text, and keyboard-only checks show no clipped text, overlapping controls, inaccessible actions, invisible focus, or typography that fails to follow the active theme, except for the temporary composer focus-indicator exception recorded in Clarifications. Existing accessibility checks pass without weakening unrelated requirements.
 - **SC-005**: Existing customization checks pass for themes, message and content renderers, controls, icons, labels, actions, and states; no host-specific component fork is required.
 - **SC-006**: The default component contains zero sidebar, account, model-selection, upload, microphone, share, or product-branding controls introduced solely to reproduce the screenshot.
 

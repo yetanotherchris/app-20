@@ -81,6 +81,16 @@ describe('Composer', () => {
     expect(props.onStop).toHaveBeenCalledTimes(1)
   })
 
+  it('swaps Stop into the same circular area as Send without losing the draft (US2-A4)', () => {
+    const { rerender, props } = renderComposer({ value: 'keep me', canSend: true })
+    const sendStyle = getComputedStyle(screen.getByTestId('chat.composer.send'))
+    rerender(<Composer {...props} value="keep me" canSend={true} isBusy={true} />)
+    const stopStyle = getComputedStyle(screen.getByTestId('chat.composer.stop'))
+    expect(stopStyle.width).toBe(sendStyle.width)
+    expect(stopStyle.height).toBe(sendStyle.height)
+    expect((screen.getByTestId('chat.composer.input') as HTMLTextAreaElement).value).toBe('keep me')
+  })
+
   it('gives the input an accessible name equal to its placeholder (FR-002)', () => {
     renderComposer({ placeholder: 'Ask anything…' })
     const input = screen.getByTestId('chat.composer.input')
@@ -103,11 +113,32 @@ describe('Composer', () => {
     expect(getComputedStyle(stop).outlineStyle).toBe('solid')
   })
 
+  it('renders the composer pill wrapping the input (US2-A1)', () => {
+    renderComposer({ value: 'hello', canSend: true })
+    expect(screen.getByTestId('chat.composer.pill')).toBeInTheDocument()
+    // The input sits inside the pill.
+    expect(
+      screen.getByTestId('chat.composer.pill').querySelector('[data-testid="chat.composer.input"]'),
+    ).not.toBeNull()
+  })
+
+  it('renders Send as a circular icon-only control with accessible name Send (US2-A2)', () => {
+    renderComposer({ value: 'hello', canSend: true })
+    const send = screen.getByTestId('chat.composer.send')
+    expect(send).toHaveAttribute('aria-label', 'Send')
+    // No visible text label; the arrow glyph carries the visual.
+    expect(screen.queryByText('Send')).not.toBeInTheDocument()
+    const style = getComputedStyle(send)
+    // Circular: every corner is half the width.
+    expect(style.borderTopLeftRadius).toBe(`${Math.round(parseFloat(style.width) / 2)}px`)
+    expect(style.borderTopRightRadius).toBe(style.borderTopLeftRadius)
+  })
+
   it('gives Send a 24px minimum touch target on web (FR-004)', () => {
     renderComposer({ value: 'hello', canSend: true })
     const send = screen.getByTestId('chat.composer.send')
-    expect(parseFloat(getComputedStyle(send).minHeight)).toBeGreaterThanOrEqual(24)
-    expect(parseFloat(getComputedStyle(send).minWidth)).toBeGreaterThanOrEqual(24)
+    expect(parseFloat(getComputedStyle(send).height)).toBeGreaterThanOrEqual(24)
+    expect(parseFloat(getComputedStyle(send).width)).toBeGreaterThanOrEqual(24)
   })
 })
 

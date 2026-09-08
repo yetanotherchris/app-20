@@ -32,13 +32,17 @@ async function outlineStyle(testID: string): Promise<string> {
 }
 
 test.describe('US1: keyboard operation with visible focus', () => {
-  test('focus order is logical and every control shows a visible focus ring (US1-A1/A2)', async () => {
+  test('focus order is logical and Send shows a visible focus ring (US1-A1/A2)', async () => {
     await resetApp()
     const input = page.getByTestId('chat.composer.input')
+    // The composer input has no focus indicator by product decision (recorded
+    // deviation); the focus-ring checks below cover the interactive controls.
+    const pill = page.getByTestId('chat.composer.pill')
+    const borderBefore = await pill.evaluate((el) => getComputedStyle(el).borderTopColor)
     await input.focus()
     await expect(input).toBeFocused()
-    // The composer input shows a visible focus indicator.
-    expect(await outlineStyle('chat.composer.input')).not.toBe('none')
+    expect(await pill.evaluate((el) => getComputedStyle(el).borderTopColor)).toBe(borderBefore)
+    expect(await input.evaluate((el) => parseFloat(getComputedStyle(el).outlineWidth))).toBe(0)
     // A non-empty draft enables Send so it is a tab stop.
     await page.keyboard.type('focus ring')
     await input.focus()
@@ -144,23 +148,20 @@ test.describe('US4: reduced motion and high contrast', () => {
     await page.reload()
     await page.waitForLoadState('domcontentloaded')
     await expect(page.getByTestId('chat.root')).toBeVisible()
-    // The action menu opens without a fade.
+    // The inline action row is static: no menu modal to fade.
     await page.getByTestId('demo.toggle-actions').click()
-    await page.getByTestId('chat.action-menu').first().click()
-    await expect(page.getByText('Copy message')).toBeVisible()
-    const menuAnimated = await page.getByText('Copy message').evaluate((el) => {
-      let node = el as HTMLElement | null
-      while (node) {
-        const style = getComputedStyle(node)
-        if (style.animationName && style.animationName !== 'none') return true
-        node = node.parentElement
-      }
-      return false
-    })
-    expect(menuAnimated).toBe(false)
-    // Dismiss the menu so its modal backdrop does not block later clicks.
-    await page.getByText('Copy message').click()
-    await expect(page.getByText('Copy message')).toHaveCount(0)
+    await expect(page.getByTestId('chat.message-actions').first()).toBeVisible()
+    const actionsAnimated = await page
+      .getByTestId('chat.message-actions')
+      .first()
+      .evaluate((el) => {
+        for (const node of el.querySelectorAll('*')) {
+          const style = getComputedStyle(node)
+          if (style.animationName && style.animationName !== 'none') return true
+        }
+        return false
+      })
+    expect(actionsAnimated).toBe(false)
     // Loading surface under reduced motion renders a static glyph, no spinner.
     await page.getByTestId('demo.clear-messages').click()
     await page.getByTestId('demo.simulate-submitting').click()

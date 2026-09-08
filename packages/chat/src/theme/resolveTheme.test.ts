@@ -27,6 +27,13 @@ describe('resolveTheme', () => {
     expect(theme.radii.composerRadius).toBe(darkTheme.radii.composerRadius)
   })
 
+  it('merges the layout group like the other token groups', () => {
+    const theme = resolveTheme('light', { layout: { readingColumnWidth: 480 } })
+    expect(theme.layout.readingColumnWidth).toBe(480)
+    expect(theme.layout.composerWidth).toBe(lightTheme.layout.composerWidth)
+    expect(theme.layout.sidePadding).toBe(lightTheme.layout.sidePadding)
+  })
+
   it('cannot break on unknown token groups (runtime-safe merge)', () => {
     // Cast simulates an override carrying keys the type does not know about.
     const override = { colors: { notAToken: '#123456' } } as Parameters<typeof resolveTheme>[1]

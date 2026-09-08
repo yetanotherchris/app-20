@@ -32,7 +32,7 @@ export function ScrollToLatestControl({
           gap: 6,
           minHeight: target,
           minWidth: target,
-          backgroundColor: theme.colors.controlSurface,
+          backgroundColor: theme.colors.sendBackground,
           borderRadius: theme.radii.controlRadius,
           paddingVertical: 8,
           paddingHorizontal: 16,
@@ -41,7 +41,8 @@ export function ScrollToLatestControl({
         label: {
           color: theme.colors.onPrimary,
           fontSize: theme.typography.controlTextSize,
-          fontWeight: '600',
+          lineHeight: theme.typography.controlLineHeight,
+          fontWeight: theme.typography.controlWeight,
         },
       }),
     [theme, target],
@@ -56,7 +57,11 @@ export function ScrollToLatestControl({
       style={[styles.control, focusRingStyle, styleOverrides?.scrollToLatest]}
       testID="chat.scroll-to-latest"
     >
-      {renderIcon('scrollToLatest', icons, { size: 16, color: theme.colors.onPrimary })}
+      {renderIcon('scrollToLatest', icons, {
+        size: 16,
+        color: theme.colors.sendForeground,
+        style: { lineHeight: 18, textAlign: 'center' },
+      })}
       <Text style={styles.label}>{label}</Text>
     </Pressable>
   )

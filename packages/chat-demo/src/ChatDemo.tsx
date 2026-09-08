@@ -636,7 +636,7 @@ export function ChatDemo({ initialMessages = DEFAULT_MESSAGES }: ChatDemoProps) 
         }}
         theme={theme}
         themeOverride={
-          customTheme ? { colors: { primary: '#9333ea', userBubble: '#9333ea' } } : undefined
+          customTheme ? { colors: { primary: '#9333ea', userBubble: '#9333ea', userBubbleText: '#ffffff' } } : undefined
         }
         renderMessage={renderMessage}
         contentRenderers={contentRenderers}
