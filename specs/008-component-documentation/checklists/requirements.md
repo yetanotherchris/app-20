@@ -2,7 +2,7 @@
 
 **Purpose**: Validate specification completeness and quality before proceeding to planning
 **Created**: 2026-09-08
-**Updated**: 2026-09-08 (re-validated after three-agent review)
+**Updated**: 2026-09-08 (re-validated after three-agent review and artifact-compliance review)
 **Feature**: [spec.md](./spec.md)
 
 ## Content Quality
@@ -32,8 +32,8 @@
 
 ## Notes
 
-- Three review agents ran (project consistency, spec quality, documentation coverage). All Critical/Major/Minor findings were addressed in this revision.
-- Review findings fixed: recorded the composer focus exception in spec 007's Clarifications (was missing from the active 007); fixed SC-003 self-contradiction; bounded SC-002 to the enumerated acceptance scenarios in specs 001-007; made SC-007 measurable with a defined lookup-task test; truncated the Input field; reworded the screen-reader claim to supported vs out-of-scope; added concepts guide (US2/FR-013), reference inventory verification (FR-003, SC-003, SC-008), end-to-end recipes (FR-004), released-package example verification (FR-002, FR-010, SC-008), versioning/changelog/migration (FR-009, SC-009), platform notes for both targets (FR-012), safe-by-default rendering posture (FR-011), and deliverable-level edge cases.
-- Hosting decision (public static, per-version pages, in-browser examples) recorded at assumption level; specific platform chosen during planning.
+- The reader of this documentation is the component integrator, so the spec's user stories are written from the integrator's point of view, not an end user's. The "written for non-technical stakeholders" mark above means the spec expresses WHAT and WHY without implementation detail, which it now does.
+- Three agent reviews ran (project consistency, spec quality, documentation coverage) and their findings were addressed.
+- One artifact-compliance review ran against the PR and posted findings on the PR. Its Major finding (delivery and verification mechanics, e.g. hosting, released artifact, builds, and type-checking, belonged in the plan rather than the spec) was addressed by rewording to technology-agnostic outcomes and leaving the mechanism to `/speckit.plan`. Its Minor finding (integrator jargon such as callback payloads, operation identity, and package artifacts) was addressed by removing those terms. The checklist was re-marked after those changes.
 - The composer focus exception claim is now verified: it was added to the active spec 007 in this branch.
 - Items marked incomplete require spec updates before `/speckit.clarify` or `/speckit.plan`.
