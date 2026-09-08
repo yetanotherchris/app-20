@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.0 (2026-09-08)
+
+- Streaming and operations (spec 006): a `useChatSession` hook owns the
+  conversation's messages, chat status, and per-operation identity. It streams
+  response chunks incrementally, rejects updates from superseded operations,
+  retains partial content on stop with an idempotent second stop, replaces
+  failed or completed responses in place on retry and regenerate, suppresses
+  duplicate send events, and wires per-message copy, retry, and regenerate
+  actions. The `Chat` component itself is unchanged.
+
 ## 0.2.0 (2026-09-08)
 
 - Accessibility (spec 005): WCAG 2.2 AA for the default surface. Message rows

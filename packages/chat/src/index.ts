@@ -68,6 +68,14 @@ export { ChatStatusText } from './components/ChatStatusText'
 export type { ChatStatusTextProps } from './components/ChatStatusText'
 export { StatusIndicator } from './components/StatusIndicator'
 export type { StatusIndicatorProps } from './components/StatusIndicator'
+export { useChatSession } from './session/useChatSession'
+export type {
+  ChatSession,
+  ChatSessionOptions,
+  ChatSessionControls,
+  ChatOperation,
+  OperationKind,
+} from './session/types'
 export { defaultIcons, renderIcon } from './icons'
 export type { IconProps } from './icons'
 export type { Message, MessageRole, MessageStatus, ContentPart, VisibleRange } from './types'
