@@ -82,7 +82,7 @@ export function Composer({
   icons,
   styleOverrides,
 }: ComposerProps) {
-  const { theme } = useTheme()
+  const { theme, contrast } = useTheme()
   const isTouch = useRef(isTouchTarget()).current
   const isBusyRef = useRef(isBusy)
   isBusyRef.current = isBusy
@@ -131,16 +131,16 @@ export function Composer({
                 elevation: 2,
               }),
         },
-        // Focus is indicated on the pill, not the input: the border darkens and
-        // a 2px neutral outline appears on web, so the textbox itself never
-        // shows a colored border.
+        // Focus is indicated on the pill, not the input: the border lightens to a
+        // subtle neutral gray (never black). In high contrast a 2px ring in the
+        // focus color keeps the indicator maximal, per the contrast requirement.
         pillFocused: {
-          borderColor: theme.colors.textSecondary,
-          ...(Platform.OS === 'web'
+          borderColor: theme.colors.composerBorderFocus,
+          ...(Platform.OS === 'web' && contrast === 'high'
             ? {
                 outlineWidth: 2,
                 outlineStyle: 'solid',
-                outlineColor: theme.colors.textSecondary,
+                outlineColor: theme.colors.focus,
                 outlineOffset: 1,
               }
             : null),
@@ -164,7 +164,7 @@ export function Composer({
           gap: 8,
         },
       }),
-    [theme, minHeight],
+    [theme, contrast, minHeight],
   )
 
   const performSubmit = useCallback(() => {
@@ -186,6 +186,14 @@ export function Composer({
   useEffect(() => {
     measureAndApply()
   }, [value, measureAndApply])
+
+  // An empty draft returns the composer to its single-line height, including
+  // after a send clears a multiline draft.
+  useEffect(() => {
+    if (value === '') {
+      handleTextChange(minHeight)
+    }
+  }, [value, minHeight, handleTextChange])
 
   const handleChangeText = useCallback(
     (next: string) => {

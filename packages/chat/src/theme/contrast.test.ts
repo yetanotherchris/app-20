@@ -24,6 +24,11 @@ function assertThemePairs(name: string, theme: ChatTheme): void {
     { fg: theme.colors.codeText, bg: theme.colors.codeHeader, min: NORMAL_TEXT_MIN },
     { fg: theme.colors.danger, bg: theme.colors.surface, min: NORMAL_TEXT_MIN },
     { fg: theme.colors.focus, bg: theme.colors.surface, min: UI_COMPONENT_MIN },
+    {
+      fg: theme.colors.composerBorderFocus,
+      bg: theme.colors.composerSurface,
+      min: UI_COMPONENT_MIN,
+    },
     { fg: theme.colors.unreadBadge, bg: theme.colors.background, min: UI_COMPONENT_MIN },
   ]
   for (const pair of pairs) {

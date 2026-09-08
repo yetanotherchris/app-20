@@ -185,6 +185,24 @@ test.describe('US2: write from the bottom composer', () => {
     await expect(page.getByTestId('chat.composer.send')).toBeVisible()
   })
 
+  test('the composer returns to its default height after sending a multiline draft', async () => {
+    await resetApp()
+    const input = page.getByTestId('chat.composer.input')
+    const longDraft = `line ${'x'.repeat(60)}\n`.repeat(20)
+    await input.fill(longDraft)
+    await page.waitForTimeout(300)
+    const grown = await input.evaluate(
+      (el) => (el as HTMLTextAreaElement).getBoundingClientRect().height,
+    )
+    expect(grown).toBeGreaterThan(50)
+    await page.getByTestId('chat.composer.send').click()
+    await page.waitForTimeout(300)
+    const reset = await input.evaluate(
+      (el) => (el as HTMLTextAreaElement).getBoundingClientRect().height,
+    )
+    expect(reset).toBeLessThanOrEqual(50)
+  })
+
   test('Stop swaps into the same control area without a width change', async () => {
     await resetApp()
     const input = page.getByTestId('chat.composer.input')
