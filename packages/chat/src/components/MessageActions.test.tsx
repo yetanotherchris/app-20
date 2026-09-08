@@ -19,7 +19,13 @@ const retryAction: MessageAction = { id: 'retry', label: 'Retry', group: 'A', on
 
 describe('MessageActions', () => {
   it('renders available actions as a left-aligned row with per-action test ids (US3-A1)', () => {
-    render(<MessageActions actions={[copyAction, retryAction]} message={message()} onAction={() => {}} />)
+    render(
+      <MessageActions
+        actions={[copyAction, retryAction]}
+        message={message()}
+        onAction={() => {}}
+      />,
+    )
     expect(screen.getByTestId('chat.message-actions')).toBeInTheDocument()
     expect(screen.getByTestId('chat.action.copy')).toBeInTheDocument()
     expect(screen.getByTestId('chat.action.retry')).toBeInTheDocument()

@@ -1,5 +1,12 @@
 import { useMemo } from 'react'
-import { Platform, View, StyleSheet, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
+import {
+  Platform,
+  View,
+  StyleSheet,
+  type StyleProp,
+  type TextStyle,
+  type ViewStyle,
+} from 'react-native'
 import { useMarkdown, type RendererInterface } from 'react-native-marked'
 import type { ContentPart } from '../types'
 import { useTheme } from '../theme/ThemeContext'

@@ -61,8 +61,12 @@ function ActionButton({ action, testID, onActivate }: ActionButtonProps) {
  * grouping semantics match ActionMenu; with no available action nothing
  * renders. ActionMenu stays exported for hosts that want the overflow menu.
  */
-export function MessageActions({ actions, message, onAction, styleOverrides }: MessageActionsProps) {
-  const { theme } = useTheme()
+export function MessageActions({
+  actions,
+  message,
+  onAction,
+  styleOverrides,
+}: MessageActionsProps) {
   const availableActions = useMemo(
     () =>
       actions.filter((action) => {
@@ -83,7 +87,7 @@ export function MessageActions({ actions, message, onAction, styleOverrides }: M
           marginTop: 6,
         },
       }),
-    [theme],
+    [],
   )
 
   if (availableActions.length === 0) return null

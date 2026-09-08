@@ -117,7 +117,9 @@ describe('Composer', () => {
     renderComposer({ value: 'hello', canSend: true })
     expect(screen.getByTestId('chat.composer.pill')).toBeInTheDocument()
     // The input sits inside the pill.
-    expect(screen.getByTestId('chat.composer.pill').querySelector('[data-testid="chat.composer.input"]')).not.toBeNull()
+    expect(
+      screen.getByTestId('chat.composer.pill').querySelector('[data-testid="chat.composer.input"]'),
+    ).not.toBeNull()
   })
 
   it('renders Send as a circular icon-only control with accessible name Send (US2-A2)', () => {
