@@ -54,6 +54,8 @@ Measured pairs (default themes, after correction):
 
 **Alternatives considered**: Making the LegendList scroll container focusable via a prop (unverified through the third-party component's prop surface); leaving rows unfocusable and relying on the composer for all interaction (fails US1-A3's "messages can be scrolled, read").
 
+Axe's `scrollable-region-focusable` rule flags the list's scroll container because it is not itself a tab stop. That is a false positive for this design: scrolling is keyboard-operable from any focused message row (proven by the US1-A3 e2e), so the axe scan excludes that one rule with the rationale recorded here.
+
 ## R6: Focus preservation when a message is removed (edge case)
 
 **Decision**: `useMessageFocusPreservation` keeps a ref of the last focused message id (a `focusin` listener on the list container reads `data-testid` on the active element), and when the message list changes so that id is gone, focuses the nearest remaining row (the previous id, else the next, clamped to the new range) by id lookup, falling back to the composer when the list is empty. Web-only.
