@@ -109,6 +109,10 @@ The user gets the same message hierarchy on narrow and wide panels, in dark mode
 - Small panel heights and a maximum-height draft must retain access to both the input controls and scrollable conversation content.
 - Focus, error information, and control boundaries may be more prominent than in the screenshot to meet existing accessibility requirements.
 
+## Clarifications
+
+- 2026-09-08: By product direction, the composer text input intentionally has no visual focus indicator in any theme. This is a temporary exception to FR-011, FR-006 (which keeps distinguishable focused states for Send and Stop), and SC-004. Focus remains visible on the keyboard-operable controls surrounding the input, including Send and Stop. The composer exception does not conform to WCAG focus-appearance guidance and must be revisited before any accessibility-conformance claim.
+
 ## Requirements
 
 ### Functional Requirements
