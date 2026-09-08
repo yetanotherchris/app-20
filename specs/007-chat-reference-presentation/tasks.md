@@ -103,13 +103,13 @@
 
 **Purpose**: Demo verification, e2e updates for the changed default presentation, the new spec 007 e2e suite, and full validation.
 
-- [ ] T024 Verify `packages/chat-demo/src/ChatDemo.tsx` needs no duplicate layout: the demo mounts `Chat` with defaults, so the new presentation is the default in the demonstration surface (FR-012)
-- [ ] T025 Add a window-resize helper to `tests/e2e/launch.ts` so tests can set the reference 974x638 panel and the 390/1440 viewports
-- [ ] T026 Update `tests/e2e/themes-customization.spec.ts` for the new default presentation: light canvas `rgb(255, 255, 255)` and the inline action row replacing the `chat.action-menu` flow
-- [ ] T027 Update `tests/e2e/streaming-operations.spec.ts` to click the inline `chat.action.<id>` buttons directly (retry, regenerate, copy)
-- [ ] T028 Update `tests/e2e/accessibility.spec.ts` for the inline action row and its reduced-motion assertion (no modal fade to assert; assert the row renders statically)
-- [ ] T029 Write `tests/e2e/reference-presentation.spec.ts` covering the US1-US4 acceptance scenarios: centered reading column with no drawer gutter, gray right-aligned user bubbles, unboxed assistant text, markdown suite without an enclosing card, first turn near the top, composer pill wider than the reading column with circular Send/Stop, multiline growth and internal scroll, action row reachable by keyboard and touch, states readable without color, unread/return-to-latest above the composer, 390/974/1440 no horizontal overflow, 200% zoom reflow, light/dark/high-contrast/theme-override, draft and streaming preserved across size/theme changes
-- [ ] T030 Run quickstart.md validation end-to-end; confirm `npm run lint`, `npm run typecheck`, `npm run test`, and `npm run test:e2e` all green
+- [x] T024 Verify `packages/chat-demo/src/ChatDemo.tsx` needs no duplicate layout: the demo mounts `Chat` with defaults, so the new presentation is the default in the demonstration surface (FR-012)
+- [x] T025 Add a window-resize helper to `tests/e2e/launch.ts` so tests can set the reference 974x638 panel and the 390/1440 viewports
+- [x] T026 Update `tests/e2e/themes-customization.spec.ts` for the new default presentation: light canvas `rgb(255, 255, 255)` and the inline action row replacing the `chat.action-menu` flow
+- [x] T027 Update `tests/e2e/streaming-operations.spec.ts` to click the inline `chat.action.<id>` buttons directly (retry, regenerate, copy)
+- [x] T028 Update `tests/e2e/accessibility.spec.ts` for the inline action row and its reduced-motion assertion (no modal fade to assert; assert the row renders statically)
+- [x] T029 Write `tests/e2e/reference-presentation.spec.ts` covering the US1-US4 acceptance scenarios: centered reading column with no drawer gutter, gray right-aligned user bubbles, unboxed assistant text, markdown suite without an enclosing card, first turn near the top, composer pill wider than the reading column with circular Send/Stop, multiline growth and internal scroll, action row reachable by keyboard and touch, states readable without color, unread/return-to-latest above the composer, 390/974/1440 no horizontal overflow, 200% zoom reflow, light/dark/high-contrast/theme-override, draft and streaming preserved across size/theme changes
+- [x] T030 Run quickstart.md validation end-to-end; confirm `npm run lint`, `npm run typecheck`, `npm run test`, and `npm run test:e2e` all green
 
 ## Dependencies & Execution Order
 

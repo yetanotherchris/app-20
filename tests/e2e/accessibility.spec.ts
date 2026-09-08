@@ -144,23 +144,17 @@ test.describe('US4: reduced motion and high contrast', () => {
     await page.reload()
     await page.waitForLoadState('domcontentloaded')
     await expect(page.getByTestId('chat.root')).toBeVisible()
-    // The action menu opens without a fade.
+    // The inline action row is static: no menu modal to fade.
     await page.getByTestId('demo.toggle-actions').click()
-    await page.getByTestId('chat.action-menu').first().click()
-    await expect(page.getByText('Copy message')).toBeVisible()
-    const menuAnimated = await page.getByText('Copy message').evaluate((el) => {
-      let node = el as HTMLElement | null
-      while (node) {
+    await expect(page.getByTestId('chat.message-actions').first()).toBeVisible()
+    const actionsAnimated = await page.getByTestId('chat.message-actions').first().evaluate((el) => {
+      for (const node of el.querySelectorAll('*')) {
         const style = getComputedStyle(node)
         if (style.animationName && style.animationName !== 'none') return true
-        node = node.parentElement
       }
       return false
     })
-    expect(menuAnimated).toBe(false)
-    // Dismiss the menu so its modal backdrop does not block later clicks.
-    await page.getByText('Copy message').click()
-    await expect(page.getByText('Copy message')).toHaveCount(0)
+    expect(actionsAnimated).toBe(false)
     // Loading surface under reduced motion renders a static glyph, no spinner.
     await page.getByTestId('demo.clear-messages').click()
     await page.getByTestId('demo.simulate-submitting').click()
