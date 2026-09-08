@@ -46,7 +46,11 @@ export function StopButton({ label, onPress, icons, styleOverrides }: StopButton
       style={[styles.button, focusRingStyle, styleOverrides?.stop]}
       testID="chat.composer.stop"
     >
-      {renderIcon('stop', icons, { size: 16, color: theme.colors.onPrimary })}
+      {renderIcon('stop', icons, {
+        size: 16,
+        color: theme.colors.onPrimary,
+        style: { lineHeight: 18, textAlign: 'center' },
+      })}
     </Pressable>
   )
 }

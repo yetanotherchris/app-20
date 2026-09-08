@@ -95,9 +95,43 @@ export function MessageList({
     setViewportHeight(event.nativeEvent.layout.height)
   }, [])
 
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          flex: 1,
+          backgroundColor: theme.colors.background,
+        },
+        listContent: {
+          paddingHorizontal: theme.layout.sidePadding,
+        },
+        rowColumn: {
+          width: '100%',
+          maxWidth: theme.layout.readingColumnWidth,
+          alignSelf: 'center',
+        },
+        overlay: {
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: 12,
+          alignItems: 'center',
+          gap: 8,
+        },
+      }),
+    [theme],
+  )
+
   const renderItem = useCallback(
-    ({ item }: { item: Message }) => renderMessage(item),
-    [renderMessage],
+    ({ item }: { item: Message }) => (
+      // Each row centers its content in the reading column; the list itself
+      // spans the panel so the scrollbar sits at the panel edge, not inside
+      // the column (research R6 refinement).
+      <View style={styles.rowColumn} testID="chat.reading-column">
+        {renderMessage(item)}
+      </View>
+    ),
+    [renderMessage, styles],
   )
 
   const keyExtractor = useCallback((item: Message) => item.id, [])
@@ -125,34 +159,6 @@ export function MessageList({
       />
     ) : null
 
-  const styles = useMemo(
-    () =>
-      StyleSheet.create({
-        container: {
-          flex: 1,
-          backgroundColor: theme.colors.background,
-        },
-        fill: {
-          flex: 1,
-          paddingHorizontal: theme.layout.sidePadding,
-        },
-        column: {
-          flex: 1,
-          width: '100%',
-          maxWidth: theme.layout.readingColumnWidth,
-          alignSelf: 'center',
-        },
-        overlay: {
-          position: 'absolute',
-          right: 16,
-          bottom: 16,
-          alignItems: 'center',
-          gap: 8,
-        },
-      }),
-    [theme],
-  )
-
   const scrollToLatestControl = (() => {
     const props: ScrollToLatestControlProps = {
       label: scrollToLatestLabel,
@@ -170,26 +176,23 @@ export function MessageList({
       accessibilityLabel={messageListLabel}
       testID="chat.message-list"
     >
-      <View style={styles.fill}>
-        <View style={styles.column} testID="chat.reading-column">
-          <LegendList
-            ref={listRef}
-            data={messages}
-            renderItem={renderItem}
-            keyExtractor={keyExtractor}
-            extraData={renderMessage}
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-            onViewableItemsChanged={onViewableItemsChanged}
-            viewabilityConfig={viewabilityConfig}
-            initialScrollAtEnd
-            maintainScrollAtEnd
-            maintainScrollAtEndThreshold={followFraction}
-            maintainVisibleContentPosition
-            ListHeaderComponent={loadEarlierControl}
-          />
-        </View>
-      </View>
+      <LegendList
+        ref={listRef}
+        data={messages}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        extraData={renderMessage}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        onViewableItemsChanged={onViewableItemsChanged}
+        viewabilityConfig={viewabilityConfig}
+        initialScrollAtEnd
+        maintainScrollAtEnd
+        maintainScrollAtEndThreshold={followFraction}
+        maintainVisibleContentPosition
+        contentContainerStyle={styles.listContent}
+        ListHeaderComponent={loadEarlierControl}
+      />
       {!isAtBottom && (
         <View style={styles.overlay}>
           {unreadCount > 0 && <UnreadBadge count={unreadCount} styleOverrides={styleOverrides} />}

@@ -48,6 +48,7 @@ export interface ChatThemeSpacing {
   bubbleMarginV: number
   composerPaddingH: number
   composerPaddingV: number
+  composerBottomGap: number
   paragraphGap: number
 }
 

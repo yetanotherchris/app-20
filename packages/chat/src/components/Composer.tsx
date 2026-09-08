@@ -11,7 +11,6 @@ import {
 } from 'react-native'
 import { useAutogrowHeight } from '../hooks/useAutogrowHeight'
 import { useTheme } from '../theme/ThemeContext'
-import { focusRingStyleFor } from '../accessibility/useFocusRing'
 import { SendButton, type SendButtonProps } from './SendButton'
 import { StopButton, type StopButtonProps } from './StopButton'
 import type { Capabilities, SurfaceStyleOverrides } from '../theme/types'
@@ -106,12 +105,13 @@ export function Composer({
         container: {
           alignItems: 'center',
           paddingHorizontal: theme.layout.sidePadding,
-          paddingVertical: theme.spacing.composerPaddingV,
+          paddingTop: theme.spacing.composerPaddingV,
+          paddingBottom: theme.spacing.composerBottomGap,
           backgroundColor: 'transparent',
         },
         pill: {
           flexDirection: 'row',
-          alignItems: 'flex-end',
+          alignItems: 'center',
           gap: 8,
           width: '100%',
           maxWidth: theme.layout.composerWidth,
@@ -131,8 +131,20 @@ export function Composer({
                 elevation: 2,
               }),
         },
+        // Focus is indicated on the pill, not the input: the border darkens and
+        // a 2px neutral outline appears on web, so the textbox itself never
+        // shows a blue border (FR-011 visible focus, without the reference's
+        // blue accent).
         pillFocused: {
-          borderColor: theme.colors.focus,
+          borderColor: theme.colors.textSecondary,
+          ...(Platform.OS === 'web'
+            ? {
+                outlineWidth: 2,
+                outlineStyle: 'solid',
+                outlineColor: theme.colors.textSecondary,
+                outlineOffset: 1,
+              }
+            : null),
         },
         inputWrap: {
           flex: 1,
@@ -141,7 +153,7 @@ export function Composer({
           minHeight,
           backgroundColor: 'transparent',
           paddingHorizontal: 2,
-          paddingVertical: 6,
+          paddingVertical: 10,
           fontSize: theme.typography.composerTextSize,
           lineHeight: theme.typography.composerLineHeight,
           color: theme.colors.text,
@@ -154,17 +166,6 @@ export function Composer({
         },
       }),
     [theme, minHeight],
-  )
-
-  const inputFocusedStyle = useMemo(
-    () =>
-      inputFocused
-        ? {
-            borderColor: theme.colors.focus,
-            ...focusRingStyleFor(theme, true, Platform.OS === 'web'),
-          }
-        : undefined,
-    [inputFocused, theme],
   )
 
   const performSubmit = useCallback(() => {
@@ -281,7 +282,7 @@ export function Composer({
             placeholderTextColor={theme.colors.textSecondary}
             accessibilityLabel={placeholder}
             editable={editable}
-            style={[styles.input, { height }, inputFocusedStyle, styleOverrides?.composerInput]}
+            style={[styles.input, { height }, styleOverrides?.composerInput]}
             testID="chat.composer.input"
           />
         </View>

@@ -41,6 +41,7 @@ export const lightTheme: ChatTheme = {
     bubbleMarginV: 12,
     composerPaddingH: 12,
     composerPaddingV: 8,
+    composerBottomGap: 16,
     paragraphGap: 8,
   },
   typography: {
@@ -103,6 +104,7 @@ export const darkTheme: ChatTheme = {
     bubbleMarginV: 12,
     composerPaddingH: 12,
     composerPaddingV: 8,
+    composerBottomGap: 16,
     paragraphGap: 8,
   },
   typography: {
@@ -162,6 +164,7 @@ export const lightHighContrastTheme: ChatTheme = {
     bubbleMarginV: 12,
     composerPaddingH: 12,
     composerPaddingV: 8,
+    composerBottomGap: 16,
     paragraphGap: 8,
   },
   typography: {
@@ -221,6 +224,7 @@ export const darkHighContrastTheme: ChatTheme = {
     bubbleMarginV: 12,
     composerPaddingH: 12,
     composerPaddingV: 8,
+    composerBottomGap: 16,
     paragraphGap: 8,
   },
   typography: {

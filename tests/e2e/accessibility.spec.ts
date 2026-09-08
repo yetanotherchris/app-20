@@ -37,8 +37,8 @@ test.describe('US1: keyboard operation with visible focus', () => {
     const input = page.getByTestId('chat.composer.input')
     await input.focus()
     await expect(input).toBeFocused()
-    // The composer input shows a visible focus indicator.
-    expect(await outlineStyle('chat.composer.input')).not.toBe('none')
+    // Focus is indicated on the composer pill (a neutral ring), not the input.
+    expect(await outlineStyle('chat.composer.pill')).not.toBe('none')
     // A non-empty draft enables Send so it is a tab stop.
     await page.keyboard.type('focus ring')
     await input.focus()
@@ -147,13 +147,16 @@ test.describe('US4: reduced motion and high contrast', () => {
     // The inline action row is static: no menu modal to fade.
     await page.getByTestId('demo.toggle-actions').click()
     await expect(page.getByTestId('chat.message-actions').first()).toBeVisible()
-    const actionsAnimated = await page.getByTestId('chat.message-actions').first().evaluate((el) => {
-      for (const node of el.querySelectorAll('*')) {
-        const style = getComputedStyle(node)
-        if (style.animationName && style.animationName !== 'none') return true
-      }
-      return false
-    })
+    const actionsAnimated = await page
+      .getByTestId('chat.message-actions')
+      .first()
+      .evaluate((el) => {
+        for (const node of el.querySelectorAll('*')) {
+          const style = getComputedStyle(node)
+          if (style.animationName && style.animationName !== 'none') return true
+        }
+        return false
+      })
     expect(actionsAnimated).toBe(false)
     // Loading surface under reduced motion renders a static glyph, no spinner.
     await page.getByTestId('demo.clear-messages').click()

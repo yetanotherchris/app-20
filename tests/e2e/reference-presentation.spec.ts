@@ -30,12 +30,18 @@ function box(testID: string) {
   return page.getByTestId(testID).boundingBox()
 }
 
+// The reading column renders once per message row; the first row is the
+// representative column measurement.
+function columnBox() {
+  return page.getByTestId('chat.reading-column').first().boundingBox()
+}
+
 test.describe('US1: read a conversation in the reference layout', () => {
   test('the reading column is centered with whitespace on both sides (US1-A1)', async () => {
     await resetApp()
     await resizeWindow(launched, 974, 638)
     const root = await box('chat.root')
-    const column = await box('chat.reading-column')
+    const column = await columnBox()
     expect(root).not.toBeNull()
     expect(column).not.toBeNull()
     // FR-002: about 540px wide at the reference panel, within 10%.
@@ -53,7 +59,7 @@ test.describe('US1: read a conversation in the reference layout', () => {
   test('user messages are right-aligned gray bubbles with no tail; assistant text is unboxed (US1-A2/A3)', async () => {
     await resetApp()
     await resizeWindow(launched, 974, 638)
-    const column = await box('chat.reading-column')
+    const column = await columnBox()
     expect(column).not.toBeNull()
 
     const userBubble = page.getByTestId('chat.message.demo-1000')
@@ -95,16 +101,16 @@ test.describe('US1: read a conversation in the reference layout', () => {
 
   test('a short conversation keeps its first turn near the top and the composer at the bottom (US1-A5)', async () => {
     await resetApp()
-    const column = await box('chat.reading-column')
+    const list = await box('chat.message-list')
     const first = await page.getByTestId('chat.message.demo-1000').boundingBox()
     const pill = await box('chat.composer.pill')
     const root = await box('chat.root')
-    expect(column).not.toBeNull()
+    expect(list).not.toBeNull()
     expect(first).not.toBeNull()
     expect(pill).not.toBeNull()
     expect(root).not.toBeNull()
-    // First turn near the top of the conversation area.
-    expect(first!.y - column!.y).toBeLessThan(100)
+    // First turn near the top of the conversation area, not bottom-aligned.
+    expect(first!.y - list!.y).toBeLessThan(100)
     // Composer pinned to the bottom.
     expect(root!.y + root!.height - (pill!.y + pill!.height)).toBeLessThan(80)
   })
@@ -115,7 +121,7 @@ test.describe('US2: write from the bottom composer', () => {
     await resetApp()
     await resizeWindow(launched, 974, 638)
     const root = await box('chat.root')
-    const column = await box('chat.reading-column')
+    const column = await columnBox()
     const pill = await box('chat.composer.pill')
     expect(root).not.toBeNull()
     expect(column).not.toBeNull()
@@ -203,7 +209,7 @@ test.describe('US3: use existing actions and states', () => {
     const row = page.getByTestId('chat.message.demo-1001').getByTestId('chat.message-actions')
     await expect(row).toBeVisible()
     const rowBox = await row.boundingBox()
-    const column = await box('chat.reading-column')
+    const column = await columnBox()
     const contentBox = await page.getByTestId('chat.message.demo-1001').boundingBox()
     expect(rowBox).not.toBeNull()
     expect(column).not.toBeNull()
@@ -285,7 +291,7 @@ test.describe('US4: use the layout at different sizes and themes', () => {
     expect(metrics.scrollWidth).toBeLessThanOrEqual(metrics.clientWidth + 1)
     // Alignment stays distinct: user bubbles sit right of center, assistant
     // text left of center (a scrollbar may inset the right edge by ~15px).
-    const column = await box('chat.reading-column')
+    const column = await columnBox()
     const userBox = await page.getByTestId('chat.message.demo-1000').boundingBox()
     const assistantBox = await page.getByTestId('chat.message.demo-1001').boundingBox()
     expect(column).not.toBeNull()

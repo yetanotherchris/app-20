@@ -49,7 +49,11 @@ export function SendButton({ label, disabled, onPress, icons, styleOverrides }: 
       style={[styles.button, focusRingStyle, styleOverrides?.send]}
       testID="chat.composer.send"
     >
-      {renderIcon('send', icons, { size: 16, color: theme.colors.onPrimary })}
+      {renderIcon('send', icons, {
+        size: 16,
+        color: theme.colors.onPrimary,
+        style: { lineHeight: 18, textAlign: 'center' },
+      })}
     </Pressable>
   )
 }
