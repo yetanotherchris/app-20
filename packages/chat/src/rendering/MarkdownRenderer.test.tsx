@@ -57,4 +57,48 @@ describe('MarkdownRenderer', () => {
     render(<div>{renderer.code('c', 'js')}</div>)
     expect(screen.getByTestId('chat.code.m1.0')).toBeInTheDocument()
   })
+
+  it('uses a custom element renderer for that element and defaults elsewhere (FR-006)', () => {
+    const customLink = vi.fn((children: React.ReactNode, _href: string) => (
+      <div data-testid="custom-link">{children}</div>
+    ))
+    const renderer = new MarkdownRenderer({
+      messageId: 'm1',
+      elementRenderers: { link: customLink },
+    })
+    render(<div>{renderer.link(['go'], 'https://example.com')}</div>)
+    expect(screen.getByTestId('custom-link')).toBeInTheDocument()
+    expect(customLink).toHaveBeenCalledWith(['go'], 'https://example.com', undefined, undefined)
+    // Non-overridden elements keep defaults: code still renders a CodeBlock.
+    render(<div>{renderer.code('x', 'js')}</div>)
+    expect(screen.getByText('x')).toBeInTheDocument()
+  })
+
+  it('applies the default link behavior when no custom link renderer is supplied', () => {
+    const onLinkPress = vi.fn()
+    const renderer = new MarkdownRenderer({ messageId: 'm1', onLinkPress })
+    render(<div>{renderer.link(['plain'], 'https://example.com')}</div>)
+    expect(screen.getByRole('link', { name: 'plain' })).toBeInTheDocument()
+  })
+
+  it('never passes an unsafe href to a custom link renderer (FR-008, FR-012)', () => {
+    const customLink = vi.fn((children: React.ReactNode, href: string) => (
+      <div data-testid="custom-link" data-href={href}>
+        {children}
+      </div>
+    ))
+    const renderer = new MarkdownRenderer({
+      messageId: 'm1',
+      elementRenderers: { link: customLink },
+    })
+    // A javascript: link must render inert children without reaching the
+    // custom renderer.
+    render(<div>{renderer.link(['bad'], 'javascript:alert(1)')}</div>)
+    expect(customLink).not.toHaveBeenCalled()
+    expect(screen.getByText('bad')).toBeInTheDocument()
+    // A safe href still reaches the custom renderer.
+    render(<div>{renderer.link(['good'], 'https://example.com')}</div>)
+    expect(customLink).toHaveBeenCalledTimes(1)
+    expect(customLink).toHaveBeenCalledWith(['good'], 'https://example.com', undefined, undefined)
+  })
 })

@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-07
 
-**Status**: Draft
+**Status**: Archived
 
 **Input**: User description: "Themes and customization for the shared chat component: light and dark themes, custom themes, and replaceable renderers, controls, states, and actions so the host application can shape the component to its own design."
 

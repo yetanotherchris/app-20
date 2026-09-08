@@ -10,9 +10,11 @@ import { StyleSheet, View, type LayoutChangeEvent } from 'react-native'
 import type { Message, VisibleRange } from '../types'
 import { useAtBottom } from '../hooks/useAtBottom'
 import { useUnreadCount } from '../hooks/useUnreadCount'
+import { useTheme } from '../theme/ThemeContext'
 import { LoadEarlierControl } from './LoadEarlierControl'
-import { ScrollToLatestControl } from './ScrollToLatestControl'
+import { ScrollToLatestControl, type ScrollToLatestControlProps } from './ScrollToLatestControl'
 import { UnreadBadge } from './UnreadBadge'
+import type { SurfaceStyleOverrides } from '../theme/types'
 
 export interface MessageListProps {
   messages: readonly Message[]
@@ -22,11 +24,14 @@ export interface MessageListProps {
   followThreshold?: number
   loadEarlierLabel?: string
   scrollToLatestLabel?: string
+  renderScrollToLatest?: (props: ScrollToLatestControlProps) => React.ReactElement
   onLoadEarlier: () => void
   onScrollToLatest?: () => void
   onAtBottomChange?: (isAtBottom: boolean) => void
   onUnreadCountChange?: (count: number) => void
   onVisibleRangeChange?: (range: VisibleRange) => void
+  icons?: Partial<Record<'scrollToLatest', React.ReactNode>>
+  styleOverrides?: SurfaceStyleOverrides
 }
 
 const DEFAULT_FOLLOW_THRESHOLD = 96
@@ -40,12 +45,16 @@ export function MessageList({
   followThreshold = DEFAULT_FOLLOW_THRESHOLD,
   loadEarlierLabel = 'Load earlier messages',
   scrollToLatestLabel = 'Scroll to latest',
+  renderScrollToLatest,
   onLoadEarlier,
   onScrollToLatest,
   onAtBottomChange,
   onUnreadCountChange,
   onVisibleRangeChange,
+  icons,
+  styleOverrides,
 }: MessageListProps) {
+  const { theme } = useTheme()
   const listRef = useRef<LegendListRef>(null)
   const [viewportHeight, setViewportHeight] = useState(0)
   const onVisibleRangeChangeRef = useRef(onVisibleRangeChange)
@@ -59,9 +68,6 @@ export function MessageList({
     onUnreadCountChange?.(unreadCount)
   }, [unreadCount, onUnreadCountChange])
 
-  // The engine's follow band must match the hook's FR-003 threshold so the
-  // engine does not keep a user pinned in the same band the hook reports as
-  // scrolled-up (or stop following inside the "at bottom" band).
   const followFraction =
     viewportHeight > 0 ? followThreshold / viewportHeight : FALLBACK_FOLLOW_FRACTION
 
@@ -113,16 +119,50 @@ export function MessageList({
         label={loadEarlierLabel}
         isLoading={isLoadingEarlier}
         onPress={onLoadEarlier}
+        styleOverrides={styleOverrides}
       />
     ) : null
 
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        container: {
+          flex: 1,
+          backgroundColor: theme.colors.background,
+        },
+        overlay: {
+          position: 'absolute',
+          right: 16,
+          bottom: 16,
+          alignItems: 'center',
+          gap: 8,
+        },
+      }),
+    [theme],
+  )
+
+  const scrollToLatestControl = (() => {
+    const props: ScrollToLatestControlProps = {
+      label: scrollToLatestLabel,
+      onPress: scrollToLatest,
+      icons,
+      styleOverrides,
+    }
+    return renderScrollToLatest ? renderScrollToLatest(props) : <ScrollToLatestControl {...props} />
+  })()
+
   return (
-    <View style={styles.container} onLayout={handleLayout} testID="chat.message-list">
+    <View
+      style={[styles.container, styleOverrides?.messageList]}
+      onLayout={handleLayout}
+      testID="chat.message-list"
+    >
       <LegendList
         ref={listRef}
         data={messages}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
+        extraData={renderMessage}
         onScroll={handleScroll}
         scrollEventThrottle={16}
         onViewableItemsChanged={onViewableItemsChanged}
@@ -135,23 +175,10 @@ export function MessageList({
       />
       {!isAtBottom && (
         <View style={styles.overlay}>
-          {unreadCount > 0 && <UnreadBadge count={unreadCount} />}
-          <ScrollToLatestControl label={scrollToLatestLabel} onPress={scrollToLatest} />
+          {unreadCount > 0 && <UnreadBadge count={unreadCount} styleOverrides={styleOverrides} />}
+          {scrollToLatestControl}
         </View>
       )}
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-  overlay: {
-    position: 'absolute',
-    right: 16,
-    bottom: 16,
-    alignItems: 'center',
-    gap: 8,
-  },
-})

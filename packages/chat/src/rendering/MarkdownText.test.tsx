@@ -55,4 +55,31 @@ describe('MarkdownText', () => {
     const second = mockUseMarkdown.mock.calls[1]?.[1]?.renderer
     expect(first).toBe(second)
   })
+
+  it('uses a host-supplied full renderer instead of the default (FR-006)', () => {
+    const customRenderer = { custom: true } as unknown as React.ComponentProps<
+      typeof MarkdownText
+    >['markdownRenderer']
+    render(<MarkdownText part={markdownPart} messageId="m1" markdownRenderer={customRenderer} />)
+    const options = mockUseMarkdown.mock.calls[0]?.[1]
+    // The host renderer is passed straight through; the default MarkdownRenderer
+    // is not constructed.
+    expect(options.renderer).toBe(customRenderer)
+    expect(options.renderer).not.toBeInstanceOf(MarkdownRenderer)
+  })
+
+  it('uses the theme primary as the default link color (SC-001)', () => {
+    render(<MarkdownText part={markdownPart} messageId="m1" />)
+    const options = mockUseMarkdown.mock.calls[0]?.[1]
+    const renderer = options.renderer as MarkdownRenderer
+    // The default renderer resolves its link color from the light theme primary
+    // (no surface hardcodes a color, SC-001).
+    expect(renderer.linkColor).toBe('#2563eb')
+  })
+
+  it('a host-supplied linkColor wins over the theme default', () => {
+    render(<MarkdownText part={markdownPart} messageId="m1" linkColor="#ff0000" />)
+    const options = mockUseMarkdown.mock.calls[0]?.[1]
+    expect((options.renderer as MarkdownRenderer).linkColor).toBe('#ff0000')
+  })
 })

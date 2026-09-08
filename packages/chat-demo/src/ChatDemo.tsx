@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import { MessageList, MessageBubble, Composer, type Message } from '@app-20/chat'
+import { Chat, type Message, type ThemeName, type MessageAction } from '@app-20/chat'
 import { largeMessageText } from './fixtures/large-message'
 import markdownSuite from './fixtures/markdown-suite.md?raw'
 import unsafeMarkdown from './fixtures/unsafe-markdown.md?raw'
@@ -68,7 +68,6 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
   const [unread, setUnread] = useState(0)
   const [lastLinkPress, setLastLinkPress] = useState<string | null>(null)
   const [copyResult, setCopyResult] = useState<'idle' | 'ok' | 'denied'>('idle')
-  // The copy callback is stable (rows are recycled); read the live state via a ref.
   const copyResultRef = useRef(copyResult)
   copyResultRef.current = copyResult
   const [draft, setDraft] = useState('')
@@ -78,10 +77,19 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
   const replyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [blurBehavior, setBlurBehavior] = useState<'send' | 'keep'>('keep')
   const [submitCount, setSubmitCount] = useState(0)
-
-  const canSend = draft.trim().length > 0 && chatStatus === 'idle'
-  const isBusy =
-    chatStatus === 'submitting' || chatStatus === 'streaming' || chatStatus === 'stopping'
+  const [theme, setTheme] = useState<ThemeName>('light')
+  const [customTheme, setCustomTheme] = useState(false)
+  const [customMessageRenderer, setCustomMessageRenderer] = useState(false)
+  const [customContentRenderer, setCustomContentRenderer] = useState(false)
+  const [customControls, setCustomControls] = useState(false)
+  const [customIcons, setCustomIcons] = useState(false)
+  const [actionsEnabled, setActionsEnabled] = useState(false)
+  const [customStates, setCustomStates] = useState(false)
+  const [customMarkdownElements, setCustomMarkdownElements] = useState(false)
+  const [disabled, setDisabled] = useState(false)
+  const [readOnly, setReadOnly] = useState(false)
+  const [sendDisabled, setSendDisabled] = useState(false)
+  const [copyDisabled, setCopyDisabled] = useState(false)
 
   const handleSubmit = useCallback(() => {
     const text = draft.trim()
@@ -90,8 +98,6 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
     setMessages((current) => [...current, makeMessage('user', text)])
     setDraft('')
     setChatStatus('streaming')
-    // Simulate a streaming response; the composer returns to idle. The reply
-    // timer is tracked so Stop can cancel it.
     replyTimerRef.current = setTimeout(() => {
       setMessages((current) => [
         ...current,
@@ -165,6 +171,24 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
     }, 50)
   }, [])
 
+  const clearMessages = useCallback(() => {
+    setMessages([])
+    setHasEarlier(false)
+    setChatStatus('idle')
+  }, [])
+
+  const simulateSubmitting = useCallback(() => {
+    setMessages([])
+    setHasEarlier(false)
+    setChatStatus('submitting')
+  }, [])
+
+  const simulateError = useCallback(() => {
+    setMessages([])
+    setHasEarlier(false)
+    setChatStatus('error')
+  }, [])
+
   const loadThousand = useCallback(() => {
     const bulk: Message[] = Array.from({ length: 1000 }, (_, i) =>
       makeMessage(i % 2 === 0 ? 'user' : 'assistant', `Bulk message ${i + 1}`),
@@ -180,25 +204,6 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
     setMessages(bulk)
     setHasEarlier(false)
   }, [])
-
-  const renderMessage = useCallback(
-    (message: Message) => (
-      <MessageBubble
-        key={message.id}
-        message={message}
-        onLinkPress={(href) => {
-          setLastLinkPress(href)
-        }}
-        onCopyCode={(_code) => {
-          if (copyResultRef.current === 'denied') {
-            return Promise.reject(new Error('clipboard denied'))
-          }
-          return Promise.resolve()
-        }}
-      />
-    ),
-    [],
-  )
 
   const loadMarkdownSuite = useCallback(() => {
     setMessages([
@@ -217,6 +222,153 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
     ])
     setHasEarlier(false)
   }, [])
+
+  const toggleTheme = useCallback(() => {
+    setTheme((current) => (current === 'light' ? 'dark' : 'light'))
+  }, [])
+
+  const messageActions = useMemo<readonly MessageAction[]>(
+    () =>
+      actionsEnabled
+        ? [
+            {
+              id: 'copy',
+              label: 'Copy message',
+              group: 'Actions',
+              onAction: () => {},
+            },
+            {
+              id: 'retry',
+              label: 'Retry',
+              group: 'Response',
+              onAction: () => {},
+            },
+          ]
+        : [],
+    [actionsEnabled],
+  )
+
+  const handleMessageAction = useCallback((_action: MessageAction, message: Message) => {
+    setSubmitCount((n) => n + 1)
+    setLastLinkPress(`action on ${message.id}`)
+  }, [])
+
+  const renderMessage = useMemo(() => {
+    if (!customMessageRenderer) return undefined
+    return (message: Message) => (
+      <View key={message.id} style={styles.customMessage} testID={`chat.message.${message.id}`}>
+        <Text style={styles.customMessageText}>custom: {plainText(message)}</Text>
+      </View>
+    )
+  }, [customMessageRenderer])
+
+  const contentRenderers = useMemo(
+    () =>
+      customContentRenderer
+        ? {
+            'text.plain': ({ part }: { part: { text: string }; index: number }) => (
+              <Text testID="demo.custom-plain-renderer">custom-plain: {part.text}</Text>
+            ),
+          }
+        : undefined,
+    [customContentRenderer],
+  )
+
+  const markdownElementRenderers = useMemo(
+    () =>
+      customMarkdownElements
+        ? {
+            link: (children: React.ReactNode, href: string) => (
+              <Text testID="demo.custom-markdown-link" style={styles.customLink}>
+                [link:{href}]{children}
+              </Text>
+            ),
+          }
+        : undefined,
+    [customMarkdownElements],
+  )
+
+  const customSend = useCallback(
+    () => (
+      <View style={styles.customControl} testID="demo.custom-send">
+        <Text style={styles.customControlText}>Send!</Text>
+      </View>
+    ),
+    [],
+  )
+
+  const customStop = useCallback(
+    () => (
+      <View style={styles.customControl} testID="demo.custom-stop">
+        <Text style={styles.customControlText}>Stop!</Text>
+      </View>
+    ),
+    [],
+  )
+
+  const customScrollToLatest = useCallback(
+    () => (
+      <View style={styles.customControl} testID="demo.custom-scroll">
+        <Text style={styles.customControlText}>Latest</Text>
+      </View>
+    ),
+    [],
+  )
+
+  const customComposerControl = useCallback(
+    () => (
+      <View style={styles.customControl} testID="demo.custom-composer-control">
+        <Text style={styles.customControlText}>📎</Text>
+      </View>
+    ),
+    [],
+  )
+
+  const icons = useMemo(
+    () =>
+      customIcons
+        ? {
+            send: <Text testID="demo.custom-send-icon">✈</Text>,
+            stop: <Text testID="demo.custom-stop-icon">■</Text>,
+            scrollToLatest: <Text testID="demo.custom-scroll-icon">↓</Text>,
+            more: <Text testID="demo.custom-more-icon">☰</Text>,
+          }
+        : undefined,
+    [customIcons],
+  )
+
+  const customEmptyState = useCallback(
+    () => (
+      <View style={styles.customState} testID="demo.custom-empty-state">
+        <Text>Custom empty</Text>
+      </View>
+    ),
+    [],
+  )
+  const customLoadingState = useCallback(
+    () => (
+      <View style={styles.customState} testID="demo.custom-loading-state">
+        <Text>Custom loading</Text>
+      </View>
+    ),
+    [],
+  )
+  const customTypingState = useCallback(
+    () => (
+      <View style={styles.customState} testID="demo.custom-typing-state">
+        <Text>Custom typing</Text>
+      </View>
+    ),
+    [],
+  )
+  const customErrorState = useCallback(
+    () => (
+      <View style={styles.customState} testID="demo.custom-error-state">
+        <Text>Custom error</Text>
+      </View>
+    ),
+    [],
+  )
 
   const controls = useMemo(
     () => (
@@ -251,6 +403,74 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
           onPress={() => setBlurBehavior((prev) => (prev === 'send' ? 'keep' : 'send'))}
           testID="demo.toggle-blur"
         />
+        <DemoButton label={`Theme: ${theme}`} onPress={toggleTheme} testID="demo.toggle-theme" />
+        <DemoButton
+          label={customTheme ? 'Custom theme: on' : 'Custom theme: off'}
+          onPress={() => setCustomTheme((v) => !v)}
+          testID="demo.toggle-custom-theme"
+        />
+        <DemoButton
+          label={customMessageRenderer ? 'Msg renderer: custom' : 'Msg renderer: default'}
+          onPress={() => setCustomMessageRenderer((v) => !v)}
+          testID="demo.toggle-message-renderer"
+        />
+        <DemoButton
+          label={customContentRenderer ? 'Content renderer: custom' : 'Content renderer: default'}
+          onPress={() => setCustomContentRenderer((v) => !v)}
+          testID="demo.toggle-content-renderer"
+        />
+        <DemoButton
+          label={customControls ? 'Controls: custom' : 'Controls: default'}
+          onPress={() => setCustomControls((v) => !v)}
+          testID="demo.toggle-controls"
+        />
+        <DemoButton
+          label={customIcons ? 'Icons: custom' : 'Icons: default'}
+          onPress={() => setCustomIcons((v) => !v)}
+          testID="demo.toggle-icons"
+        />
+        <DemoButton
+          label={actionsEnabled ? 'Actions: on' : 'Actions: off'}
+          onPress={() => setActionsEnabled((v) => !v)}
+          testID="demo.toggle-actions"
+        />
+        <DemoButton
+          label={customStates ? 'States: custom' : 'States: default'}
+          onPress={() => setCustomStates((v) => !v)}
+          testID="demo.toggle-states"
+        />
+        <DemoButton
+          label={customMarkdownElements ? 'MD elements: custom' : 'MD elements: default'}
+          onPress={() => setCustomMarkdownElements((v) => !v)}
+          testID="demo.toggle-markdown-elements"
+        />
+        <DemoButton label="Clear messages" onPress={clearMessages} testID="demo.clear-messages" />
+        <DemoButton
+          label="Simulate submitting"
+          onPress={simulateSubmitting}
+          testID="demo.simulate-submitting"
+        />
+        <DemoButton label="Simulate error" onPress={simulateError} testID="demo.simulate-error" />
+        <DemoButton
+          label={disabled ? 'Disabled: on' : 'Disabled: off'}
+          onPress={() => setDisabled((v) => !v)}
+          testID="demo.toggle-disabled"
+        />
+        <DemoButton
+          label={readOnly ? 'Read-only: on' : 'Read-only: off'}
+          onPress={() => setReadOnly((v) => !v)}
+          testID="demo.toggle-read-only"
+        />
+        <DemoButton
+          label={sendDisabled ? 'Cap send: off' : 'Cap send: on'}
+          onPress={() => setSendDisabled((v) => !v)}
+          testID="demo.toggle-cap-send"
+        />
+        <DemoButton
+          label={copyDisabled ? 'Cap copy: off' : 'Cap copy: on'}
+          onPress={() => setCopyDisabled((v) => !v)}
+          testID="demo.toggle-cap-copy"
+        />
       </View>
     ),
     [
@@ -264,6 +484,23 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
       copyResult,
       loadLargeMarkdown,
       blurBehavior,
+      theme,
+      toggleTheme,
+      customTheme,
+      customMessageRenderer,
+      customContentRenderer,
+      customControls,
+      customIcons,
+      actionsEnabled,
+      customStates,
+      customMarkdownElements,
+      clearMessages,
+      simulateSubmitting,
+      simulateError,
+      disabled,
+      readOnly,
+      sendDisabled,
+      copyDisabled,
     ],
   )
 
@@ -284,22 +521,52 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
           submits: {submitCount}
         </Text>
       </View>
-      <MessageList
+      <Chat
         messages={messages}
+        draft={draft}
+        status={chatStatus}
         hasEarlierMessages={hasEarlier}
         isLoadingEarlier={loadingEarlier}
-        renderMessage={renderMessage}
+        onChangeDraft={setDraft}
+        onSubmit={handleSubmit}
+        onStop={handleStop}
         onLoadEarlier={loadEarlier}
         onAtBottomChange={setAtBottom}
         onUnreadCountChange={setUnread}
-      />
-      <Composer
-        value={draft}
-        canSend={canSend}
-        isBusy={isBusy}
-        onChangeText={setDraft}
-        onSubmit={handleSubmit}
-        onStop={handleStop}
+        onLinkPress={(href) => {
+          setLastLinkPress(href)
+        }}
+        onCopyCode={(_code) => {
+          if (copyResultRef.current === 'denied') {
+            return Promise.reject(new Error('clipboard denied'))
+          }
+          return Promise.resolve()
+        }}
+        theme={theme}
+        themeOverride={
+          customTheme ? { colors: { primary: '#9333ea', userBubble: '#9333ea' } } : undefined
+        }
+        renderMessage={renderMessage}
+        contentRenderers={contentRenderers}
+        markdownElementRenderers={markdownElementRenderers}
+        renderSend={customControls ? customSend : undefined}
+        renderStop={customControls ? customStop : undefined}
+        renderScrollToLatest={customControls ? customScrollToLatest : undefined}
+        renderComposerControls={customControls ? customComposerControl : undefined}
+        messageActions={messageActions}
+        onMessageAction={handleMessageAction}
+        icons={customIcons ? icons : undefined}
+        renderEmptyState={customStates ? customEmptyState : undefined}
+        renderLoadingState={customStates ? customLoadingState : undefined}
+        renderTypingState={customStates ? customTypingState : undefined}
+        renderErrorState={customStates ? customErrorState : undefined}
+        disabled={disabled}
+        readOnly={readOnly}
+        capabilities={
+          sendDisabled || copyDisabled
+            ? { send: sendDisabled ? false : undefined, copy: copyDisabled ? false : undefined }
+            : undefined
+        }
         blurBehavior={blurBehavior}
       />
     </View>
@@ -340,5 +607,35 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: 12,
     color: '#475569',
+  },
+  customMessage: {
+    padding: 8,
+    marginVertical: 4,
+    marginHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#fef3c7',
+  },
+  customMessageText: {
+    color: '#78350f',
+  },
+  customLink: {
+    color: '#0d9488',
+    textDecorationLine: 'underline',
+  },
+  customControl: {
+    borderRadius: 20,
+    backgroundColor: '#475569',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  customControlText: {
+    color: '#ffffff',
+    fontSize: 14,
+  },
+  customState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#ecfdf5',
   },
 })

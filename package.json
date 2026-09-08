@@ -12,9 +12,12 @@
     "format:check": "prettier --check .",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "test": "vitest run",
-    "build:electron": "npm run build --workspace apps/electron",
+    "build:chat": "npm run build --workspace @app-20/chat",
+    "test:package": "npm run build:chat && vitest run --config vitest.package.config.ts",
+    "build:electron": "npm run build:chat && npm run build --workspace apps/electron",
     "dev:web": "npm run dev --workspace apps/web",
     "dev:electron": "npm run dev --workspace apps/electron",
+    "build:web": "npm run build:chat && npm run build --workspace apps/web",
     "test:e2e": "npm run build:electron && playwright test"
   },
   "devDependencies": {

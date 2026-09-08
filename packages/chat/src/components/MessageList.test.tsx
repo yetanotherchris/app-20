@@ -10,6 +10,7 @@ vi.mock('@legendapp/list/react-native', () => ({
     ListHeaderComponent,
     onScroll,
     onLayout,
+    extraData,
   }: {
     data: readonly Message[]
     renderItem: (info: { item: Message }) => React.ReactElement
@@ -18,9 +19,11 @@ vi.mock('@legendapp/list/react-native', () => ({
       nativeEvent: { contentOffset: { y: number }; contentSize: { height: number } }
     }) => void
     onLayout?: (event: { nativeEvent: { layout: { height: number } } }) => void
+    extraData?: unknown
   }) => (
     <div
       data-testid="mock-legend-list"
+      data-extradata={String(extraData != null)}
       ref={(node) => {
         if (node) onLayout?.({ nativeEvent: { layout: { height: 600 } } })
       }}
@@ -144,5 +147,21 @@ describe('MessageList', () => {
     fireEvent.scroll(screen.getByTestId('mock-legend-list'))
     expect(screen.getByTestId('chat.scroll-to-latest')).toBeInTheDocument()
     expect(onAtBottomChange).toHaveBeenLastCalledWith(false)
+  })
+
+  it('renders a custom scroll-to-latest control in place of the default (FR-007)', () => {
+    render(
+      <MessageList
+        messages={messages}
+        hasEarlierMessages={false}
+        isLoadingEarlier={false}
+        renderMessage={renderMessage}
+        onLoadEarlier={() => {}}
+        renderScrollToLatest={() => <div data-testid="custom-scroll" />}
+      />,
+    )
+    fireEvent.scroll(screen.getByTestId('mock-legend-list'))
+    expect(screen.getByTestId('custom-scroll')).toBeInTheDocument()
+    expect(screen.queryByTestId('chat.scroll-to-latest')).not.toBeInTheDocument()
   })
 })
