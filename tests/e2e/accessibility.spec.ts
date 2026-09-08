@@ -60,8 +60,6 @@ test.describe('US1: keyboard operation with visible focus', () => {
     await page.keyboard.type('keyboard send')
     await page.keyboard.press('Enter')
     await expect(page.getByText('keyboard send')).toBeVisible()
-    // Wait for the demo reply so its timer cannot race the next step.
-    await expect(page.getByText(/Reply to: keyboard send/)).toBeVisible()
     await page.getByTestId('demo.simulate-streaming').click()
     await expect(page.getByTestId('chat.composer.stop')).toBeVisible()
     // Reach Stop with the keyboard and activate it.

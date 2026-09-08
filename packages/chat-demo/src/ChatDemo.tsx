@@ -1,6 +1,15 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
-import { Chat, type Message, type ThemeName, type MessageAction } from '@app-20/chat'
+import {
+  Chat,
+  useChatSession,
+  type ChatOperation,
+  type ChatSessionControls,
+  type ChatStatus,
+  type Message,
+  type MessageAction,
+  type ThemeName,
+} from '@app-20/chat'
 import { largeMessageText } from './fixtures/large-message'
 import markdownSuite from './fixtures/markdown-suite.md?raw'
 import unsafeMarkdown from './fixtures/unsafe-markdown.md?raw'
@@ -45,37 +54,30 @@ function DemoButton({
   )
 }
 
-export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
-  const [messages, setMessages] = useState<readonly Message[]>(() =>
-    initialMessages.length > 0
-      ? initialMessages
-      : [
-          makeMessage('user', 'Hello, how do I export a CSV in Node?'),
-          makeMessage(
-            'assistant',
-            'Use the `csv-stringify` package. Call `stringify` with your rows and a callback.',
-          ),
-          makeMessage('user', 'Can it stream to a file?'),
-          makeMessage(
-            'assistant',
-            'Yes. `csv-stringify` accepts a writable stream as the destination.',
-          ),
-        ],
-  )
+const DEFAULT_MESSAGES: readonly Message[] = [
+  makeMessage('user', 'Hello, how do I export a CSV in Node?'),
+  makeMessage(
+    'assistant',
+    'Use the `csv-stringify` package. Call `stringify` with your rows and a callback.',
+  ),
+  makeMessage('user', 'Can it stream to a file?'),
+  makeMessage('assistant', 'Yes. `csv-stringify` accepts a writable stream as the destination.'),
+]
+
+type StateOverride = { messages: readonly Message[]; status: ChatStatus }
+
+export function ChatDemo({ initialMessages = DEFAULT_MESSAGES }: ChatDemoProps) {
+  const [override, setOverride] = useState<StateOverride | null>(null)
   const [hasEarlier, setHasEarlier] = useState(false)
   const [loadingEarlier, setLoadingEarlier] = useState(false)
   const [atBottom, setAtBottom] = useState(true)
   const [unread, setUnread] = useState(0)
   const [lastLinkPress, setLastLinkPress] = useState<string | null>(null)
+  const [copiedText, setCopiedText] = useState('')
   const [copyResult, setCopyResult] = useState<'idle' | 'ok' | 'denied'>('idle')
   const copyResultRef = useRef(copyResult)
   copyResultRef.current = copyResult
   const [draft, setDraft] = useState('')
-  const [chatStatus, setChatStatus] = useState<'idle' | 'submitting' | 'streaming' | 'stopping'>(
-    'idle',
-  )
-  const replyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [blurBehavior, setBlurBehavior] = useState<'send' | 'keep'>('keep')
   const [submitCount, setSubmitCount] = useState(0)
   const [theme, setTheme] = useState<ThemeName>('light')
   const [customTheme, setCustomTheme] = useState(false)
@@ -92,199 +94,208 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
   const [copyDisabled, setCopyDisabled] = useState(false)
   const [highContrast, setHighContrast] = useState(false)
   const [reducedMotion, setReducedMotion] = useState(false)
+  const [blurBehavior, setBlurBehavior] = useState<'send' | 'keep'>('keep')
+
+  const sessionControlsRef = useRef<ChatSessionControls | null>(null)
+  const staleControlsRef = useRef<ChatSessionControls | null>(null)
+  const session = useChatSession({
+    request: useCallback((_op: ChatOperation, controls: ChatSessionControls) => {
+      // The transport is driven manually by the demo buttons so e2e runs are
+      // deterministic; it never auto-completes.
+      staleControlsRef.current = sessionControlsRef.current
+      sessionControlsRef.current = controls
+    }, []),
+    copyMessageText: useCallback((_message: Message, text: string) => {
+      setCopiedText(text)
+      return Promise.resolve()
+    }, []),
+    initialMessages,
+  })
+
+  const {
+    messages: sessionMessages,
+    status: sessionStatus,
+    submit,
+    stop,
+    replaceMessages,
+    onMessageAction: runSessionAction,
+    messageActions: sessionActions,
+  } = session
+
+  const messages = override ? override.messages : sessionMessages
+  const status = override ? override.status : sessionStatus
+  const messageActions = actionsEnabled ? sessionActions : []
 
   const handleSubmit = useCallback(() => {
     const text = draft.trim()
     if (!text) return
     setSubmitCount((n) => n + 1)
-    setMessages((current) => [...current, makeMessage('user', text)])
+    setOverride(null)
+    submit(text)
     setDraft('')
-    setChatStatus('streaming')
-    replyTimerRef.current = setTimeout(() => {
-      setMessages((current) => [
-        ...current,
-        makeMessage('assistant', `Reply to: ${text.slice(0, 40)}`),
-      ])
-      setChatStatus('idle')
-    }, 800)
-  }, [draft])
+  }, [draft, submit])
 
   const handleStop = useCallback(() => {
-    if (replyTimerRef.current) {
-      clearTimeout(replyTimerRef.current)
-      replyTimerRef.current = null
-    }
-    setMessages((current) => {
-      const last = current[current.length - 1]
-      if (!last || last.role !== 'assistant') return current
-      const updated: Message = { ...last, status: 'stopped', updatedAt: new Date().toISOString() }
-      return [...current.slice(0, -1), updated]
-    })
-    setChatStatus('idle')
-  }, [])
+    setOverride(null)
+    stop()
+  }, [stop])
 
   const appendMessage = useCallback(() => {
-    setMessages((current) => [
-      ...current,
-      makeMessage('assistant', `Streamed response chunk ${current.length + 1}.`),
+    setOverride(null)
+    replaceMessages([
+      ...sessionMessages,
+      makeMessage('assistant', `Streamed response chunk ${sessionMessages.length + 1}.`),
     ])
-  }, [])
+  }, [replaceMessages, sessionMessages])
 
   const streamNextChunk = useCallback(() => {
-    setMessages((current) => {
-      const last = current[current.length - 1]
-      if (!last || last.role !== 'assistant')
-        return [...current, makeMessage('assistant', 'Streaming...', 'streaming')]
-      const updated: Message = {
-        ...last,
-        status: 'streaming',
-        updatedAt: new Date().toISOString(),
-        contentParts: [
-          {
-            kind: 'text',
-            format: 'markdown',
-            text: `${plainText(last)} chunk-${Date.now()} `,
-          },
-        ],
-      }
-      return [...current.slice(0, -1), updated]
-    })
+    const controls = sessionControlsRef.current
+    if (controls) {
+      controls.appendChunk(` chunk-${Date.now()} `)
+      return
+    }
+    // No active operation: update the last assistant message in place so the
+    // legacy streaming-position tests keep a stable row identity. This
+    // synthesizes a streaming state without an operation (demo-only).
+    const current = sessionMessages
+    replaceMessages(
+      current.map((m, index) =>
+        index === current.length - 1 && m.role === 'assistant'
+          ? {
+              ...m,
+              status: 'streaming',
+              updatedAt: new Date().toISOString(),
+              contentParts: [{ kind: 'text', format: 'markdown', text: `${plainText(m)} chunk ` }],
+            }
+          : m,
+      ),
+    )
+  }, [replaceMessages, sessionMessages])
+
+  const streamChunk = useCallback(() => {
+    setOverride(null)
+    sessionControlsRef.current?.appendChunk('chunk ')
+  }, [])
+
+  const streamMarkdown = useCallback(() => {
+    setOverride(null)
+    sessionControlsRef.current?.appendChunk('```js\nconst answer = 42')
+  }, [])
+
+  const staleChunk = useCallback(() => {
+    setOverride(null)
+    staleControlsRef.current?.appendChunk(' STALE ')
+  }, [])
+
+  const completeStream = useCallback(() => {
+    setOverride(null)
+    sessionControlsRef.current?.complete()
+  }, [])
+
+  const failStream = useCallback(() => {
+    setOverride(null)
+    sessionControlsRef.current?.fail()
   }, [])
 
   const simulateStreaming = useCallback(() => {
-    setMessages((current) => [
-      ...current,
-      makeMessage('assistant', 'Streaming a response...', 'streaming'),
-    ])
-    setChatStatus('streaming')
-  }, [])
-
-  const markLastError = useCallback(() => {
-    // Keep the chat status idle so the message list stays visible and the
-    // message-level error badge renders (an error chat status replaces the
-    // list with the error state view).
-    setMessages((current) => {
-      const last = current[current.length - 1]
-      if (!last) return current
-      const updated: Message = { ...last, status: 'error', updatedAt: new Date().toISOString() }
-      return [...current.slice(0, -1), updated]
-    })
-    setChatStatus('idle')
-  }, [])
+    setOverride(null)
+    // End any lingering operation so the new submit is not blocked.
+    sessionControlsRef.current?.complete()
+    submit('Streaming demo')
+    sessionControlsRef.current?.appendChunk('Streaming response...')
+  }, [submit])
 
   const removeLastMessage = useCallback(() => {
-    setMessages((current) => current.slice(0, -1))
-  }, [])
+    replaceMessages(sessionMessages.slice(0, -1))
+  }, [replaceMessages, sessionMessages])
 
   const loadEarlier = useCallback(() => {
     setLoadingEarlier(true)
     setHasEarlier(true)
     setTimeout(() => {
-      setMessages((current) => {
-        const earlier = Array.from({ length: 20 }, (_, i) =>
-          makeMessage(i % 2 === 0 ? 'user' : 'assistant', `Earlier message ${i + 1}`),
-        )
-        return [...earlier, ...current]
-      })
+      const earlier = Array.from({ length: 20 }, (_, i) =>
+        makeMessage(i % 2 === 0 ? 'user' : 'assistant', `Earlier message ${i + 1}`),
+      )
+      replaceMessages([...earlier, ...sessionMessages])
       setLoadingEarlier(false)
     }, 50)
-  }, [])
+  }, [replaceMessages, sessionMessages])
 
   const exhaustEarlier = useCallback(() => {
     setLoadingEarlier(true)
     setTimeout(() => {
-      setMessages((current) => {
-        const earlier = Array.from({ length: 20 }, (_, i) =>
-          makeMessage(i % 2 === 0 ? 'user' : 'assistant', `Final earlier message ${i + 1}`),
-        )
-        return [...earlier, ...current]
-      })
+      const earlier = Array.from({ length: 20 }, (_, i) =>
+        makeMessage(i % 2 === 0 ? 'user' : 'assistant', `Final earlier message ${i + 1}`),
+      )
+      replaceMessages([...earlier, ...sessionMessages])
       setHasEarlier(false)
       setLoadingEarlier(false)
     }, 50)
-  }, [])
+  }, [replaceMessages, sessionMessages])
 
   const clearMessages = useCallback(() => {
-    setMessages([])
-    setHasEarlier(false)
-    setChatStatus('idle')
-  }, [])
+    setOverride(null)
+    replaceMessages([])
+  }, [replaceMessages])
+
+  const replaceConversation = useCallback(() => {
+    setOverride(null)
+    replaceMessages([makeMessage('system', 'New conversation')])
+  }, [replaceMessages])
 
   const simulateSubmitting = useCallback(() => {
-    setMessages([])
-    setHasEarlier(false)
-    setChatStatus('submitting')
+    setOverride({ messages: [], status: 'submitting' })
   }, [])
 
   const simulateError = useCallback(() => {
-    setMessages([])
-    setHasEarlier(false)
-    setChatStatus('error')
+    setOverride({ messages: [], status: 'error' })
   }, [])
 
   const loadThousand = useCallback(() => {
+    setOverride(null)
     const bulk: Message[] = Array.from({ length: 1000 }, (_, i) =>
       makeMessage(i % 2 === 0 ? 'user' : 'assistant', `Bulk message ${i + 1}`),
     )
-    setMessages(bulk)
-    setHasEarlier(false)
-  }, [])
+    replaceMessages(bulk)
+  }, [replaceMessages])
 
   const loadThousandLarge = useCallback(() => {
+    setOverride(null)
     const bulk: Message[] = Array.from({ length: 1000 }, (_, i) =>
       makeMessage(i % 2 === 0 ? 'user' : 'assistant', largeMessageText),
     )
-    setMessages(bulk)
-    setHasEarlier(false)
-  }, [])
+    replaceMessages(bulk)
+  }, [replaceMessages])
 
   const loadMarkdownSuite = useCallback(() => {
-    setMessages([
+    setOverride(null)
+    replaceMessages([
       makeMessage('system', 'Conversation started with a markdown suite'),
       makeMessage('user', 'Please show me the full markdown suite.'),
       makeMessage('assistant', markdownSuite),
       makeMessage('assistant', unsafeMarkdown),
     ])
-    setHasEarlier(false)
-  }, [])
+  }, [replaceMessages])
 
   const loadLargeMarkdown = useCallback(() => {
-    setMessages([
+    setOverride(null)
+    replaceMessages([
       makeMessage('user', 'Give me a very long answer, please.'),
       makeMessage('assistant', `# Long response\n\n${largeMessageText}`),
     ])
-    setHasEarlier(false)
-  }, [])
+  }, [replaceMessages])
 
   const toggleTheme = useCallback(() => {
     setTheme((current) => (current === 'light' ? 'dark' : 'light'))
   }, [])
 
-  const messageActions = useMemo<readonly MessageAction[]>(
-    () =>
-      actionsEnabled
-        ? [
-            {
-              id: 'copy',
-              label: 'Copy message',
-              group: 'Actions',
-              onAction: () => {},
-            },
-            {
-              id: 'retry',
-              label: 'Retry',
-              group: 'Response',
-              onAction: () => {},
-            },
-          ]
-        : [],
-    [actionsEnabled],
+  const handleMessageAction = useCallback(
+    (action: MessageAction, message: Message) => {
+      setLastLinkPress(`action on ${message.id}`)
+      runSessionAction(action, message)
+    },
+    [runSessionAction],
   )
-
-  const handleMessageAction = useCallback((_action: MessageAction, message: Message) => {
-    setSubmitCount((n) => n + 1)
-    setLastLinkPress(`action on ${message.id}`)
-  }, [])
 
   const renderMessage = useMemo(() => {
     if (!customMessageRenderer) return undefined
@@ -408,16 +419,30 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
       <View style={styles.controls}>
         <DemoButton label="Append" onPress={appendMessage} testID="demo.append" />
         <DemoButton label="Stream chunk" onPress={streamNextChunk} testID="demo.stream" />
+        <DemoButton label="Push chunk" onPress={streamChunk} testID="demo.stream-chunk" />
+        <DemoButton label="Push markdown" onPress={streamMarkdown} testID="demo.stream-markdown" />
+        <DemoButton label="Stale chunk" onPress={staleChunk} testID="demo.stale-chunk" />
+        <DemoButton
+          label="Complete stream"
+          onPress={completeStream}
+          testID="demo.complete-stream"
+        />
+        <DemoButton label="Fail stream" onPress={failStream} testID="demo.fail-stream" />
         <DemoButton
           label="Simulate streaming"
           onPress={simulateStreaming}
           testID="demo.simulate-streaming"
         />
-        <DemoButton label="Mark last error" onPress={markLastError} testID="demo.mark-error" />
+        <DemoButton label="Mark last error" onPress={failStream} testID="demo.mark-error" />
         <DemoButton
           label="Remove last message"
           onPress={removeLastMessage}
           testID="demo.remove-last-message"
+        />
+        <DemoButton
+          label="Replace conversation"
+          onPress={replaceConversation}
+          testID="demo.replace-conversation"
         />
         <DemoButton label="Load earlier" onPress={loadEarlier} testID="demo.load-earlier" />
         <DemoButton label="Exhaust" onPress={exhaustEarlier} testID="demo.exhaust" />
@@ -530,9 +555,14 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
     [
       appendMessage,
       streamNextChunk,
+      streamChunk,
+      streamMarkdown,
+      staleChunk,
+      completeStream,
+      failStream,
       simulateStreaming,
-      markLastError,
       removeLastMessage,
+      replaceConversation,
       loadEarlier,
       exhaustEarlier,
       loadThousand,
@@ -579,11 +609,14 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
         <Text testID="demo.submit-count" style={styles.statusText}>
           submits: {submitCount}
         </Text>
+        <Text testID="demo.copied-text" style={styles.statusText}>
+          copied: {copiedText || 'none'}
+        </Text>
       </View>
       <Chat
         messages={messages}
         draft={draft}
-        status={chatStatus}
+        status={status}
         hasEarlierMessages={hasEarlier}
         isLoadingEarlier={loadingEarlier}
         onChangeDraft={setDraft}
@@ -613,7 +646,7 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
         renderScrollToLatest={customControls ? customScrollToLatest : undefined}
         renderComposerControls={customControls ? customComposerControl : undefined}
         messageActions={messageActions}
-        onMessageAction={handleMessageAction}
+        onMessageAction={actionsEnabled ? handleMessageAction : undefined}
         icons={customIcons ? icons : undefined}
         renderEmptyState={customStates ? customEmptyState : undefined}
         renderLoadingState={customStates ? customLoadingState : undefined}

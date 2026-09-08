@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-07
 
-**Status**: Draft
+**Status**: Archived
 
 **Input**: User description: "Streaming and message operations for the shared chat component: incremental display of responses, message and chat statuses, per-operation identity, stop, copy, retry, and regenerate, with stale updates ignored."
 
@@ -114,3 +114,7 @@ The user copies a message's text or a code block.
 - The host application drives network requests; the component renders state.
 - Retry and regenerate replace the previous response in place; keeping both attempts is future work.
 - The network may be slow or flaky; the component must tolerate many small updates and reordering.
+
+## Clarifications
+
+- **2026-09-08 - Message failure vs chat error**: A failed response marks the message `error` with its partial content retained and returns the chat status to `idle`, keeping the list visible and retry available. The chat status `error` is a conversation-level error set by the host (spec 005 renders the ErrorState for it); a message failure does not set it, because doing so would hide the conversation behind the error state.
