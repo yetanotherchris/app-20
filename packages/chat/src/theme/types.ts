@@ -96,6 +96,7 @@ export type SurfaceName =
   | 'typing'
   | 'error'
   | 'actionMenu'
+  | 'messageActions'
   | 'messageStatus'
   | 'chatStatus'
 

@@ -5,7 +5,7 @@ import { useRoleStyles } from '../rendering/roleStyles'
 import { useTheme } from '../theme/ThemeContext'
 import { useDomFocusOutlineRef } from '../accessibility/useDomFocusOutlineRef'
 import type { MessageAction, SurfaceStyleOverrides } from '../theme/types'
-import { ActionMenu } from './ActionMenu'
+import { MessageActions } from './MessageActions'
 import { MessageStatusBadge } from './MessageStatusBadge'
 import type { ContentRendererProps } from '../rendering/ContentRenderer'
 
@@ -62,11 +62,10 @@ export function MessageBubble({
       />
       <MessageStatusBadge status={message.status} icons={icons} styleOverrides={styleOverrides} />
       {messageActions && messageActions.length > 0 && onMessageAction && (
-        <ActionMenu
+        <MessageActions
           actions={messageActions}
           message={message}
           onAction={onMessageAction}
-          icons={icons}
           styleOverrides={styleOverrides}
         />
       )}

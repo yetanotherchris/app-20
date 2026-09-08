@@ -35,6 +35,8 @@ export function LoadEarlierControl({
         label: {
           color: theme.colors.primary,
           fontSize: theme.typography.controlTextSize,
+          lineHeight: theme.typography.controlLineHeight,
+          fontWeight: theme.typography.controlWeight,
         },
       }),
     [theme, target],

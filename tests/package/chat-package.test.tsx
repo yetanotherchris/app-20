@@ -12,6 +12,7 @@ import {
   MessageBubble,
   SendButton,
   StopButton,
+  MessageActions,
   lightTheme,
   darkTheme,
   highContrastThemes,
@@ -66,6 +67,7 @@ describe('packaged @app-20/chat artifact (FR-015)', () => {
     expect(MessageBubble).toBeTypeOf('function')
     expect(SendButton).toBeTypeOf('function')
     expect(StopButton).toBeTypeOf('function')
+    expect(MessageActions).toBeTypeOf('function')
     expect(lightTheme).toBeDefined()
     expect(darkTheme).toBeDefined()
     expect(highContrastThemes.light).toBeDefined()

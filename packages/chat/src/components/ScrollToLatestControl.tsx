@@ -41,7 +41,8 @@ export function ScrollToLatestControl({
         label: {
           color: theme.colors.onPrimary,
           fontSize: theme.typography.controlTextSize,
-          fontWeight: '600',
+          lineHeight: theme.typography.controlLineHeight,
+          fontWeight: theme.typography.controlWeight,
         },
       }),
     [theme, target],

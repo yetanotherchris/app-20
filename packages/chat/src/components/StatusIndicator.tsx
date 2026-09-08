@@ -43,7 +43,8 @@ export function StatusIndicator({
         },
         label: {
           fontSize: theme.typography.captionTextSize,
-          fontWeight: '600',
+          lineHeight: theme.typography.captionLineHeight,
+          fontWeight: theme.typography.captionWeight,
         },
       }),
     [theme, centered],
