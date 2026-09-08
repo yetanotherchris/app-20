@@ -97,4 +97,4 @@ tests/e2e/
 
 ## Complexity Tracking
 
-No constitution violations. The deliberate presentation replacements (assistant bubble, overflow action menu, rectangular Send) each have a simpler alternative rejected in research.md (R5, R9, R8). The only structural complexity is the reading-column wrapper and composer pill, both plain flex layout with no new machinery.
+The composer text input has no visual focus indicator in any theme by explicit product direction. This conflicts with the accessibility constraints and WCAG focus-appearance guidance. The rejected simpler alternative is a neutral-gray pill border in standard themes with a high-contrast ring. This exception is recorded in spec.md Clarifications and must be revisited before an accessibility-conformance claim. The deliberate presentation replacements (assistant bubble, overflow action menu, rectangular Send) each have a simpler alternative rejected in research.md (R5, R9, R8). The only structural complexity is the reading-column wrapper and composer pill, both plain flex layout with no new machinery.

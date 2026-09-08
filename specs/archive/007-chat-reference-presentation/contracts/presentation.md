@@ -12,20 +12,19 @@ The default presentation of the shared chat component. Behavior, data, and custo
 export interface ChatTheme {
   colors: {
     // existing tokens...
-    userBubbleText: string   // user bubble text color
-    sendBackground: string   // Send/Stop/scroll-to-latest control surface
-    sendForeground: string   // arrow/square glyph color on sendBackground
-    composerBorderFocus: string  // composer pill focus border
+    userBubbleText: string // user bubble text color
+    sendBackground: string // Send/Stop/scroll-to-latest control surface
+    sendForeground: string // arrow/square glyph color on sendBackground
   }
   layout: {
-    readingColumnWidth: number  // 540
-    composerWidth: number       // 650
-    sidePadding: number         // 16
+    readingColumnWidth: number // 540
+    composerWidth: number // 650
+    sidePadding: number // 16
   }
   spacing: {
     // existing tokens...
-    paragraphGap: number        // 8
-    composerBottomGap: number   // 16
+    paragraphGap: number // 8
+    composerBottomGap: number // 16
   }
   typography: {
     // existing tokens...
@@ -49,7 +48,7 @@ The list spans the full panel so its scrollbar sits at the panel edge; each mess
 
 ## Composer
 
-A centered pill at the bottom of the chat area, `composerWidth` wide at the reference panel (wider than the reading column), white surface, thin neutral outline, subtle shadow, rounded corners (`composerRadius`), with `composerBottomGap` of clearance below it. The pill's row is vertically centered, so the single-line input text, Send, and its arrow share one center line; the pill grows upward to the configured limit and then scrolls internally, and an empty draft resets it to the single-line height. Focus is indicated on the pill with a subtle neutral-gray border, never a colored border on the input; in high contrast a 2px ring in the focus color keeps the indicator maximal. The right end holds the circular up-arrow Send (accessible name "Send") or, when cancellation is available, a same-area Stop with a square glyph. No plus or microphone control and no reserved space for one.
+A centered pill at the bottom of the chat area, `composerWidth` wide at the reference panel (wider than the reading column), white surface, thin neutral outline, subtle shadow, rounded corners (`composerRadius`), with `composerBottomGap` of clearance below it. The pill's row is vertically centered, so the single-line input text, Send, and its arrow share one center line; the pill grows upward to the configured limit and then scrolls internally, and an empty draft resets it to the single-line height. The composer input intentionally has no focus indicator in any theme, including high contrast. The right end holds the circular up-arrow Send (accessible name "Send") or, when cancellation is available, a same-area Stop with a square glyph. No plus or microphone control and no reserved space for one.
 
 ## Return-to-latest
 
@@ -71,16 +70,16 @@ Available actions render as a compact, left-aligned row beneath assistant conten
 
 ## Responsive and theme behavior
 
-The same hierarchy holds on narrow and wide panels, in dark and high-contrast themes, at 200% zoom, and with enlarged text: surfaces reflow without panel-wide horizontal overflow, alignment stays distinct, and readable colors and visible focus follow the theme. Host theme overrides, renderers, controls, icons, labels, actions, and states take precedence over these defaults.
+The same hierarchy holds on narrow and wide panels, in dark and high-contrast themes, at 200% zoom, and with enlarged text: surfaces reflow without panel-wide horizontal overflow, alignment stays distinct, and readable colors and visible focus on controls other than the composer input follow the theme. Host theme overrides, renderers, controls, icons, labels, actions, and states take precedence over these defaults.
 
 ## Stable identifiers
 
-| Surface | testID |
-|---|---|
-| Reading column | `chat.reading-column` (once per message row) |
-| Composer pill | `chat.composer.pill` |
-| Message actions row | `chat.message-actions` |
-| Per-action button | `chat.action.<id>` |
+| Surface             | testID                                       |
+| ------------------- | -------------------------------------------- |
+| Reading column      | `chat.reading-column` (once per message row) |
+| Composer pill       | `chat.composer.pill`                         |
+| Message actions row | `chat.message-actions`                       |
+| Per-action button   | `chat.action.<id>`                           |
 
 All spec 001-006 testIDs are unchanged. `chat.action-menu` no longer appears in the default presentation.
 
@@ -88,4 +87,4 @@ All spec 001-006 testIDs are unchanged. `chat.action-menu` no longer appears in 
 
 - Message ordering, identity, scrolling, Markdown, draft, keyboard, composition, and cancellation behave as before (FR-010).
 - No new drawer, header, account, model, attachment, voice, share, or branding control is introduced (FR-013).
-- Accessibility, touch targets, focus, reduced motion, and high contrast are never reduced to match the screenshot (FR-011).
+- Accessibility, touch targets, focus, reduced motion, and high contrast are preserved, except that the composer input has no focus indicator by the temporary product exception in spec.md Clarifications.
