@@ -95,7 +95,7 @@ The user gets the same message hierarchy on narrow and wide panels, in dark mode
 1. **Given** a narrow panel, **When** the chat renders, **Then** reading content and composer fit the available width with side padding, user and assistant alignment remains distinct, and ordinary text does not cause panel-wide horizontal scrolling.
 2. **Given** the on-screen keyboard is open, **When** the user types on a touch device, **Then** input and Send or Stop remain reachable above the keyboard and respect device safe areas.
 3. **Given** 200% zoom or the largest supported text size, **When** the conversation renders, **Then** text and controls reflow without overlap or loss of functions; wide code and tables can scroll within their content area.
-4. **Given** dark theme or high contrast is selected, **When** appearance changes, **Then** the centered layout, bubble distinction, and unboxed assistant presentation remain, while readable colors and visible focus adapt to the selected theme.
+4. **Given** dark theme or high contrast is selected, **When** appearance changes, **Then** the centered layout, bubble distinction, and unboxed assistant presentation remain, while readable colors, body and control typography, and visible focus adapt to the selected theme.
 5. **Given** a host supplies theme overrides, renderers, icons, labels, states, or controls, **When** the chat renders, **Then** those customizations continue to take precedence over the corresponding defaults.
 6. **Given** a draft and a streaming conversation, **When** size or theme changes, **Then** the draft, operation state, and existing scroll-follow or reading-position behavior are preserved.
 
@@ -126,6 +126,8 @@ The user gets the same message hierarchy on narrow and wide panels, in dark mode
 - **FR-011**: Light, dark, custom-theme, high-contrast, reduced-motion, keyboard, touch-target, and enlarged-text requirements MUST remain satisfied. Accessibility takes precedence over the reference's faint text, low-contrast outlines, and small icon appearance.
 - **FR-012**: The new presentation MUST be the default shared-component appearance and be visible in its existing demonstration surface without host-specific duplicate layouts. Existing replacement renderers, controls, actions, states, icons, labels, and theme overrides MUST remain supported.
 - **FR-013**: The component MUST NOT introduce or reserve layout space for the reference's drawer, product header, account controls, model selector, attachments, voice, sharing, or disclaimer. Host-added controls already supported by customization are unaffected.
+- **FR-014**: Body and control typography (message text, response actions, Send and Stop labels and icons, and visible status text) MUST be driven by the theme's semantic typography tokens so font, size, weight, and line height adapt across light, dark, high-contrast, and enlarged-text settings. The reference's exact type choices MUST be recorded during planning and applied as theme defaults.
+- **FR-015**: The presentation MUST remain usable on mobile viewports: the reading column and composer fit within safe-area width, message alignment stays distinct, and input, Send, Stop, actions, unread, and history controls remain reachable above the on-screen keyboard with no panel-wide horizontal overflow.
 
 ## Success Criteria
 
@@ -134,7 +136,7 @@ The user gets the same message hierarchy on narrow and wide panels, in dark mode
 - **SC-001**: At a 974 by 638 reference panel in light theme, a fixed conversation satisfies FR-002's width and centering tolerances and all six visual checks: white canvas, gray right-aligned user bubbles, unboxed assistant text, separated paragraphs and turns, compact response actions, and a bottom rounded composer. A reference comparison records a pass or an explicit discrepancy for each check before implementation is accepted.
 - **SC-002**: At panel sizes 390 by 844, 974 by 638, and 1440 by 900, no ordinary message text or composer causes panel-wide horizontal overflow, and the last response and all its actions can be brought fully into view above the composer.
 - **SC-003**: All acceptance scenarios pass, including send by button and keyboard, newline entry, multiline growth, Stop with retained content, copy, retry, regenerate, history loading, and return to latest, without changed operation or draft behavior.
-- **SC-004**: Light, dark, high-contrast, 200% zoom, enlarged-text, and keyboard-only checks show no clipped text, overlapping controls, inaccessible actions, or invisible focus. Existing accessibility checks pass without weakening them.
+- **SC-004**: Light, dark, high-contrast, 200% zoom, enlarged-text, and keyboard-only checks show no clipped text, overlapping controls, inaccessible actions, invisible focus, or typography that fails to follow the active theme. Existing accessibility checks pass without weakening them.
 - **SC-005**: Existing customization checks pass for themes, message and content renderers, controls, icons, labels, actions, and states; no host-specific component fork is required.
 - **SC-006**: The default component contains zero sidebar, account, model-selection, upload, microphone, share, or product-branding controls introduced solely to reproduce the screenshot.
 
