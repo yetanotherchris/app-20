@@ -25,8 +25,9 @@ export function UnreadBadge({ count, styleOverrides }: UnreadBadgeProps) {
         },
         count: {
           color: theme.colors.onPrimary,
-          fontSize: 13,
-          fontWeight: '600',
+          fontSize: theme.typography.captionTextSize,
+          lineHeight: theme.typography.captionLineHeight,
+          fontWeight: theme.typography.captionWeight,
         },
       }),
     [theme],

@@ -291,7 +291,7 @@ describe('Chat constraint modes (US4)', () => {
       capabilities: { actions: false },
       messageActions: [{ id: 'copy', label: 'Copy', group: 'A', onAction: () => {} }],
     })
-    expect(screen.queryByTestId('chat.action-menu')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('chat.message-actions')).not.toBeInTheDocument()
   })
 
   it('hides actions when the component is disabled or readOnly (FR-014)', () => {
@@ -299,7 +299,7 @@ describe('Chat constraint modes (US4)', () => {
       disabled: true,
       messageActions: [{ id: 'copy', label: 'Copy', group: 'A', onAction: () => {} }],
     })
-    expect(screen.queryByTestId('chat.action-menu')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('chat.message-actions')).not.toBeInTheDocument()
   })
 
   it('hides Stop when the stop capability is off (FR-014)', () => {

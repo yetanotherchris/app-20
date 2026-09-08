@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import {
   Keyboard,
   Platform,
@@ -11,7 +11,6 @@ import {
 } from 'react-native'
 import { useAutogrowHeight } from '../hooks/useAutogrowHeight'
 import { useTheme } from '../theme/ThemeContext'
-import { focusRingStyleFor } from '../accessibility/useFocusRing'
 import { SendButton, type SendButtonProps } from './SendButton'
 import { StopButton, type StopButtonProps } from './StopButton'
 import type { Capabilities, SurfaceStyleOverrides } from '../theme/types'
@@ -89,7 +88,6 @@ export function Composer({
   isBusyRef.current = isBusy
   const inputRef = useRef<TextInput | null>(null)
   const lastSubmittedRef = useRef<string | null>(null)
-  const [inputFocused, setInputFocused] = useState(false)
 
   const sendEnabled = canSend && !disabled && !readOnly && capabilities?.send !== false
   const stopEnabled = isBusy && !disabled && !readOnly && capabilities?.stop !== false
@@ -104,30 +102,49 @@ export function Composer({
     () =>
       StyleSheet.create({
         container: {
+          alignItems: 'center',
+          paddingHorizontal: theme.layout.sidePadding,
+          paddingTop: theme.spacing.composerPaddingV,
+          paddingBottom: theme.spacing.composerBottomGap,
+          backgroundColor: 'transparent',
+        },
+        pill: {
           flexDirection: 'row',
-          alignItems: 'flex-end',
+          alignItems: 'center',
           gap: 8,
+          width: '100%',
+          maxWidth: theme.layout.composerWidth,
+          backgroundColor: theme.colors.composerSurface,
+          borderRadius: theme.radii.composerRadius,
+          borderWidth: 1,
+          borderColor: theme.colors.composerBorder,
           paddingHorizontal: theme.spacing.composerPaddingH,
           paddingVertical: theme.spacing.composerPaddingV,
-          borderTopWidth: 1,
-          borderTopColor: theme.colors.border,
-          backgroundColor: theme.colors.composerSurface,
+          ...(Platform.OS === 'web'
+            ? { boxShadow: '0 2px 12px rgba(0, 0, 0, 0.08)' }
+            : {
+                shadowColor: '#000000',
+                shadowOpacity: 0.08,
+                shadowRadius: 12,
+                shadowOffset: { width: 0, height: 2 },
+                elevation: 2,
+              }),
         },
         inputWrap: {
           flex: 1,
         },
         input: {
           minHeight,
-          borderRadius: theme.radii.composerRadius,
-          borderWidth: 1,
-          borderColor: theme.colors.composerBorder,
-          backgroundColor: theme.colors.composerInput,
-          paddingHorizontal: 14,
+          backgroundColor: 'transparent',
+          paddingHorizontal: 2,
           paddingVertical: 10,
           fontSize: theme.typography.composerTextSize,
-          lineHeight: 20,
+          lineHeight: theme.typography.composerLineHeight,
           color: theme.colors.text,
           textAlignVertical: 'top',
+          ...(Platform.OS === 'web'
+            ? { outlineWidth: 0, outlineStyle: 'solid', outlineColor: 'transparent' }
+            : null),
         },
         controls: {
           flexDirection: 'row',
@@ -136,17 +153,6 @@ export function Composer({
         },
       }),
     [theme, minHeight],
-  )
-
-  const inputFocusedStyle = useMemo(
-    () =>
-      inputFocused
-        ? {
-            borderColor: theme.colors.focus,
-            ...focusRingStyleFor(theme, true, Platform.OS === 'web'),
-          }
-        : undefined,
-    [inputFocused, theme],
   )
 
   const performSubmit = useCallback(() => {
@@ -168,6 +174,14 @@ export function Composer({
   useEffect(() => {
     measureAndApply()
   }, [value, measureAndApply])
+
+  // An empty draft returns the composer to its single-line height, including
+  // after a send clears a multiline draft.
+  useEffect(() => {
+    if (value === '') {
+      handleTextChange(minHeight)
+    }
+  }, [value, minHeight, handleTextChange])
 
   const handleChangeText = useCallback(
     (next: string) => {
@@ -206,12 +220,6 @@ export function Composer({
     }
   }, [blurBehavior, value, performSubmit, sendEnabled])
 
-  const handleInputFocus = useCallback(() => setInputFocused(true), [])
-  const handleInputBlur = useCallback(() => {
-    setInputFocused(false)
-    handleBlur()
-  }, [handleBlur])
-
   const handleSendPress = useCallback(() => {
     performSubmit()
   }, [performSubmit])
@@ -242,31 +250,32 @@ export function Composer({
 
   return (
     <View style={[styles.container, styleOverrides?.composer]} testID="chat.composer">
-      {renderComposerControls?.()}
-      <View style={styles.inputWrap}>
-        <TextInput
-          ref={inputRef}
-          value={value}
-          onChangeText={handleChangeText}
-          onContentSizeChange={(event: TextInputContentSizeChangeEvent) =>
-            handleContentSizeChange(event.nativeEvent.contentSize.height)
-          }
-          onLayout={handleLayout}
-          onKeyPress={handleKeyPress}
-          onBlur={handleInputBlur}
-          onFocus={handleInputFocus}
-          onSubmitEditing={handleSubmitEditing}
-          multiline
-          blurOnSubmit={false}
-          placeholder={placeholder}
-          placeholderTextColor={theme.colors.textSecondary}
-          accessibilityLabel={placeholder}
-          editable={editable}
-          style={[styles.input, { height }, inputFocusedStyle, styleOverrides?.composerInput]}
-          testID="chat.composer.input"
-        />
+      <View style={styles.pill} testID="chat.composer.pill">
+        {renderComposerControls?.()}
+        <View style={styles.inputWrap}>
+          <TextInput
+            ref={inputRef}
+            value={value}
+            onChangeText={handleChangeText}
+            onContentSizeChange={(event: TextInputContentSizeChangeEvent) =>
+              handleContentSizeChange(event.nativeEvent.contentSize.height)
+            }
+            onLayout={handleLayout}
+            onKeyPress={handleKeyPress}
+            onBlur={handleBlur}
+            onSubmitEditing={handleSubmitEditing}
+            multiline
+            blurOnSubmit={false}
+            placeholder={placeholder}
+            placeholderTextColor={theme.colors.textSecondary}
+            accessibilityLabel={placeholder}
+            editable={editable}
+            style={[styles.input, { height }, styleOverrides?.composerInput]}
+            testID="chat.composer.input"
+          />
+        </View>
+        <View style={styles.controls}>{stopEnabled ? stopControl : sendControl}</View>
       </View>
-      <View style={styles.controls}>{stopEnabled ? stopControl : sendControl}</View>
     </View>
   )
 }

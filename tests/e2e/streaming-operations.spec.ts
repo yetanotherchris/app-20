@@ -121,8 +121,8 @@ test.describe('US3: retry and regenerate', () => {
 
     const failedRow = lastMessage()
     const failedRowId = await failedRow.getAttribute('data-testid')
-    await failedRow.locator('[data-testid="chat.action-menu"]').click()
-    await page.getByTestId('chat.action.retry').click()
+    // The inline action row shows Retry directly (spec 007 FR-007).
+    await failedRow.getByTestId('chat.action.retry').click()
 
     // Replaced in place: same row id, sending again, empty content.
     await expect(page.getByTestId(failedRowId!)).toHaveCount(1)
@@ -143,8 +143,7 @@ test.describe('US3: retry and regenerate', () => {
 
     const completedRow = lastMessage()
     const completedRowId = await completedRow.getAttribute('data-testid')
-    await completedRow.locator('[data-testid="chat.action-menu"]').click()
-    await page.getByTestId('chat.action.regenerate').click()
+    await completedRow.getByTestId('chat.action.regenerate').click()
 
     await expect(page.getByTestId(completedRowId!)).toHaveCount(1)
     await expect(page.getByTestId('chat.message-status.sending').last()).toBeVisible()
@@ -160,8 +159,7 @@ test.describe('US3: retry and regenerate', () => {
     await page.getByTestId('demo.complete-stream').click()
 
     const completedRowId = await lastMessage().getAttribute('data-testid')
-    await lastMessage().locator('[data-testid="chat.action-menu"]').click()
-    await page.getByTestId('chat.action.regenerate').click()
+    await lastMessage().getByTestId('chat.action.regenerate').click()
 
     // The superseded operation's controls are held by demo.stale-chunk.
     await page.getByTestId('demo.stream-chunk').click()
@@ -179,8 +177,7 @@ test.describe('US4: copy a message', () => {
     await page.getByTestId('demo.stream-chunk').click()
     await page.getByTestId('demo.stream-chunk').click()
     await page.getByTestId('demo.complete-stream').click()
-    await lastMessage().locator('[data-testid="chat.action-menu"]').click()
-    await page.getByTestId('chat.action.copy').click()
+    await lastMessage().getByTestId('chat.action.copy').click()
     await expect(page.getByTestId('demo.copied-text')).toContainText('chunk chunk')
   })
 
@@ -226,8 +223,7 @@ test.describe('edge cases', () => {
     await page.getByTestId('demo.fail-stream').click()
     await expect(page.getByTestId('chat.message-status.error').last()).toBeVisible()
     await expect(lastMessage()).toContainText('chunk')
-    // Retry is available on the errored response.
-    await lastMessage().locator('[data-testid="chat.action-menu"]').click()
-    await expect(page.getByTestId('chat.action.retry')).toBeVisible()
+    // Retry is available on the errored response in the inline action row.
+    await expect(page.getByTestId('chat.action.retry').last()).toBeVisible()
   })
 })
