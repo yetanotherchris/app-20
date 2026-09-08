@@ -23,34 +23,34 @@ const session = useChatSession({
 
 ## Options
 
-| Option | Type | Required | Notes |
-|---|---|---|---|
-| `request` | `(op, controls) => void \| Promise<void>` | yes | Host transport. The hook calls it once per operation. |
-| `copyMessageText` | `(message, text) => void \| Promise<void>` | no | Delegated message-text copy; without it the copy action is inert (FR-007). |
-| `initialMessages` | `readonly Message[]` | no | Seed conversation. |
+| Option            | Type                                       | Required | Notes                                                                      |
+| ----------------- | ------------------------------------------ | -------- | -------------------------------------------------------------------------- |
+| `request`         | `(op, controls) => void \| Promise<void>`  | yes      | Host transport. The hook calls it once per operation.                      |
+| `copyMessageText` | `(message, text) => void \| Promise<void>` | no       | Delegated message-text copy; without it the copy action is inert (FR-007). |
+| `initialMessages` | `readonly Message[]`                       | no       | Seed conversation.                                                         |
 
 ## Session surface (feeds `Chat`)
 
-| Field | Type | Notes |
-|---|---|---|
-| `messages` | `readonly Message[]` | Pass to `Chat.messages`. |
-| `status` | `ChatStatus` | Pass to `Chat.status` (FR-010). |
-| `messageActions` | `readonly MessageAction[]` | Copy / retry / regenerate with availability (FR-007). |
-| `onMessageAction` | `(action, message) => void` | Pass to `Chat.onMessageAction`. |
-| `submit(prompt)` | `(prompt: string) => void` | Use from the host's `onSubmit`. No-op while an operation is in flight (FR-008). |
-| `stop()` | `() => void` | Use from the host's `onStop`. Idempotent (FR-006). |
-| `retry(messageId)` | `(id: string) => void` | Replaces the errored response in place. |
-| `regenerate(messageId)` | `(id: string) => void` | Replaces the completed response in place. |
-| `replaceMessages(messages)` | `(messages: readonly Message[]) => void` | Conversation replacement; invalidates the current operation. |
+| Field                       | Type                                     | Notes                                                                           |
+| --------------------------- | ---------------------------------------- | ------------------------------------------------------------------------------- |
+| `messages`                  | `readonly Message[]`                     | Pass to `Chat.messages`.                                                        |
+| `status`                    | `ChatStatus`                             | Pass to `Chat.status` (FR-010).                                                 |
+| `messageActions`            | `readonly MessageAction[]`               | Copy / retry / regenerate with availability (FR-007).                           |
+| `onMessageAction`           | `(action, message) => void`              | Pass to `Chat.onMessageAction`.                                                 |
+| `submit(prompt)`            | `(prompt: string) => void`               | Use from the host's `onSubmit`. No-op while an operation is in flight (FR-008). |
+| `stop()`                    | `() => void`                             | Use from the host's `onStop`. Idempotent (FR-006).                              |
+| `retry(messageId)`          | `(id: string) => void`                   | Replaces the errored response in place.                                         |
+| `regenerate(messageId)`     | `(id: string) => void`                   | Replaces the completed response in place.                                       |
+| `replaceMessages(messages)` | `(messages: readonly Message[]) => void` | Conversation replacement; invalidates the current operation.                    |
 
 ## Transport controls
 
-| Method | Effect | Stale-guarded by |
-|---|---|---|
-| `appendChunk(text)` | Current response gains content, status `streaming` (FR-001/002). | op id + message presence (FR-005) |
-| `complete()` | Current response `complete`, chat `idle`. | op id |
-| `fail()` | Current response `error`, chat `idle` (list stays visible, retry available). | op id |
-| `stopRequested()` | True once `stop()` accepted; transport aborts cooperatively. | - |
+| Method              | Effect                                                                       | Stale-guarded by                  |
+| ------------------- | ---------------------------------------------------------------------------- | --------------------------------- |
+| `appendChunk(text)` | Current response gains content, status `streaming` (FR-001/002).             | op id + message presence (FR-005) |
+| `complete()`        | Current response `complete`, chat `idle`.                                    | op id                             |
+| `fail()`            | Current response `error`, chat `idle` (list stays visible, retry available). | op id                             |
+| `stopRequested()`   | True once `stop()` accepted; transport aborts cooperatively.                 | -                                 |
 
 ## Guarantees
 

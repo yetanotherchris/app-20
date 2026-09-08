@@ -21,6 +21,8 @@ import {
   useSystemAccessibility,
   useFocusRing,
   useMessageFocusPreservation,
+  useDomFocusOutlineRef,
+  useChatSession,
   minTouchTarget,
   MessageStatusBadge,
   ChatStatusText,
@@ -73,6 +75,8 @@ describe('packaged @app-20/chat artifact (FR-015)', () => {
     expect(useSystemAccessibility).toBeTypeOf('function')
     expect(useFocusRing).toBeTypeOf('function')
     expect(useMessageFocusPreservation).toBeTypeOf('function')
+    expect(useDomFocusOutlineRef).toBeTypeOf('function')
+    expect(useChatSession).toBeTypeOf('function')
     expect(minTouchTarget).toBeTypeOf('function')
     expect(MessageStatusBadge).toBeTypeOf('function')
     expect(ChatStatusText).toBeTypeOf('function')

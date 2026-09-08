@@ -85,11 +85,12 @@ test.describe('US3: stop a response', () => {
     await resetApp()
     await typeDraft('busy test')
     await page.getByTestId('chat.composer.send').click()
-    // Simulated streaming: Stop appears, Send is gone.
+    // A response is in flight: Stop appears, Send is gone.
     await expect(page.getByTestId('chat.composer.stop')).toBeVisible()
     await expect(page.getByTestId('chat.composer.send')).toHaveCount(0)
-    // After the simulated response completes, Stop disappears.
-    await expect(page.getByTestId('chat.composer.stop')).toHaveCount(0, { timeout: 3000 })
+    // Completing the stream returns the composer to idle: Stop disappears.
+    await page.getByTestId('demo.complete-stream').click()
+    await expect(page.getByTestId('chat.composer.stop')).toHaveCount(0)
   })
 })
 

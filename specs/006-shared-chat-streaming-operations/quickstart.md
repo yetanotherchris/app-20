@@ -11,12 +11,12 @@ Validation guide for spec 006. Contract details in [contracts/session.md](./cont
 
 ## Commands
 
-| Command | Purpose |
-|---|---|
-| `npm run lint` | ESLint across workspaces. |
-| `npm run typecheck` | `tsc --noEmit` across workspaces. |
-| `npm test` | Vitest unit suites (source imports) plus the packaged-artifact vitest project. |
-| `npm run test:e2e` | Build the Electron harness, launch it via Playwright, run e2e specs. |
+| Command             | Purpose                                                                        |
+| ------------------- | ------------------------------------------------------------------------------ |
+| `npm run lint`      | ESLint across workspaces.                                                      |
+| `npm run typecheck` | `tsc --noEmit` across workspaces.                                              |
+| `npm test`          | Vitest unit suites (source imports) plus the packaged-artifact vitest project. |
+| `npm run test:e2e`  | Build the Electron harness, launch it via Playwright, run e2e specs.           |
 
 ## Unit validation (fast feedback)
 

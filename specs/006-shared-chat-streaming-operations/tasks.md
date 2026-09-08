@@ -10,7 +10,7 @@
 
 **Purpose**: No new dependencies or tooling; the session module builds on the existing package. Verify the package build is green before extending the public surface.
 
-- [ ] T001 Verify `npm run build:chat` is green on the branch base (spec 005 state) before extending `packages/chat`
+- [x] T001 Verify `npm run build:chat` is green on the branch base (spec 005 state) before extending `packages/chat`
 
 **Checkpoint**: The package builds from the 005 baseline.
 
@@ -18,9 +18,9 @@
 
 **Purpose**: The operation state machine every user story needs.
 
-- [ ] T002 Create session types in `packages/chat/src/session/types.ts` (`ChatOperation`, `ChatSessionControls`, `ChatSessionOptions`, `ChatSession`, `OperationKind`; research R1/R2)
-- [ ] T003 Implement `useChatSession` in `packages/chat/src/session/useChatSession.ts` (owns messages + chat status + current operation; submit/retry/regenerate/stop/appendChunk/complete/fail/copy/replaceMessages/messageActions; research R1-R9)
-- [ ] T004 Export the session surface from `packages/chat/src/index.ts`
+- [x] T002 Create session types in `packages/chat/src/session/types.ts` (`ChatOperation`, `ChatSessionControls`, `ChatSessionOptions`, `ChatSession`, `OperationKind`; research R1/R2)
+- [x] T003 Implement `useChatSession` in `packages/chat/src/session/useChatSession.ts` (owns messages + chat status + current operation; submit/retry/regenerate/stop/appendChunk/complete/fail/copy/replaceMessages/messageActions; research R1-R9)
+- [x] T004 Export the session surface from `packages/chat/src/index.ts`
 
 **Checkpoint**: The hook implements the full operation state machine and is exported.
 
@@ -32,12 +32,12 @@
 
 ### Tests for User Story 1
 
-- [ ] T005 [P] [US1] Unit test submit in `packages/chat/src/session/useChatSession.test.ts` (appends user message + sending assistant placeholder; chat status submitting; transport called once per operation)
-- [ ] T006 [P] [US1] Unit test streaming in `packages/chat/src/session/useChatSession.test.ts` (appendChunk accumulates content incrementally, flips status to streaming; complete flips to complete and chat idle; a partial Markdown chunk is preserved verbatim for the renderer)
+- [x] T005 [P] [US1] Unit test submit in `packages/chat/src/session/useChatSession.test.ts` (appends user message + sending assistant placeholder; chat status submitting; transport called once per operation)
+- [x] T006 [P] [US1] Unit test streaming in `packages/chat/src/session/useChatSession.test.ts` (appendChunk accumulates content incrementally, flips status to streaming; complete flips to complete and chat idle; a partial Markdown chunk is preserved verbatim for the renderer)
 
 ### Implementation for User Story 1
 
-- [ ] T007 [US1] Wire submit/appendChunk/complete in `useChatSession` (research R2/R9) - covered by T002/T003
+- [x] T007 [US1] Wire submit/appendChunk/complete in `useChatSession` (research R2/R9) - covered by T002/T003
 
 **Checkpoint**: A submit streams chunks into a visible response that completes.
 
@@ -49,13 +49,13 @@
 
 ### Tests for User Story 2
 
-- [ ] T008 [P] [US2] Unit test stop-before-first-chunk in `useChatSession.test.ts` (message stopped, empty content retained, no stream appended after)
-- [ ] T009 [P] [US2] Unit test stop-mid-stream in `useChatSession.test.ts` (partial content retained, status stopped, second stop is a no-op)
-- [ ] T010 [P] [US2] Unit test final-chunk race in `useChatSession.test.ts` (complete vs stop on the same operation yields exactly one terminal status; no partial content loss)
+- [x] T008 [P] [US2] Unit test stop-before-first-chunk in `useChatSession.test.ts` (message stopped, empty content retained, no stream appended after)
+- [x] T009 [P] [US2] Unit test stop-mid-stream in `useChatSession.test.ts` (partial content retained, status stopped, second stop is a no-op)
+- [x] T010 [P] [US2] Unit test final-chunk race in `useChatSession.test.ts` (complete vs stop on the same operation yields exactly one terminal status; no partial content loss)
 
 ### Implementation for User Story 2
 
-- [ ] T011 [US2] Implement `stop()` and `controls.stopRequested()` in `useChatSession` (research R3) - covered by T002/T003
+- [x] T011 [US2] Implement `stop()` and `controls.stopRequested()` in `useChatSession` (research R3) - covered by T002/T003
 
 **Checkpoint**: Stop retains content and dedupes in all three phases.
 
@@ -67,13 +67,13 @@
 
 ### Tests for User Story 3
 
-- [ ] T012 [P] [US3] Unit test retry in `useChatSession.test.ts` (replaces the errored response in place, reuses the prompt, new operation supersedes the old)
-- [ ] T013 [P] [US3] Unit test regenerate in `useChatSession.test.ts` (replaces the completed response in place, reuses the prompt)
-- [ ] T014 [P] [US3] Unit test stale-update rejection in `useChatSession.test.ts` (chunk/complete/fail from a superseded operation never change the newer response; FR-005)
+- [x] T012 [P] [US3] Unit test retry in `useChatSession.test.ts` (replaces the errored response in place, reuses the prompt, new operation supersedes the old)
+- [x] T013 [P] [US3] Unit test regenerate in `useChatSession.test.ts` (replaces the completed response in place, reuses the prompt)
+- [x] T014 [P] [US3] Unit test stale-update rejection in `useChatSession.test.ts` (chunk/complete/fail from a superseded operation never change the newer response; FR-005)
 
 ### Implementation for User Story 3
 
-- [ ] T015 [US3] Implement `retry(messageId)` and `regenerate(messageId)` in `useChatSession` (research R4) - covered by T002/T003
+- [x] T015 [US3] Implement `retry(messageId)` and `regenerate(messageId)` in `useChatSession` (research R4) - covered by T002/T003
 
 **Checkpoint**: Retry and regenerate replace in place; stale updates are ignored.
 
@@ -85,12 +85,12 @@
 
 ### Tests for User Story 4
 
-- [ ] T016 [P] [US4] Unit test copy in `useChatSession.test.ts` (copyMessage delegates the joined plain text to `copyMessageText`; no host callback means the action is inert)
-- [ ] T017 [P] [US4] Unit test action availability in `useChatSession.test.ts` (copy always, retry only for errored assistant messages, regenerate only for completed assistant messages)
+- [x] T016 [P] [US4] Unit test copy in `useChatSession.test.ts` (copyMessage delegates the joined plain text to `copyMessageText`; no host callback means the action is inert)
+- [x] T017 [P] [US4] Unit test action availability in `useChatSession.test.ts` (copy always, retry only for errored assistant messages, regenerate only for completed assistant messages)
 
 ### Implementation for User Story 4
 
-- [ ] T018 [US4] Implement `copyMessage` and the built-in `messageActions` in `useChatSession` (research R5) - covered by T002/T003
+- [x] T018 [US4] Implement `copyMessage` and the built-in `messageActions` in `useChatSession` (research R5) - covered by T002/T003
 
 **Checkpoint**: Copy, retry, and regenerate actions are available per message with correct availability.
 
@@ -98,11 +98,11 @@
 
 **Purpose**: Edge cases, conversation replacement, demo integration, e2e acceptance coverage, and validation.
 
-- [ ] T019 [P] Unit test edge cases in `useChatSession.test.ts` (duplicate submit no-op while in flight, conversation replacement invalidates the operation with no leak, fail leaves partial content and idle chat status)
-- [ ] T020 Update `packages/chat-demo/src/ChatDemo.tsx` to drive `Chat` through `useChatSession` with a deterministic timer-based fake transport (streams chunk by chunk, supports stop, fail, retry, regenerate, copy)
-- [ ] T021 Extend the packaged-artifact smoke suite in `tests/package/chat-package.test.tsx` to cover the session surface
-- [ ] T022 Write e2e suite `tests/e2e/streaming-operations.spec.ts` covering spec 006 acceptance scenarios (US1-A1..A4, US2-A1..A3, US3-A1..A3, US4-A1/A2, edge cases: duplicate send/stop, conversation replacement isolation, draft survival, dropped connection)
-- [ ] T023 Run quickstart.md validation end-to-end; confirm `lint`, `typecheck`, `test`, `test:e2e` all green
+- [x] T019 [P] Unit test edge cases in `useChatSession.test.ts` (duplicate submit no-op while in flight, conversation replacement invalidates the operation with no leak, fail leaves partial content and idle chat status)
+- [x] T020 Update `packages/chat-demo/src/ChatDemo.tsx` to drive `Chat` through `useChatSession` with a deterministic timer-based fake transport (streams chunk by chunk, supports stop, fail, retry, regenerate, copy)
+- [x] T021 Extend the packaged-artifact smoke suite in `tests/package/chat-package.test.tsx` to cover the session surface
+- [x] T022 Write e2e suite `tests/e2e/streaming-operations.spec.ts` covering spec 006 acceptance scenarios (US1-A1..A4, US2-A1..A3, US3-A1..A3, US4-A1/A2, edge cases: duplicate send/stop, conversation replacement isolation, draft survival, dropped connection)
+- [x] T023 Run quickstart.md validation end-to-end; confirm `lint`, `typecheck`, `test`, `test:e2e` all green
 
 ## Dependencies & Execution Order
 
