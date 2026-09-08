@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native'
 import { useTheme } from '../theme/ThemeContext'
 import { renderIcon } from '../icons'
@@ -16,6 +16,47 @@ export interface ActionMenuProps {
   styleOverrides?: SurfaceStyleOverrides
 }
 
+interface ActionMenuItemProps {
+  action: MessageAction
+  testID: string
+  onActivate: () => void
+}
+
+function ActionMenuItem({ action, testID, onActivate }: ActionMenuItemProps) {
+  const { theme } = useTheme()
+  const target = minTouchTarget()
+  const { onFocus, onBlur, focusRingStyle } = useFocusRing()
+  const styles = useMemo(
+    () =>
+      StyleSheet.create({
+        actionItem: {
+          minHeight: target,
+          justifyContent: 'center',
+          paddingHorizontal: 12,
+          paddingVertical: 8,
+        },
+        actionLabel: {
+          color: theme.colors.text,
+          fontSize: theme.typography.controlTextSize,
+        },
+      }),
+    [theme, target],
+  )
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={action.label}
+      onPress={onActivate}
+      onFocus={onFocus}
+      onBlur={onBlur}
+      style={[styles.actionItem, focusRingStyle]}
+      testID={testID}
+    >
+      <Text style={styles.actionLabel}>{action.label}</Text>
+    </Pressable>
+  )
+}
+
 export function ActionMenu({
   actions,
   message,
@@ -26,8 +67,12 @@ export function ActionMenu({
 }: ActionMenuProps) {
   const { theme, reducedMotion } = useTheme()
   const [open, setOpen] = useState(false)
+  const wasOpenRef = useRef(false)
+  const triggerRef = useRef<HTMLElement | null>(null)
   const { onFocus, onBlur, focusRingStyle } = useFocusRing()
   const target = minTouchTarget()
+
+  const close = useCallback(() => setOpen(false), [])
 
   const grouped = useMemo(() => {
     const map = new Map<string, MessageAction[]>()
@@ -41,6 +86,26 @@ export function ActionMenu({
     }
     return [...map.entries()]
   }, [actions])
+
+  // Move keyboard focus into the menu when it opens so the items are
+  // reachable without tabbing through the rest of the page (FR-003), and
+  // return it to the trigger when the menu closes so it is not dropped.
+  useEffect(() => {
+    if (Platform.OS !== 'web') return
+    if (open) {
+      wasOpenRef.current = true
+      const frame = requestAnimationFrame(() => {
+        const item = document.querySelector(`[data-testid^="chat.action."]`)
+        if (item instanceof HTMLElement) item.focus()
+      })
+      return () => cancelAnimationFrame(frame)
+    }
+    if (wasOpenRef.current) {
+      wasOpenRef.current = false
+      triggerRef.current?.focus()
+    }
+    return undefined
+  }, [open])
 
   const styles = useMemo(
     () =>
@@ -91,18 +156,6 @@ export function ActionMenu({
     [theme, target],
   )
 
-  // Move keyboard focus into the menu when it opens so the items are
-  // reachable without tabbing through the rest of the page (FR-003).
-  useEffect(() => {
-    if (Platform.OS !== 'web') return
-    if (!open) return
-    const frame = requestAnimationFrame(() => {
-      const item = document.querySelector(`[data-testid^="chat.action."]`)
-      if (item instanceof HTMLElement) item.focus()
-    })
-    return () => cancelAnimationFrame(frame)
-  }, [open])
-
   const availableActions = actions.filter((action) => {
     if (typeof action.available === 'function') return action.available(message)
     return action.available !== false
@@ -117,6 +170,9 @@ export function ActionMenu({
   return (
     <View>
       <Pressable
+        ref={(node) => {
+          triggerRef.current = node as unknown as HTMLElement | null
+        }}
         accessibilityRole="button"
         accessibilityLabel={moreLabel}
         accessibilityState={{ expanded: open }}
@@ -132,29 +188,25 @@ export function ActionMenu({
         <Modal
           transparent
           visible
-          onRequestClose={() => setOpen(false)}
+          onRequestClose={close}
           animationType={reducedMotion ? 'none' : 'fade'}
           accessibilityViewIsModal
         >
-          <Pressable style={{ flex: 1 }} onPress={() => setOpen(false)}>
+          <Pressable style={{ flex: 1 }} onPress={close}>
             <View style={styles.menuContainer}>
               {visibleGroups.map(([group, items]) => (
                 <View key={group} style={styles.group}>
                   <Text style={styles.groupLabel}>{group}</Text>
                   {items.map((action) => (
-                    <Pressable
+                    <ActionMenuItem
                       key={action.id}
-                      accessibilityRole="button"
-                      accessibilityLabel={action.label}
-                      onPress={() => {
-                        setOpen(false)
+                      action={action}
+                      testID={`chat.action.${action.id}`}
+                      onActivate={() => {
+                        close()
                         onAction(action, message)
                       }}
-                      style={styles.actionItem}
-                      testID={`chat.action.${action.id}`}
-                    >
-                      <Text style={styles.actionLabel}>{action.label}</Text>
-                    </Pressable>
+                    />
                   ))}
                 </View>
               ))}

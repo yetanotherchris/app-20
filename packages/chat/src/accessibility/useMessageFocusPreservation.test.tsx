@@ -16,19 +16,23 @@ function message(id: string): Message {
 function Host({
   messages,
   withComposer = false,
+  hidden = [],
 }: {
   messages: readonly Message[]
   withComposer?: boolean
+  hidden?: readonly string[]
 }) {
   useMessageFocusPreservation(messages)
   return (
-    <div>
+    <div data-testid="chat.root">
       <div data-testid="chat.message-list">
-        {messages.map((m) => (
-          <div key={m.id} data-testid={`chat.message.${m.id}`} tabIndex={0}>
-            {m.id}
-          </div>
-        ))}
+        {messages.map((m) =>
+          hidden.includes(m.id) ? null : (
+            <div key={m.id} data-testid={`chat.message.${m.id}`} tabIndex={0}>
+              {m.id}
+            </div>
+          ),
+        )}
       </div>
       {withComposer && <input data-testid="chat.composer.input" />}
     </div>
@@ -85,5 +89,17 @@ describe('useMessageFocusPreservation', () => {
     if (composer) composer.focus()
     rerender(<Host messages={[message('b')]} withComposer />)
     expect(document.activeElement).toBe(composer ?? document.body)
+  })
+
+  it('falls back to the composer when the nearest row is not mounted', () => {
+    const { rerender } = render(<Host messages={[message('a'), message('b')]} withComposer />)
+    act(() => rowById('a').focus())
+    expect(document.activeElement).toBe(rowById('a'))
+
+    // 'b' is the nearest target but is virtualized away (not in the DOM);
+    // focus must move to a control instead of dropping to <body>.
+    rerender(<Host messages={[message('b')]} withComposer hidden={['b']} />)
+    const input = document.querySelector('[data-testid="chat.composer.input"]')
+    expect(document.activeElement).toBe(input)
   })
 })

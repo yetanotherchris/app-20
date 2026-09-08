@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { act, renderHook } from '@testing-library/react'
-import { useFocusRing } from './useFocusRing'
+import { focusRingStyleFor, useFocusRing } from './useFocusRing'
 import { lightTheme } from '../theme/themes'
 
 describe('useFocusRing', () => {
@@ -23,5 +23,10 @@ describe('useFocusRing', () => {
     act(() => result.current.onBlur())
     expect(result.current.focused).toBe(false)
     expect(result.current.focusRingStyle).toBeUndefined()
+  })
+
+  it('renders no ring on native (no keyboard focus)', () => {
+    expect(focusRingStyleFor(lightTheme, true, false)).toBeUndefined()
+    expect(focusRingStyleFor(lightTheme, false, false)).toBeUndefined()
   })
 })

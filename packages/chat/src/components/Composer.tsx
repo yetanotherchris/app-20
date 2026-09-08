@@ -8,10 +8,10 @@ import {
   type NativeSyntheticEvent,
   type TextInputContentSizeChangeEvent,
   type TextInputKeyPressEventData,
-  type TextStyle,
 } from 'react-native'
 import { useAutogrowHeight } from '../hooks/useAutogrowHeight'
 import { useTheme } from '../theme/ThemeContext'
+import { focusRingStyleFor } from '../accessibility/useFocusRing'
 import { SendButton, type SendButtonProps } from './SendButton'
 import { StopButton, type StopButtonProps } from './StopButton'
 import type { Capabilities, SurfaceStyleOverrides } from '../theme/types'
@@ -138,17 +138,16 @@ export function Composer({
     [theme, minHeight],
   )
 
-  const inputFocusedStyle = useMemo(() => {
-    if (!inputFocused) return undefined
-    const focused: TextStyle = { borderColor: theme.colors.focus }
-    if (Platform.OS === 'web') {
-      focused.outlineWidth = 2
-      focused.outlineStyle = 'solid'
-      focused.outlineColor = theme.colors.focus
-      focused.outlineOffset = 2
-    }
-    return focused
-  }, [inputFocused, theme])
+  const inputFocusedStyle = useMemo(
+    () =>
+      inputFocused
+        ? {
+            borderColor: theme.colors.focus,
+            ...focusRingStyleFor(theme, true, Platform.OS === 'web'),
+          }
+        : undefined,
+    [inputFocused, theme],
+  )
 
   const performSubmit = useCallback(() => {
     if (!sendEnabled || isBusyRef.current) return

@@ -89,7 +89,7 @@ The user enables reduced motion or high contrast; the component honors both.
 
 ### Measurable Outcomes
 
-- **SC-001**: The project's automated WCAG 2.2 AA suite passes, plus the manual checks automation cannot catch: focus order, target size, and reflow at 200% zoom.
+- **SC-001**: The project's automated WCAG 2.2 AA suite passes, plus the manual checks automation cannot catch: focus order, target size, and reflow at 200% zoom. The suite runs axe-core scoped to the chat; it excludes the `scrollable-region-focusable` rule because the list's scroll container is deliberately not a tab stop (message rows are the keyboard anchors and the standard scroll keys operate the list from a focused row, US1-A3).
 - **SC-002**: The full chat flow works with a keyboard only.
 - **SC-003**: At 200% browser zoom and the largest supported OS text size, no content is clipped, overlapped, or lost.
 - **SC-004**: Status remains identifiable without color.

@@ -86,6 +86,29 @@ describe('Composer', () => {
     const input = screen.getByTestId('chat.composer.input')
     expect(input).toHaveAttribute('aria-label', 'Ask anything…')
   })
+
+  it('shows a visible focus ring on Send while focused (FR-003)', () => {
+    renderComposer({ value: 'hello', canSend: true })
+    const send = screen.getByTestId('chat.composer.send')
+    expect(getComputedStyle(send).outlineStyle).not.toBe('solid')
+    fireEvent.focus(send)
+    expect(getComputedStyle(send).outlineStyle).toBe('solid')
+    expect(parseFloat(getComputedStyle(send).outlineWidth)).toBeGreaterThan(0)
+  })
+
+  it('shows a visible focus ring on Stop while focused (FR-003)', () => {
+    renderComposer({ value: 'hello', canSend: true, isBusy: true })
+    const stop = screen.getByTestId('chat.composer.stop')
+    fireEvent.focus(stop)
+    expect(getComputedStyle(stop).outlineStyle).toBe('solid')
+  })
+
+  it('gives Send a 24px minimum touch target on web (FR-004)', () => {
+    renderComposer({ value: 'hello', canSend: true })
+    const send = screen.getByTestId('chat.composer.send')
+    expect(parseFloat(getComputedStyle(send).minHeight)).toBeGreaterThanOrEqual(24)
+    expect(parseFloat(getComputedStyle(send).minWidth)).toBeGreaterThanOrEqual(24)
+  })
 })
 
 describe('Composer keyboard behaviour', () => {

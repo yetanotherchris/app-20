@@ -12,18 +12,21 @@ describe('MessageStatusBadge', () => {
     render(<MessageStatusBadge status="streaming" />)
     expect(screen.getByTestId('chat.message-status.streaming')).toBeInTheDocument()
     expect(screen.getByText('Streaming')).toBeInTheDocument()
+    expect(screen.getByText('∿')).toBeInTheDocument()
   })
 
   it('labels a stopped message', () => {
     render(<MessageStatusBadge status="stopped" />)
     expect(screen.getByTestId('chat.message-status.stopped')).toBeInTheDocument()
     expect(screen.getByText('Stopped')).toBeInTheDocument()
+    expect(screen.getByText('■')).toBeInTheDocument()
   })
 
   it('labels an error message', () => {
     render(<MessageStatusBadge status="error" />)
     expect(screen.getByTestId('chat.message-status.error')).toBeInTheDocument()
     expect(screen.getByText('Error')).toBeInTheDocument()
+    expect(screen.getByText('⚠')).toBeInTheDocument()
   })
 
   it('labels queued and sending messages', () => {
@@ -35,5 +38,7 @@ describe('MessageStatusBadge', () => {
     )
     expect(screen.getByText('Queued')).toBeInTheDocument()
     expect(screen.getByText('Sending')).toBeInTheDocument()
+    expect(screen.getByText('◷')).toBeInTheDocument()
+    expect(screen.getByText('↑')).toBeInTheDocument()
   })
 })

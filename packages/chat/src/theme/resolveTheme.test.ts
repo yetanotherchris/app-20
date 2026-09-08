@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { resolveTheme, themeBaseForName } from './resolveTheme'
-import { baseThemes, lightTheme, darkTheme } from './themes'
+import { baseThemes, highContrastThemes, lightTheme, darkTheme } from './themes'
 
 describe('resolveTheme', () => {
   it('returns the light base when no override is given', () => {
@@ -40,6 +40,17 @@ describe('resolveTheme', () => {
   it('an explicitly undefined override falls back to the base', () => {
     const theme = resolveTheme('light', { colors: { primary: undefined } })
     expect(theme.colors.primary).toBe(lightTheme.colors.primary)
+  })
+
+  it('selects the high-contrast palette when the contrast mode is high', () => {
+    expect(resolveTheme('light', undefined, 'high')).toEqual(highContrastThemes.light)
+    expect(resolveTheme('dark', undefined, 'high')).toEqual(highContrastThemes.dark)
+  })
+
+  it('merges a partial override over the high-contrast base', () => {
+    const theme = resolveTheme('dark', { colors: { primary: '#ff0000' } }, 'high')
+    expect(theme.colors.primary).toBe('#ff0000')
+    expect(theme.colors.background).toBe(highContrastThemes.dark.colors.background)
   })
 })
 
