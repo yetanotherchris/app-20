@@ -328,4 +328,111 @@ describe('useChatSession: edge cases', () => {
     })
     expect(last(result.current).status).toBe('error')
   })
+
+  it('a new submit works after a stop and the stopped op stays inert', () => {
+    const { session, captured, request } = renderSession()
+    act(() => session().submit('first'))
+    const firstControls = captured()?.controls
+    act(() => session().stop())
+    expect(last(session()).status).toBe('stopped')
+
+    act(() => session().submit('second'))
+    const secondId = last(session()).id
+    expect(request).toHaveBeenCalledTimes(2)
+    // Late updates from the stopped operation do not touch the new response.
+    act(() => firstControls?.appendChunk('late'))
+    act(() => firstControls?.complete())
+    act(() => firstControls?.fail())
+    expect(last(session()).id).toBe(secondId)
+    expect(last(session()).contentParts[0]?.text).toBe('')
+    expect(last(session()).status).toBe('sending')
+  })
+
+  it('a new submit works after replacing the conversation mid-stream', () => {
+    const { session, captured, request } = renderSession()
+    act(() => session().submit('first'))
+    const firstControls = captured()?.controls
+    act(() => firstControls?.appendChunk('partial'))
+    act(() => session().replaceMessages([]))
+    expect(session().messages).toHaveLength(0)
+
+    act(() => session().submit('again'))
+    const secondId = last(session()).id
+    expect(request).toHaveBeenCalledTimes(2)
+    act(() => captured()?.controls.appendChunk('new'))
+    expect(last(session()).id).toBe(secondId)
+    expect(last(session()).contentParts[0]?.text).toBe('new')
+    // The pre-replacement operation is still ignored.
+    act(() => firstControls?.appendChunk('leak'))
+    expect(last(session()).contentParts[0]?.text).toBe('new')
+  })
+
+  it('does not submit an empty or whitespace prompt', () => {
+    const { session, request } = renderSession()
+    act(() => session().submit(''))
+    act(() => session().submit('   '))
+    expect(session().messages).toHaveLength(0)
+    expect(session().status).toBe('idle')
+    expect(request).not.toHaveBeenCalled()
+  })
+
+  it('retry and regenerate no-op for the wrong target status', () => {
+    const { session, captured, request } = renderSession()
+    act(() => session().submit('hi'))
+    act(() => {
+      captured()?.controls.appendChunk('answer')
+      captured()?.controls.complete()
+    })
+    const completeId = last(session()).id
+    // Retry requires an errored message.
+    act(() => session().retry(completeId))
+    expect(request).toHaveBeenCalledTimes(1)
+
+    act(() => session().regenerate(completeId))
+    act(() => {
+      captured()?.controls.appendChunk('partial')
+      captured()?.controls.fail()
+    })
+    const errorId = last(session()).id
+    // Regenerate requires a completed message.
+    act(() => session().regenerate(errorId))
+    expect(request).toHaveBeenCalledTimes(2)
+  })
+
+  it('fail after stop does not flip the stopped message to error', () => {
+    const { session, captured } = renderSession()
+    act(() => session().submit('hi'))
+    act(() => {
+      captured()?.controls.appendChunk('partial')
+      session().stop()
+      captured()?.controls.fail()
+    })
+    expect(last(session()).status).toBe('stopped')
+  })
+
+  it('generates distinct message ids across submits', () => {
+    const { session, captured } = renderSession()
+    act(() => session().submit('one'))
+    const firstId = last(session()).id
+    act(() => captured()?.controls.complete())
+    act(() => session().submit('two'))
+    const secondId = last(session()).id
+    expect(secondId).not.toBe(firstId)
+  })
+
+  it('copy joins multi-part content for the host callback', () => {
+    const { session, captured, copyMessageText } = renderSession()
+    act(() => session().submit('hi'))
+    act(() => captured()?.controls.appendChunk('part one'))
+    const response = last(session())
+    const multiPart = {
+      ...response,
+      contentParts: [
+        { kind: 'text' as const, format: 'markdown' as const, text: 'part one' },
+        { kind: 'text' as const, format: 'plain' as const, text: 'part two' },
+      ],
+    }
+    act(() => session().copyMessage(multiPart))
+    expect(copyMessageText).toHaveBeenCalledWith(multiPart, 'part one\npart two')
+  })
 })

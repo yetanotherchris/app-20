@@ -59,3 +59,11 @@ const session = useChatSession({
 - **No duplicate send/stop (FR-008)**: `submit` is a no-op while an operation is in flight; `stop` is accepted once per operation.
 - **Draft and typing untouched (FR-009, FR-011)**: the hook never reads or writes the composer draft; typing is host-controlled and unaffected by message updates.
 - **Transient statuses never persisted (FR-012)**: `sending` and `streaming` are runtime-only; the host maps them out of the persisted vocabulary (spec 101) before storage.
+- **Retry/regenerate availability**: the actions are hidden while an operation is in flight, so a visibly enabled action never silently no-ops.
+
+## Host responsibilities
+
+- **Message ids**: `initialMessages` and `replaceMessages` ids must be unique and renderer-safe. React escapes attribute values, but a malformed or duplicated id can break a `data-testid` or collide message updates; validate restored/persisted ids before passing them in.
+- **Transport termination**: the `request` callback must settle each operation by calling `complete()`, `fail()`, or cooperating with `stopRequested()`. A transport that resolves without a terminal call leaves the response in `sending`/`streaming` and the composer busy.
+- **Chunk volume**: the transport should bound the number and size of chunks; the hook accumulates the full response text in memory.
+- **Clipboard**: message-text copy is delegated to `copyMessageText`; the component never reads `navigator.clipboard`.

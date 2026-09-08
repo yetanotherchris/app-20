@@ -2,7 +2,7 @@
 
 **Branch**: `spec-006-shared-chat-streaming-operations` | **Date**: 2026-09-08 | **Spec**: [spec.md](./spec.md)
 
-**Input**: Feature specification from `/specs/006-shared-chat-streaming-operations/spec.md`
+**Input**: Feature specification from `/specs/archive/006-shared-chat-streaming-operations/spec.md`
 
 ## Summary
 
@@ -22,7 +22,7 @@ Give the shared chat component an operation-aware streaming controller. A new `u
 
 **Project Type**: Library (shared component package) plus the existing test applications and the demo host.
 
-**Performance Goals**: Streaming chunk appends must be O(1) for the hook's own bookkeeping; the message list re-renders on update like any controlled list (existing LegendList virtualization applies). No per-chunk O(n) scans introduced.
+**Performance Goals**: Streaming chunk appends are O(1) for the hook's own bookkeeping (content accumulation). Each chunk rebuilds the message array once, which is O(n) in message count and inherent to immutable message updates; the existing LegendList virtualization keeps rendering bounded. The transport is responsible for bounded chunk volume.
 
 **Constraints**: No Node, `fs`, or Electron in the renderer (constitution I). The hook must not touch the composer draft (FR-009, draft semantics owned by spec 003). Transient statuses must not be persisted (FR-012). The renderer must not read the clipboard directly (copy is delegated to the host, matching `onCopyCode`).
 
@@ -46,7 +46,7 @@ Re-checked after Phase 1 design: no gate violations. The one deliberate complexi
 ### Documentation (this feature)
 
 ```text
-specs/006-shared-chat-streaming-operations/
+specs/archive/006-shared-chat-streaming-operations/
 ├── plan.md              # This file
 ├── research.md          # Phase 0 output
 ├── data-model.md        # Phase 1 output

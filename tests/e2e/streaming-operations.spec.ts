@@ -42,6 +42,9 @@ test.describe('US1: watch a response stream in', () => {
     await page.getByTestId('demo.complete-stream').click()
     await expect(page.getByTestId('chat.message-status.streaming')).toHaveCount(0)
     await expect(page.getByTestId('chat.message-status.sending')).toHaveCount(0)
+    // A complete message carries no status badge and the chat is idle.
+    await expect(page.getByTestId(/chat.status/)).toHaveCount(0)
+    await expect(lastMessage()).toContainText('chunk chunk chunk')
   })
 
   test('partial Markdown renders without breaking the layout (US1-A2)', async () => {
@@ -76,6 +79,14 @@ test.describe('US2: stop a response mid-stream', () => {
     await submit('stop early')
     await page.getByTestId('chat.composer.stop').click()
     await expect(page.getByTestId('chat.message-status.stopped').last()).toBeVisible()
+    // The composer returns to idle, so a second Stop press is impossible.
+    await expect(page.getByTestId('chat.composer.send')).toBeVisible()
+    await expect(page.getByTestId('chat.composer.stop')).toHaveCount(0)
+    // The stopped chat stays usable: a fresh submit starts a new response.
+    await submit('after stop')
+    await expect(page.getByTestId('chat.message-status.sending').last()).toBeVisible()
+    await page.getByTestId('demo.complete-stream').click()
+    await expect(page.getByTestId('chat.message-status.sending')).toHaveCount(0)
   })
 
   test('stop mid-stream retains the partial content (US2-A1)', async () => {
@@ -176,8 +187,8 @@ test.describe('US4: copy a message', () => {
   test('copying a code block uses the code-copy path (US4-A2)', async () => {
     await resetApp()
     await page.getByTestId('demo.markdown-suite').click()
-    await page.waitForTimeout(400)
     const copyButtons = page.getByRole('button', { name: /copy code/i })
+    await expect(copyButtons.first()).toBeVisible()
     await copyButtons.first().click()
     await expect(page.getByText('Copied').first()).toBeVisible()
   })

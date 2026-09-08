@@ -1,6 +1,6 @@
 # Tasks: Shared Chat Streaming and Operations
 
-**Input**: Design documents from `/specs/006-shared-chat-streaming-operations/`
+**Input**: Design documents from `/specs/archive/006-shared-chat-streaming-operations/`
 
 **Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/session.md, quickstart.md
 

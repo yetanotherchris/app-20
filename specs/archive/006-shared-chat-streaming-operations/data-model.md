@@ -35,7 +35,7 @@ The hook's return value, shaped to feed `Chat` props directly.
 | --------------------------- | ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `messages`                  | `readonly Message[]`           | Owned by the hook.                                                                                                                                   |
 | `status`                    | `ChatStatus`                   | `idle \| submitting \| streaming \| stopping \| error` (FR-010).                                                                                     |
-| `submit(prompt)`            | `() => ChatOperation \| null`  | Appends the user message and a `sending` assistant placeholder, opens the operation, calls `request`. No-op when an operation is in flight (FR-008). |
+| `submit(prompt)`            | `(prompt: string) => void`     | Appends the user message and a `sending` assistant placeholder, opens the operation, calls `request`. No-op when an operation is in flight (FR-008). |
 | `retry(messageId)`          | `(id) => void`                 | Replaces the errored assistant message in place, reopens the operation with the same prompt.                                                         |
 | `regenerate(messageId)`     | `(id) => void`                 | Replaces the completed assistant message in place, reopens the operation with the same prompt.                                                       |
 | `stop()`                    | `() => void`                   | Accepts once per current operation; retains partial content, marks `stopped` (FR-006).                                                               |
@@ -43,7 +43,7 @@ The hook's return value, shaped to feed `Chat` props directly.
 | `complete(opId)`            | `(id) => void`                 | Rejects stale operations.                                                                                                                            |
 | `fail(opId)`                | `(id) => void`                 | Rejects stale operations; message-level error.                                                                                                       |
 | `copyMessage(message)`      | `(m) => void`                  | Delegates the joined plain text to `options.copyMessageText` (FR-007).                                                                               |
-| `messageActions`            | `readonly MessageAction[]`     | Copy (always), retry (assistant + error), regenerate (assistant + complete).                                                                         |
+| `messageActions`            | `readonly MessageAction[]`     | Copy (always), retry (assistant + error, idle chat), regenerate (assistant + complete, idle chat).                                                   |
 | `onMessageAction`           | `(action, message) => void`    | Wires the actions to the operations above.                                                                                                           |
 | `replaceMessages(messages)` | `(readonly Message[]) => void` | Host conversation replacement; invalidates the current operation so no updates leak in (edge case).                                                  |
 
@@ -71,8 +71,10 @@ idle → submitting (operation opened)
 
 ## Derived state: action availability
 
-| Action     | Available when                    |
-| ---------- | --------------------------------- |
-| Copy       | any message                       |
-| Retry      | role assistant, status `error`    |
-| Regenerate | role assistant, status `complete` |
+Retry and regenerate are hidden while an operation is in flight, so a visibly enabled action never silently no-ops.
+
+| Action     | Available when                                                |
+| ---------- | ------------------------------------------------------------- |
+| Copy       | any message                                                   |
+| Retry      | role assistant, status `error`, and no operation in flight    |
+| Regenerate | role assistant, status `complete`, and no operation in flight |

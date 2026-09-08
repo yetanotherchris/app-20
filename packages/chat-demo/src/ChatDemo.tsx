@@ -112,31 +112,41 @@ export function ChatDemo({ initialMessages = DEFAULT_MESSAGES }: ChatDemoProps) 
     initialMessages,
   })
 
-  const messages = override ? override.messages : session.messages
-  const status = override ? override.status : session.status
-  const messageActions = actionsEnabled ? session.messageActions : []
+  const {
+    messages: sessionMessages,
+    status: sessionStatus,
+    submit,
+    stop,
+    replaceMessages,
+    onMessageAction: runSessionAction,
+    messageActions: sessionActions,
+  } = session
+
+  const messages = override ? override.messages : sessionMessages
+  const status = override ? override.status : sessionStatus
+  const messageActions = actionsEnabled ? sessionActions : []
 
   const handleSubmit = useCallback(() => {
     const text = draft.trim()
     if (!text) return
     setSubmitCount((n) => n + 1)
     setOverride(null)
-    session.submit(text)
+    submit(text)
     setDraft('')
-  }, [draft, session])
+  }, [draft, submit])
 
   const handleStop = useCallback(() => {
     setOverride(null)
-    session.stop()
-  }, [session])
+    stop()
+  }, [stop])
 
   const appendMessage = useCallback(() => {
     setOverride(null)
-    session.replaceMessages([
-      ...session.messages,
-      makeMessage('assistant', `Streamed response chunk ${session.messages.length + 1}.`),
+    replaceMessages([
+      ...sessionMessages,
+      makeMessage('assistant', `Streamed response chunk ${sessionMessages.length + 1}.`),
     ])
-  }, [session])
+  }, [replaceMessages, sessionMessages])
 
   const streamNextChunk = useCallback(() => {
     const controls = sessionControlsRef.current
@@ -145,9 +155,10 @@ export function ChatDemo({ initialMessages = DEFAULT_MESSAGES }: ChatDemoProps) 
       return
     }
     // No active operation: update the last assistant message in place so the
-    // streaming-position tests keep a stable row identity.
-    const current = session.messages
-    session.replaceMessages(
+    // legacy streaming-position tests keep a stable row identity. This
+    // synthesizes a streaming state without an operation (demo-only).
+    const current = sessionMessages
+    replaceMessages(
       current.map((m, index) =>
         index === current.length - 1 && m.role === 'assistant'
           ? {
@@ -159,7 +170,7 @@ export function ChatDemo({ initialMessages = DEFAULT_MESSAGES }: ChatDemoProps) 
           : m,
       ),
     )
-  }, [session])
+  }, [replaceMessages, sessionMessages])
 
   const streamChunk = useCallback(() => {
     setOverride(null)
@@ -173,8 +184,6 @@ export function ChatDemo({ initialMessages = DEFAULT_MESSAGES }: ChatDemoProps) 
 
   const staleChunk = useCallback(() => {
     setOverride(null)
-    // Push an update through the previous (superseded) operation; the session
-    // must ignore it (FR-005).
     staleControlsRef.current?.appendChunk(' STALE ')
   }, [])
 
@@ -192,18 +201,13 @@ export function ChatDemo({ initialMessages = DEFAULT_MESSAGES }: ChatDemoProps) 
     setOverride(null)
     // End any lingering operation so the new submit is not blocked.
     sessionControlsRef.current?.complete()
-    session.submit('Streaming demo')
+    submit('Streaming demo')
     sessionControlsRef.current?.appendChunk('Streaming response...')
-  }, [session])
-
-  const markLastError = useCallback(() => {
-    setOverride(null)
-    sessionControlsRef.current?.fail()
-  }, [])
+  }, [submit])
 
   const removeLastMessage = useCallback(() => {
-    session.replaceMessages(session.messages.slice(0, -1))
-  }, [session])
+    replaceMessages(sessionMessages.slice(0, -1))
+  }, [replaceMessages, sessionMessages])
 
   const loadEarlier = useCallback(() => {
     setLoadingEarlier(true)
@@ -212,10 +216,10 @@ export function ChatDemo({ initialMessages = DEFAULT_MESSAGES }: ChatDemoProps) 
       const earlier = Array.from({ length: 20 }, (_, i) =>
         makeMessage(i % 2 === 0 ? 'user' : 'assistant', `Earlier message ${i + 1}`),
       )
-      session.replaceMessages([...earlier, ...session.messages])
+      replaceMessages([...earlier, ...sessionMessages])
       setLoadingEarlier(false)
     }, 50)
-  }, [session])
+  }, [replaceMessages, sessionMessages])
 
   const exhaustEarlier = useCallback(() => {
     setLoadingEarlier(true)
@@ -223,21 +227,21 @@ export function ChatDemo({ initialMessages = DEFAULT_MESSAGES }: ChatDemoProps) 
       const earlier = Array.from({ length: 20 }, (_, i) =>
         makeMessage(i % 2 === 0 ? 'user' : 'assistant', `Final earlier message ${i + 1}`),
       )
-      session.replaceMessages([...earlier, ...session.messages])
+      replaceMessages([...earlier, ...sessionMessages])
       setHasEarlier(false)
       setLoadingEarlier(false)
     }, 50)
-  }, [session])
+  }, [replaceMessages, sessionMessages])
 
   const clearMessages = useCallback(() => {
     setOverride(null)
-    session.replaceMessages([])
-  }, [session])
+    replaceMessages([])
+  }, [replaceMessages])
 
   const replaceConversation = useCallback(() => {
     setOverride(null)
-    session.replaceMessages([makeMessage('system', 'New conversation')])
-  }, [session])
+    replaceMessages([makeMessage('system', 'New conversation')])
+  }, [replaceMessages])
 
   const simulateSubmitting = useCallback(() => {
     setOverride({ messages: [], status: 'submitting' })
@@ -252,34 +256,34 @@ export function ChatDemo({ initialMessages = DEFAULT_MESSAGES }: ChatDemoProps) 
     const bulk: Message[] = Array.from({ length: 1000 }, (_, i) =>
       makeMessage(i % 2 === 0 ? 'user' : 'assistant', `Bulk message ${i + 1}`),
     )
-    session.replaceMessages(bulk)
-  }, [session])
+    replaceMessages(bulk)
+  }, [replaceMessages])
 
   const loadThousandLarge = useCallback(() => {
     setOverride(null)
     const bulk: Message[] = Array.from({ length: 1000 }, (_, i) =>
       makeMessage(i % 2 === 0 ? 'user' : 'assistant', largeMessageText),
     )
-    session.replaceMessages(bulk)
-  }, [session])
+    replaceMessages(bulk)
+  }, [replaceMessages])
 
   const loadMarkdownSuite = useCallback(() => {
     setOverride(null)
-    session.replaceMessages([
+    replaceMessages([
       makeMessage('system', 'Conversation started with a markdown suite'),
       makeMessage('user', 'Please show me the full markdown suite.'),
       makeMessage('assistant', markdownSuite),
       makeMessage('assistant', unsafeMarkdown),
     ])
-  }, [session])
+  }, [replaceMessages])
 
   const loadLargeMarkdown = useCallback(() => {
     setOverride(null)
-    session.replaceMessages([
+    replaceMessages([
       makeMessage('user', 'Give me a very long answer, please.'),
       makeMessage('assistant', `# Long response\n\n${largeMessageText}`),
     ])
-  }, [session])
+  }, [replaceMessages])
 
   const toggleTheme = useCallback(() => {
     setTheme((current) => (current === 'light' ? 'dark' : 'light'))
@@ -288,9 +292,9 @@ export function ChatDemo({ initialMessages = DEFAULT_MESSAGES }: ChatDemoProps) 
   const handleMessageAction = useCallback(
     (action: MessageAction, message: Message) => {
       setLastLinkPress(`action on ${message.id}`)
-      session.onMessageAction(action, message)
+      runSessionAction(action, message)
     },
-    [session],
+    [runSessionAction],
   )
 
   const renderMessage = useMemo(() => {
@@ -429,7 +433,7 @@ export function ChatDemo({ initialMessages = DEFAULT_MESSAGES }: ChatDemoProps) 
           onPress={simulateStreaming}
           testID="demo.simulate-streaming"
         />
-        <DemoButton label="Mark last error" onPress={markLastError} testID="demo.mark-error" />
+        <DemoButton label="Mark last error" onPress={failStream} testID="demo.mark-error" />
         <DemoButton
           label="Remove last message"
           onPress={removeLastMessage}
@@ -557,7 +561,6 @@ export function ChatDemo({ initialMessages = DEFAULT_MESSAGES }: ChatDemoProps) 
       completeStream,
       failStream,
       simulateStreaming,
-      markLastError,
       removeLastMessage,
       replaceConversation,
       loadEarlier,

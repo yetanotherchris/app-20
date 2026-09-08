@@ -1,7 +1,13 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import type { ChatStatus, MessageAction } from '../theme/types'
-import type { Message } from '../types'
-import type { ChatOperation, ChatSession, ChatSessionControls, ChatSessionOptions } from './types'
+import type { Message, MessageStatus } from '../types'
+import type {
+  ChatOperation,
+  ChatSession,
+  ChatSessionControls,
+  ChatSessionOptions,
+  OperationKind,
+} from './types'
 
 let idCounter = 0
 function nextId(): string {
@@ -14,7 +20,7 @@ function nowIso(): string {
 }
 
 function plainText(message: Message): string {
-  return message.contentParts.map((part) => ('text' in part ? part.text : '')).join('')
+  return message.contentParts.map((part) => ('text' in part ? part.text : '')).join('\n')
 }
 
 function findPromptFor(messages: readonly Message[], assistantMessageId: string): string {
@@ -125,17 +131,15 @@ export function useChatSession(options: ChatSessionOptions): ChatSession {
     const current = currentOpRef.current
     if (!current || current.op.stopped) return // FR-006: second Stop is a no-op
     current.op.stopped = true
+    currentOpRef.current = null
+    // The transport's controls still read `op.stopped` on the same object, so
+    // `stopRequested()` keeps returning true after the op is cleared.
     applyToResponse(current.op, (message) => ({ ...message, status: 'stopped' as const }), 'idle')
   }, [applyToResponse])
 
   const startOperation = useCallback(
-    (op: ChatOperation, responseMutate: (message: Message) => Message) => {
+    (op: ChatOperation) => {
       currentOpRef.current = { op, content: '' }
-      const applied = applyToResponse(op, responseMutate, 'submitting')
-      if (!applied) {
-        currentOpRef.current = null
-        return
-      }
       const controls: ChatSessionControls = {
         appendChunk: (text) => appendChunk(op.id, text),
         complete: () => complete(op.id),
@@ -153,7 +157,7 @@ export function useChatSession(options: ChatSessionOptions): ChatSession {
         fail(op.id)
       }
     },
-    [appendChunk, complete, fail, request, applyToResponse],
+    [appendChunk, complete, fail, request],
   )
 
   const submit = useCallback(
@@ -182,53 +186,50 @@ export function useChatSession(options: ChatSessionOptions): ChatSession {
         stopped: false,
       }
       setMessagesBoth([...messagesRef.current, userMessage, responseMessage])
-      startOperation(op, (message) => message)
+      setStatus('submitting')
+      startOperation(op)
     },
-    [hasInFlightOp, setMessagesBoth, startOperation],
+    [hasInFlightOp, setMessagesBoth, setStatus, startOperation],
+  )
+
+  const reopenOperation = useCallback(
+    (messageId: string, kind: OperationKind, expectedStatus: MessageStatus) => {
+      if (hasInFlightOp()) return
+      const target = messagesRef.current.find((message) => message.id === messageId)
+      if (!target || target.role !== 'assistant' || target.status !== expectedStatus) return
+      const op: ChatOperation = {
+        id: nextId(),
+        kind,
+        prompt: findPromptFor(messagesRef.current, messageId),
+        messageId,
+        stopped: false,
+      }
+      setMessagesBoth(
+        messagesRef.current.map((message) =>
+          message.id === messageId
+            ? {
+                ...message,
+                status: 'sending',
+                updatedAt: nowIso(),
+                contentParts: [{ kind: 'text', format: 'markdown', text: '' }],
+              }
+            : message,
+        ),
+      )
+      setStatus('submitting')
+      startOperation(op)
+    },
+    [hasInFlightOp, setMessagesBoth, setStatus, startOperation],
   )
 
   const retry = useCallback(
-    (messageId: string) => {
-      if (hasInFlightOp()) return
-      const target = messagesRef.current.find((message) => message.id === messageId)
-      if (!target || target.role !== 'assistant' || target.status !== 'error') return
-      const op: ChatOperation = {
-        id: nextId(),
-        kind: 'retry',
-        prompt: findPromptFor(messagesRef.current, messageId),
-        messageId,
-        stopped: false,
-      }
-      startOperation(op, (message) => ({
-        ...message,
-        status: 'sending',
-        updatedAt: nowIso(),
-        contentParts: [{ kind: 'text', format: 'markdown', text: '' }],
-      }))
-    },
-    [hasInFlightOp, startOperation],
+    (messageId: string) => reopenOperation(messageId, 'retry', 'error'),
+    [reopenOperation],
   )
 
   const regenerate = useCallback(
-    (messageId: string) => {
-      if (hasInFlightOp()) return
-      const target = messagesRef.current.find((message) => message.id === messageId)
-      if (!target || target.role !== 'assistant' || target.status !== 'complete') return
-      const op: ChatOperation = {
-        id: nextId(),
-        kind: 'regenerate',
-        prompt: findPromptFor(messagesRef.current, messageId),
-        messageId,
-        stopped: false,
-      }
-      startOperation(op, (message) => ({
-        ...message,
-        status: 'sending',
-        updatedAt: nowIso(),
-        contentParts: [{ kind: 'text', format: 'markdown', text: '' }],
-      }))
-    },
-    [hasInFlightOp, startOperation],
+    (messageId: string) => reopenOperation(messageId, 'regenerate', 'complete'),
+    [reopenOperation],
   )
 
   const copyMessage = useCallback(
@@ -261,18 +262,20 @@ export function useChatSession(options: ChatSessionOptions): ChatSession {
         id: 'retry',
         label: 'Retry',
         group: 'Response',
-        available: (message) => message.role === 'assistant' && message.status === 'error',
+        available: (message) =>
+          !hasInFlightOp() && message.role === 'assistant' && message.status === 'error',
         onAction: (_action, message) => retry(message.id),
       },
       {
         id: 'regenerate',
         label: 'Regenerate',
         group: 'Response',
-        available: (message) => message.role === 'assistant' && message.status === 'complete',
+        available: (message) =>
+          !hasInFlightOp() && message.role === 'assistant' && message.status === 'complete',
         onAction: (_action, message) => regenerate(message.id),
       },
     ],
-    [copyMessageText, copyMessage, retry, regenerate],
+    [copyMessageText, copyMessage, retry, regenerate, hasInFlightOp],
   )
 
   const onMessageAction = useCallback((action: MessageAction, message: Message) => {
