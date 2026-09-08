@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { ActionMenu } from './ActionMenu'
+import { ThemeProvider } from '../theme/ThemeContext'
 import type { Message } from '../types'
 import type { MessageAction } from '../theme/types'
 
@@ -52,5 +53,28 @@ describe('ActionMenu', () => {
     fireEvent.click(screen.getByTestId('chat.action-menu'))
     expect(screen.getByTestId('chat.action.copy')).toBeInTheDocument()
     expect(screen.queryByTestId('chat.action.delete')).not.toBeInTheDocument()
+  })
+
+  it('moves keyboard focus into the menu when it opens (FR-003)', async () => {
+    render(<ActionMenu actions={actions} message={message('a')} onAction={vi.fn()} />)
+    fireEvent.click(screen.getByTestId('chat.action-menu'))
+    await waitFor(() => {
+      expect(document.activeElement).toBe(screen.getByTestId('chat.action.copy'))
+    })
+  })
+
+  it('opens and fires actions under reduced motion', async () => {
+    const onAction = vi.fn()
+    render(
+      <ThemeProvider reducedMotion>
+        <ActionMenu actions={actions} message={message('a')} onAction={onAction} />
+      </ThemeProvider>,
+    )
+    fireEvent.click(screen.getByTestId('chat.action-menu'))
+    await waitFor(() => {
+      expect(screen.getByTestId('chat.action.copy')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByTestId('chat.action.copy'))
+    expect(onAction).toHaveBeenCalledWith(actions[0], message('a'))
   })
 })

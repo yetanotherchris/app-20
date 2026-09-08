@@ -80,6 +80,12 @@ describe('Composer', () => {
     fireEvent.click(screen.getByTestId('chat.composer.stop'))
     expect(props.onStop).toHaveBeenCalledTimes(1)
   })
+
+  it('gives the input an accessible name equal to its placeholder (FR-002)', () => {
+    renderComposer({ placeholder: 'Ask anything…' })
+    const input = screen.getByTestId('chat.composer.input')
+    expect(input).toHaveAttribute('aria-label', 'Ask anything…')
+  })
 })
 
 describe('Composer keyboard behaviour', () => {

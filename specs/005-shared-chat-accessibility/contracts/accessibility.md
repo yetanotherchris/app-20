@@ -21,15 +21,15 @@ The default controls, states, and renderers of the shared chat component meet WC
 
 Every default control's `accessibilityLabel` equals its visible label:
 
-| Control | Visible label | Accessible name |
-|---|---|---|
-| Send | "Send" | `sendLabel` |
-| Stop | "Stop" | `stopLabel` |
-| Scroll to latest | "Scroll to latest" | `scrollToLatestLabel` |
-| Load earlier | "Load earlier messages" | `loadEarlierLabel` |
-| Action menu | "More" | "More" |
-| Code copy | "Copy" / "Copied" / "Copy failed" | same, with language suffix |
-| Composer input | placeholder | `accessibilityLabel` = placeholder |
+| Control          | Visible label                     | Accessible name                    |
+| ---------------- | --------------------------------- | ---------------------------------- |
+| Send             | "Send"                            | `sendLabel`                        |
+| Stop             | "Stop"                            | `stopLabel`                        |
+| Scroll to latest | "Scroll to latest"                | `scrollToLatestLabel`              |
+| Load earlier     | "Load earlier messages"           | `loadEarlierLabel`                 |
+| Action menu      | "More"                            | "More"                             |
+| Code copy        | "Copy" / "Copied" / "Copy failed" | same, with language suffix         |
+| Composer input   | placeholder                       | `accessibilityLabel` = placeholder |
 
 ## Keyboard operation (FR-003)
 

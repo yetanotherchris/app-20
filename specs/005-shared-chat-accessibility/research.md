@@ -36,15 +36,15 @@
 
 Measured pairs (default themes, after correction):
 
-| Pair | Light | Dark |
-|---|---|---|
-| text / surface | 17.85 | 13.35 |
-| textSecondary / surface | 7.58 | 5.71 |
-| onPrimary / primary (button, user bubble) | 5.17 | 4.85 |
-| link (primary) / background | 5.17 | 4.85 |
-| danger text / surface | 4.83 | 5.29 |
-| unreadBadge / background | 4.62 | 4.74 |
-| codeText / codeBackground | 14.48 | 16.36 |
+| Pair                                      | Light | Dark  |
+| ----------------------------------------- | ----- | ----- |
+| text / surface                            | 17.85 | 13.35 |
+| textSecondary / surface                   | 7.58  | 5.71  |
+| onPrimary / primary (button, user bubble) | 5.17  | 4.85  |
+| link (primary) / background               | 5.17  | 4.85  |
+| danger text / surface                     | 4.83  | 5.29  |
+| unreadBadge / background                  | 4.62  | 4.74  |
+| codeText / codeBackground                 | 14.48 | 16.36 |
 
 ## R5: Keyboard operation (FR-003, US1)
 

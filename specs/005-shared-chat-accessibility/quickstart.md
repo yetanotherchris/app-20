@@ -11,12 +11,12 @@ Validation guide for spec 005. Contract details in [contracts/accessibility.md](
 
 ## Commands
 
-| Command | Purpose |
-|---|---|
-| `npm run lint` | ESLint across workspaces. |
-| `npm run typecheck` | `tsc --noEmit` across workspaces. |
-| `npm test` | Vitest unit suites (source imports) plus the packaged-artifact vitest project. |
-| `npm run test:e2e` | Build the Electron harness (consumes the packaged `@app-20/chat` build), launch it via Playwright, run e2e specs (including the axe WCAG 2.2 AA scan). |
+| Command             | Purpose                                                                                                                                                |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `npm run lint`      | ESLint across workspaces.                                                                                                                              |
+| `npm run typecheck` | `tsc --noEmit` across workspaces.                                                                                                                      |
+| `npm test`          | Vitest unit suites (source imports) plus the packaged-artifact vitest project.                                                                         |
+| `npm run test:e2e`  | Build the Electron harness (consumes the packaged `@app-20/chat` build), launch it via Playwright, run e2e specs (including the axe WCAG 2.2 AA scan). |
 
 ## Unit validation (fast feedback)
 

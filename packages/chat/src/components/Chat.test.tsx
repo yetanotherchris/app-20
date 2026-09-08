@@ -309,3 +309,73 @@ describe('Chat constraint modes (US4)', () => {
     expect(screen.getByTestId('chat.composer.send')).toBeInTheDocument()
   })
 })
+
+describe('Chat accessibility (spec 005)', () => {
+  it('applies the high-contrast palette when highContrast is set (FR-007)', () => {
+    function ThemeProbe() {
+      const { theme } = useTheme()
+      return (
+        <div
+          data-testid="probe"
+          data-background={theme.colors.background}
+          data-text={theme.colors.text}
+        />
+      )
+    }
+    function CustomMessage(m: Message) {
+      return (
+        <div key={m.id} data-testid={`chat.message.${m.id}`}>
+          <ThemeProbe />
+        </div>
+      )
+    }
+    renderChat({ renderMessage: CustomMessage, theme: 'dark', highContrast: true })
+    const probe = screen.getAllByTestId('probe')[0]
+    expect(probe.getAttribute('data-background')).toBe('#000000')
+    expect(probe.getAttribute('data-text')).toBe('#ffffff')
+  })
+
+  it('exposes reduced motion through the theme context (FR-006)', () => {
+    function ReducedProbe() {
+      const { reducedMotion } = useTheme()
+      return <div data-testid="probe" data-reduced={String(reducedMotion)} />
+    }
+    function CustomMessage(m: Message) {
+      return (
+        <div key={m.id} data-testid={`chat.message.${m.id}`}>
+          <ReducedProbe />
+        </div>
+      )
+    }
+    renderChat({ renderMessage: CustomMessage, reducedMotion: true })
+    expect(screen.getAllByTestId('probe')[0].getAttribute('data-reduced')).toBe('true')
+  })
+
+  it('renders the chat status text when not idle (FR-008)', () => {
+    renderChat({ status: 'streaming' })
+    expect(screen.getByTestId('chat.status.streaming')).toBeInTheDocument()
+    expect(screen.getByText('Streaming…')).toBeInTheDocument()
+  })
+
+  it('renders no chat status text when idle (FR-008)', () => {
+    renderChat({ status: 'idle' })
+    expect(screen.queryByTestId(/chat.status/)).not.toBeInTheDocument()
+  })
+
+  it('renders a non-color status badge for a streaming message (FR-008)', () => {
+    const streaming = { ...message('s'), status: 'streaming' as const }
+    renderChat({ messages: [streaming] })
+    expect(screen.getByTestId('chat.message-status.streaming')).toBeInTheDocument()
+    expect(screen.getByText('Streaming')).toBeInTheDocument()
+  })
+
+  it('makes message rows keyboard focusable (FR-003)', () => {
+    renderChat()
+    expect(screen.getByTestId('chat.message.a').getAttribute('tabindex')).toBe('0')
+  })
+
+  it('labels the message list with the configured label (FR-002)', () => {
+    renderChat({ messageListLabel: 'Conversation' })
+    expect(screen.getByTestId('chat.message-list')).toHaveAttribute('aria-label', 'Conversation')
+  })
+})

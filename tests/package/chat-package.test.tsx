@@ -14,8 +14,18 @@ import {
   StopButton,
   lightTheme,
   darkTheme,
+  highContrastThemes,
   defaultIcons,
   resolveTheme,
+  contrastRatio,
+  useSystemAccessibility,
+  useFocusRing,
+  useMessageFocusPreservation,
+  minTouchTarget,
+  MessageStatusBadge,
+  ChatStatusText,
+  MESSAGE_STATUS_PRESENTATION,
+  CHAT_STATUS_PRESENTATION,
 } from '@app-20/chat'
 
 vi.mock('react-native-marked', () => ({
@@ -56,13 +66,34 @@ describe('packaged @app-20/chat artifact (FR-015)', () => {
     expect(StopButton).toBeTypeOf('function')
     expect(lightTheme).toBeDefined()
     expect(darkTheme).toBeDefined()
+    expect(highContrastThemes.light).toBeDefined()
+    expect(highContrastThemes.dark).toBeDefined()
     expect(defaultIcons.send).toBeTypeOf('function')
+    expect(contrastRatio).toBeTypeOf('function')
+    expect(useSystemAccessibility).toBeTypeOf('function')
+    expect(useFocusRing).toBeTypeOf('function')
+    expect(useMessageFocusPreservation).toBeTypeOf('function')
+    expect(minTouchTarget).toBeTypeOf('function')
+    expect(MessageStatusBadge).toBeTypeOf('function')
+    expect(ChatStatusText).toBeTypeOf('function')
+    expect(MESSAGE_STATUS_PRESENTATION.streaming).toBeDefined()
+    expect(CHAT_STATUS_PRESENTATION.submitting).toBeDefined()
   })
 
   it('resolves themes from the artifact', () => {
     const theme = resolveTheme('dark', { colors: { primary: '#ff0000' } })
     expect(theme.colors.primary).toBe('#ff0000')
     expect(theme.colors.text).toBe(darkTheme.colors.text)
+  })
+
+  it('resolves the high-contrast palette from the artifact', () => {
+    const theme = resolveTheme('dark', undefined, 'high')
+    expect(theme.colors.background).toBe(highContrastThemes.dark.colors.background)
+    expect(theme.colors.text).toBe('#ffffff')
+  })
+
+  it('computes contrast ratios from the artifact', () => {
+    expect(contrastRatio('#000000', '#ffffff')).toBeGreaterThanOrEqual(4.5)
   })
 
   it('renders the Chat component from the artifact', () => {
