@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import {
   Keyboard,
   Platform,
@@ -82,13 +82,12 @@ export function Composer({
   icons,
   styleOverrides,
 }: ComposerProps) {
-  const { theme, contrast } = useTheme()
+  const { theme } = useTheme()
   const isTouch = useRef(isTouchTarget()).current
   const isBusyRef = useRef(isBusy)
   isBusyRef.current = isBusy
   const inputRef = useRef<TextInput | null>(null)
   const lastSubmittedRef = useRef<string | null>(null)
-  const [inputFocused, setInputFocused] = useState(false)
 
   const sendEnabled = canSend && !disabled && !readOnly && capabilities?.send !== false
   const stopEnabled = isBusy && !disabled && !readOnly && capabilities?.stop !== false
@@ -131,20 +130,6 @@ export function Composer({
                 elevation: 2,
               }),
         },
-        // Focus is indicated on the pill, not the input: the border lightens to a
-        // subtle neutral gray (never black). In high contrast a 2px ring in the
-        // focus color keeps the indicator maximal, per the contrast requirement.
-        pillFocused: {
-          borderColor: theme.colors.composerBorderFocus,
-          ...(Platform.OS === 'web' && contrast === 'high'
-            ? {
-                outlineWidth: 2,
-                outlineStyle: 'solid',
-                outlineColor: theme.colors.focus,
-                outlineOffset: 1,
-              }
-            : null),
-        },
         inputWrap: {
           flex: 1,
         },
@@ -157,6 +142,9 @@ export function Composer({
           lineHeight: theme.typography.composerLineHeight,
           color: theme.colors.text,
           textAlignVertical: 'top',
+          ...(Platform.OS === 'web'
+            ? { outlineWidth: 0, outlineStyle: 'solid', outlineColor: 'transparent' }
+            : null),
         },
         controls: {
           flexDirection: 'row',
@@ -164,7 +152,7 @@ export function Composer({
           gap: 8,
         },
       }),
-    [theme, contrast, minHeight],
+    [theme, minHeight],
   )
 
   const performSubmit = useCallback(() => {
@@ -232,12 +220,6 @@ export function Composer({
     }
   }, [blurBehavior, value, performSubmit, sendEnabled])
 
-  const handleInputFocus = useCallback(() => setInputFocused(true), [])
-  const handleInputBlur = useCallback(() => {
-    setInputFocused(false)
-    handleBlur()
-  }, [handleBlur])
-
   const handleSendPress = useCallback(() => {
     performSubmit()
   }, [performSubmit])
@@ -268,7 +250,7 @@ export function Composer({
 
   return (
     <View style={[styles.container, styleOverrides?.composer]} testID="chat.composer">
-      <View style={[styles.pill, inputFocused && styles.pillFocused]} testID="chat.composer.pill">
+      <View style={styles.pill} testID="chat.composer.pill">
         {renderComposerControls?.()}
         <View style={styles.inputWrap}>
           <TextInput
@@ -280,8 +262,7 @@ export function Composer({
             }
             onLayout={handleLayout}
             onKeyPress={handleKeyPress}
-            onBlur={handleInputBlur}
-            onFocus={handleInputFocus}
+            onBlur={handleBlur}
             onSubmitEditing={handleSubmitEditing}
             multiline
             blurOnSubmit={false}

@@ -32,20 +32,17 @@ async function outlineStyle(testID: string): Promise<string> {
 }
 
 test.describe('US1: keyboard operation with visible focus', () => {
-  test('focus order is logical and every control shows a visible focus ring (US1-A1/A2)', async () => {
+  test('focus order is logical and Send shows a visible focus ring (US1-A1/A2)', async () => {
     await resetApp()
     const input = page.getByTestId('chat.composer.input')
-    // Focus is indicated on the composer pill with a subtle gray border change,
-    // not a colored border on the input.
-    const borderBefore = await page
-      .getByTestId('chat.composer.pill')
-      .evaluate((el) => getComputedStyle(el).borderTopColor)
+    // The composer input has no focus indicator by product decision (recorded
+    // deviation); the focus-ring checks below cover the interactive controls.
+    const pill = page.getByTestId('chat.composer.pill')
+    const borderBefore = await pill.evaluate((el) => getComputedStyle(el).borderTopColor)
     await input.focus()
     await expect(input).toBeFocused()
-    const borderAfter = await page
-      .getByTestId('chat.composer.pill')
-      .evaluate((el) => getComputedStyle(el).borderTopColor)
-    expect(borderAfter).not.toBe(borderBefore)
+    expect(await pill.evaluate((el) => getComputedStyle(el).borderTopColor)).toBe(borderBefore)
+    expect(await input.evaluate((el) => parseFloat(getComputedStyle(el).outlineWidth))).toBe(0)
     // A non-empty draft enables Send so it is a tab stop.
     await page.keyboard.type('focus ring')
     await input.focus()

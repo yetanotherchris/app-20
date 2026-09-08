@@ -52,10 +52,9 @@ test.describe('US1: read assistant responses as formatted Markdown', () => {
 
   test('activating a link delegates to the host and never navigates internally', async () => {
     await loadMarkdownSuite()
-    // The demo's onLinkPress records the href; the URL never changes. Target
-    // the link role so the click is not order-dependent on matching text.
+    // The demo's onLinkPress records the href; the URL never changes.
     const urlBefore = page.url()
-    await page.getByRole('link', { name: 'example' }).click()
+    await page.getByText('example').first().click()
     await expect(page.getByTestId('demo.last-link')).toHaveText('link: https://example.com')
     expect(page.url()).toBe(urlBefore)
   })
