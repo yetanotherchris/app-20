@@ -7,7 +7,7 @@
 
 ## Content Quality
 
-- [x] No implementation details (languages, frameworks, APIs)
+- [x] No component implementation details (languages, frameworks, APIs) are introduced; GitHub Pages is an explicit user-specified publication constraint
 - [x] Focused on user value and business needs
 - [x] Written for non-technical stakeholders
 - [x] All mandatory sections completed
@@ -32,8 +32,9 @@
 
 ## Notes
 
-- The reader of this documentation is the component integrator, so the spec's user stories are written from the integrator's point of view, not an end user's. The "written for non-technical stakeholders" mark above means the spec expresses WHAT and WHY without implementation detail, which it now does.
+- The reader of this documentation is the component integrator, so the spec's user stories are written from the integrator's point of view, not an end user's. The "written for non-technical stakeholders" mark above means the spec expresses user outcomes and constraints without component implementation detail.
+- GitHub Pages is included in the specification because the user explicitly made it a publication requirement. The choice between a prebuilt-output branch and a source branch built by GitHub Pages remains a planning decision.
 - Three agent reviews ran (project consistency, spec quality, documentation coverage) and their findings were addressed.
-- One artifact-compliance review ran against the PR and posted findings on the PR. Its Major finding (delivery and verification mechanics, e.g. hosting, released artifact, builds, and type-checking, belonged in the plan rather than the spec) was addressed by rewording to technology-agnostic outcomes and leaving the mechanism to `/speckit.plan`. Its Minor finding (integrator jargon such as callback payloads, operation identity, and package artifacts) was addressed by removing those terms. The checklist was re-marked after those changes.
+- One artifact-compliance review ran against the PR and posted findings on the PR. Its findings about delivery mechanics and integrator jargon were addressed. The later GitHub Pages requirement is an explicit user-specified publication constraint; only the branch-versus-source-build mechanism remains for `/speckit.plan`.
 - The composer focus exception claim is now verified: it was added to the active spec 007 in this branch.
 - Items marked incomplete require spec updates before `/speckit.clarify` or `/speckit.plan`.

@@ -10,7 +10,7 @@
 
 ## Scope
 
-This feature specifies the versioned documentation deliverable for the shared chat component. The documentation is the resource integrators use to install, configure, extend, and verify the component. It covers installation and quick start, interactive examples, an enumerable reference, practical recipes, accessibility and limitation statements, platform notes, concept explanations, and the maintenance that keeps the documentation aligned with the component's public surface. The documentation is published on the public web, addressable per version, with examples the reader can operate; the hosting and serving approach is chosen during planning.
+This feature specifies the versioned documentation deliverable for the shared chat component. The documentation is the resource integrators use to install, configure, extend, and verify the component. It covers installation and quick start, interactive examples, an enumerable reference, practical recipes, accessibility and limitation statements, platform notes, concept explanations, and the maintenance that keeps the documentation aligned with the component's public surface. The documentation is published through GitHub Pages, with per-version addressing and examples the reader can operate. Documentation source is transformed into the published static site before or during publication; the plan selects whether generated output is published to a Pages branch or GitHub Pages builds the source branch.
 
 The documentation adds no component behavior. It describes and exemplifies capabilities defined by specs 001 through 007 and the component overview. Where a documented limitation exists (for example the temporary composer focus exception recorded in spec 007), the documentation states it plainly rather than implying conformance.
 
@@ -18,6 +18,7 @@ The documentation adds no component behavior. It describes and exemplifies capab
 
 - A quick-start guide that works on its own.
 - Interactive examples the reader can operate, rather than static mock-ups or screenshots.
+- A GitHub Pages publication target with versioned, publicly addressable documentation.
 - A complete enumerable reference for the public configuration surface: inputs, events, states, statuses, content types, and customization slots.
 - Practical recipes for common integration tasks.
 - An accessibility statement that names the conformance target and records temporary exceptions.
@@ -154,6 +155,7 @@ A developer understands how the component is controlled and how to drive it corr
 - **FR-013**: Documentation MUST include a concepts guide, per User Story 6, covering the controlled surface, streaming update flow, status transitions, scroll-following rules, how a late update from an older submission cannot change a newer response, and one complete integration example.
 - **FR-014**: Documentation MUST use concise, task-oriented prose with no marketing or promotional claims, MUST distinguish guarantees from implementation details, and MUST be maintained so a change to the component's public surface and its documentation ship together.
 - **FR-015**: Documentation MUST remain consistent with the presentation, behavior, and customization rules established by specs 001 through 007 and MUST NOT introduce or imply new component capabilities.
+- **FR-016**: The documentation MUST be published through GitHub Pages as a versioned public static site. The publication process MUST transform the documentation source into the site served by GitHub Pages, and the plan MUST select either publishing generated output to a Pages-configured branch or using GitHub Pages to build the source branch.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -179,12 +181,13 @@ A developer understands how the component is controlled and how to drive it corr
 - **SC-007**: A returning developer can locate a specific reference entry or recipe using navigation or search; in a test of at least ten predefined lookup tasks, at least 90 percent are completed within one minute from the documentation landing page.
 - **SC-008**: Before each release, the reference, every snippet, and every interactive example are checked against the component as released, and a deliberate mismatch is detected.
 - **SC-009**: Each released version has distinct, addressable documentation pages and a published changelog; all examples, recipes, and reference pages declare the component version they target.
+- **SC-010**: The documentation is reachable through the repository's GitHub Pages site at the documented public address, and a publication check confirms that the selected source or generated-output branch produces the expected versioned pages.
 
 ## Assumptions
 
 - The documentation deliverable is the versioned resource integrators use to determine the documented public surface of the published component; its quality bar is defined by the characteristics of the cited single-component examples.
 - "Live interactive examples" means demonstrations of the component itself that the reader can operate without a live network backend.
-- Documentation is published on the public web with per-version addressing and examples the reader can operate; hosting and serving choices are made during planning.
+- GitHub Pages is the required public host. The plan may choose whether GitHub Pages builds the source branch or serves generated static output from a Pages-configured branch, provided the published result meets the requirements in this specification.
 - Documentation does not add new component behavior; it only describes, exemplifies, and guides the use of capabilities already defined by the component's functional specifications.
 - The temporary composer focus-indicator exception recorded in spec 007's Clarifications is treated as a first-class documented limitation rather than an implementation detail to be omitted.
 - Reasonable defaults from the provided research are used: emphasis on minimal time-to-productivity, complete reference tables, practical recipes, explicit accessibility notes, and low fluff.
