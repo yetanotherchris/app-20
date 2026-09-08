@@ -53,14 +53,14 @@
 
 ### Tests for User Story 2
 
-- [ ] T012 [P] [US2] Update `packages/chat/src/components/Composer.test.tsx` for the pill structure, circular icon-only Send with accessible name "Send", and the Stop swap without draft loss
-- [ ] T013 [P] [US2] Add `SendButton`/`StopButton` unit coverage for the circular shape, `sendBackground`, disabled state, and same-size area swap
+- [x] T012 [P] [US2] Update `packages/chat/src/components/Composer.test.tsx` for the pill structure, circular icon-only Send with accessible name "Send", and the Stop swap without draft loss
+- [x] T013 [P] [US2] Add `SendButton`/`StopButton` unit coverage for the circular shape, `sendBackground`, disabled state, and same-size area swap
 
 ### Implementation for User Story 2
 
-- [ ] T014 [US2] Rework `packages/chat/src/components/Composer.tsx` to the centered pill: transparent full-width container with `sidePadding`, centered pill (`width: '100%'`, `maxWidth: composerWidth`, `composerSurface`, `composerBorder`, `composerRadius`, subtle shadow, `testID="chat.composer.pill"`) wrapping the transparent `TextInput` and the right-end control area; focus ring stays on the input and the pill border uses the focus color while focused; no plus/microphone space by default
-- [ ] T015 [US2] Rework `packages/chat/src/components/SendButton.tsx`: circular icon-only up-arrow control sized `max(minTouchTarget, 34)`, `sendBackground` surface, `accessibilityLabel` from the label, disabled uses `sendDisabled`, keep `testID="chat.composer.send"`
-- [ ] T016 [US2] Rework `packages/chat/src/components/StopButton.tsx`: same-size circular control in the same area with the square glyph and existing accessible name, `sendBackground` surface, keep `testID="chat.composer.stop"`
+- [x] T014 [US2] Rework `packages/chat/src/components/Composer.tsx` to the centered pill: transparent full-width container with `sidePadding`, centered pill (`width: '100%'`, `maxWidth: composerWidth`, `composerSurface`, `composerBorder`, `composerRadius`, subtle shadow, `testID="chat.composer.pill"`) wrapping the transparent `TextInput` and the right-end control area; focus ring stays on the input and the pill border uses the focus color while focused; no plus/microphone space by default
+- [x] T015 [US2] Rework `packages/chat/src/components/SendButton.tsx`: circular icon-only up-arrow control sized `max(minTouchTarget, 34)`, `sendBackground` surface, `accessibilityLabel` from the label, disabled uses `sendDisabled`, keep `testID="chat.composer.send"`
+- [x] T016 [US2] Rework `packages/chat/src/components/StopButton.tsx`: same-size circular control in the same area with the square glyph and existing accessible name, `sendBackground` surface, keep `testID="chat.composer.stop"`
 
 **Checkpoint**: US2 renders the reference composer; its unit tests pass.
 
@@ -72,13 +72,13 @@
 
 ### Tests for User Story 3
 
-- [ ] T017 [P] [US3] Add `packages/chat/src/components/MessageActions.test.tsx`: inline row renders available actions left-aligned with `chat.action.<id>` testIDs, availability filtering, and nothing when no action is available
-- [ ] T018 [P] [US3] Update `packages/chat/src/components/Chat.test.tsx` and `MessageBubble.test.tsx` action testIDs from `chat.action-menu` to the inline row (`chat.message-actions`, `chat.action.<id>`)
+- [x] T017 [P] [US3] Add `packages/chat/src/components/MessageActions.test.tsx`: inline row renders available actions left-aligned with `chat.action.<id>` testIDs, availability filtering, and nothing when no action is available
+- [x] T018 [P] [US3] Update `packages/chat/src/components/Chat.test.tsx` and `MessageBubble.test.tsx` action testIDs from `chat.action-menu` to the inline row (`chat.message-actions`, `chat.action.<id>`)
 
 ### Implementation for User Story 3
 
-- [ ] T019 [US3] Create `packages/chat/src/components/MessageActions.tsx` (inline left-aligned action row, per-action `Pressable` with focus ring and touch-target minimums) and wire it as the default in `packages/chat/src/components/MessageBubble.tsx`; keep `ActionMenu` exported unchanged; export `MessageActions` from `packages/chat/src/index.ts`
-- [ ] T020 [US3] Update `packages/chat/src/components/StatusIndicator.tsx` to use the `captionLineHeight`/`captionWeight` tokens so status text follows the theme typography
+- [x] T019 [US3] Create `packages/chat/src/components/MessageActions.tsx` (inline left-aligned action row, per-action `Pressable` with focus ring and touch-target minimums) and wire it as the default in `packages/chat/src/components/MessageBubble.tsx`; keep `ActionMenu` exported unchanged; export `MessageActions` from `packages/chat/src/index.ts`
+- [x] T020 [US3] Update `packages/chat/src/components/StatusIndicator.tsx` to use the `captionLineHeight`/`captionWeight` tokens so status text follows the theme typography
 
 **Checkpoint**: US3 action row and state surfaces render; their unit tests pass.
 
@@ -90,12 +90,12 @@
 
 ### Tests for User Story 4
 
-- [ ] T021 [P] [US4] Update `packages/chat/src/components/UnreadBadge.test.tsx` and any control tests for the new caption/control typography tokens
+- [x] T021 [P] [US4] Update `packages/chat/src/components/UnreadBadge.test.tsx` and any control tests for the new caption/control typography tokens
 
 ### Implementation for User Story 4
 
-- [ ] T022 [P] [US4] Apply the new typography tokens to `packages/chat/src/components/ScrollToLatestControl.tsx`, `packages/chat/src/components/LoadEarlierControl.tsx`, and `packages/chat/src/components/UnreadBadge.tsx` (control/caption sizes, line heights, weights)
-- [ ] T023 [US4] Extend the packaged-artifact smoke suite in `tests/package/chat-package.test.tsx` to cover the new public surface (`MessageActions`, layout/typography token types)
+- [x] T022 [P] [US4] Apply the new typography tokens to `packages/chat/src/components/ScrollToLatestControl.tsx`, `packages/chat/src/components/LoadEarlierControl.tsx`, and `packages/chat/src/components/UnreadBadge.tsx` (control/caption sizes, line heights, weights)
+- [x] T023 [US4] Extend the packaged-artifact smoke suite in `tests/package/chat-package.test.tsx` to cover the new public surface (`MessageActions`, layout/typography token types)
 
 **Checkpoint**: US4 tokens and packaged surface are consistent; unit suites pass.
 
