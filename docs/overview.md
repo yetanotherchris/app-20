@@ -32,7 +32,7 @@ Below are thoughts for an initial beta phase, a proof of concept.
 - Provide one chat screen.
 - Display a message composer with a Send button.
 - Display user prompts in right-aligned message bubbles.
-- Display assistant responses in left-aligned message bubbles.
+- Display assistant responses as left-aligned, unboxed text in a centered conversation column, following [spec 107](../specs/107-chat-reference-presentation/spec.md).
 - Render assistant responses as Markdown.
 
 ## Beta 1 UI Exclusions
