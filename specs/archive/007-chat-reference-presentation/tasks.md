@@ -1,6 +1,6 @@
 # Tasks: Shared Chat Reference Presentation
 
-**Input**: Design documents from `/specs/007-chat-reference-presentation/`
+**Input**: Design documents from `/specs/archive/007-chat-reference-presentation/`
 
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/presentation.md, quickstart.md
 

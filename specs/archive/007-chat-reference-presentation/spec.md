@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-08
 
-**Status**: Draft
+**Status**: Archived
 
 **Input**: User request: "The initial chat component is functional now, however it doesn't look like a conventional LLM chat UI. Create Spec Kit specs to copy the attached screenshot's look and feel. The left-side drawer is not part of the component; use the right-side main panel/window."
 

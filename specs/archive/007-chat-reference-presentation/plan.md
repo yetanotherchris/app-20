@@ -2,7 +2,7 @@
 
 **Branch**: `spec-007-chat-reference-presentation` | **Date**: 2026-09-08 | **Spec**: [spec.md](./spec.md)
 
-**Input**: Feature specification from `/specs/007-chat-reference-presentation/spec.md`
+**Input**: Feature specification from `/specs/archive/007-chat-reference-presentation/spec.md`
 
 ## Summary
 
@@ -46,7 +46,7 @@ Re-checked after Phase 1 design: no gate violations. The one deliberate presenta
 ### Documentation (this feature)
 
 ```text
-specs/007-chat-reference-presentation/
+specs/archive/007-chat-reference-presentation/
 ├── plan.md              # This file
 ├── research.md          # Phase 0 output
 ├── data-model.md        # Phase 1 output
