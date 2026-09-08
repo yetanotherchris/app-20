@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-07
 
-**Status**: Draft
+**Status**: Archived
 
 **Input**: User description: "Streaming and message operations for the shared chat component: incremental display of responses, message and chat statuses, per-operation identity, stop, copy, retry, and regenerate, with stale updates ignored."
 
