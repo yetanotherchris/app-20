@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Pressable, StyleSheet, Text } from 'react-native'
+import { Pressable, StyleSheet } from 'react-native'
 import { useTheme } from '../theme/ThemeContext'
 import { renderIcon } from '../icons'
 import { useFocusRing } from '../accessibility/useFocusRing'
@@ -14,35 +14,28 @@ export interface SendButtonProps {
   styleOverrides?: SurfaceStyleOverrides
 }
 
+/**
+ * The reference Send is a circular up-arrow control at the composer's right
+ * end (FR-006). The label stays as the accessible name; the arrow is the only
+ * visual. The circle never drops below the platform touch-target minimum.
+ */
 export function SendButton({ label, disabled, onPress, icons, styleOverrides }: SendButtonProps) {
   const { theme } = useTheme()
   const { onFocus, onBlur, focusRingStyle } = useFocusRing()
-  const target = minTouchTarget()
+  const size = Math.max(minTouchTarget(), 34)
   const styles = useMemo(
     () =>
       StyleSheet.create({
         button: {
-          flexDirection: 'row',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
           alignItems: 'center',
           justifyContent: 'center',
-          gap: 6,
-          minHeight: target,
-          minWidth: target,
-          backgroundColor: disabled ? theme.colors.sendDisabled : theme.colors.primary,
-          borderRadius: theme.radii.controlRadius,
-          paddingHorizontal: 16,
-          paddingVertical: 8,
-        },
-        label: {
-          color: theme.colors.onPrimary,
-          fontSize: theme.typography.controlTextSize,
-          fontWeight: '600',
-        },
-        labelDisabled: {
-          color: theme.colors.textSecondary,
+          backgroundColor: disabled ? theme.colors.sendDisabled : theme.colors.sendBackground,
         },
       }),
-    [theme, disabled, target],
+    [theme, disabled, size],
   )
   return (
     <Pressable
@@ -57,7 +50,6 @@ export function SendButton({ label, disabled, onPress, icons, styleOverrides }: 
       testID="chat.composer.send"
     >
       {renderIcon('send', icons, { size: 16, color: theme.colors.onPrimary })}
-      <Text style={[styles.label, disabled && styles.labelDisabled]}>{label}</Text>
     </Pressable>
   )
 }

@@ -104,28 +104,46 @@ export function Composer({
     () =>
       StyleSheet.create({
         container: {
+          alignItems: 'center',
+          paddingHorizontal: theme.layout.sidePadding,
+          paddingVertical: theme.spacing.composerPaddingV,
+          backgroundColor: 'transparent',
+        },
+        pill: {
           flexDirection: 'row',
           alignItems: 'flex-end',
           gap: 8,
+          width: '100%',
+          maxWidth: theme.layout.composerWidth,
+          backgroundColor: theme.colors.composerSurface,
+          borderRadius: theme.radii.composerRadius,
+          borderWidth: 1,
+          borderColor: theme.colors.composerBorder,
           paddingHorizontal: theme.spacing.composerPaddingH,
           paddingVertical: theme.spacing.composerPaddingV,
-          borderTopWidth: 1,
-          borderTopColor: theme.colors.border,
-          backgroundColor: theme.colors.composerSurface,
+          ...(Platform.OS === 'web'
+            ? { boxShadow: '0 2px 12px rgba(0, 0, 0, 0.08)' }
+            : {
+                shadowColor: '#000000',
+                shadowOpacity: 0.08,
+                shadowRadius: 12,
+                shadowOffset: { width: 0, height: 2 },
+                elevation: 2,
+              }),
+        },
+        pillFocused: {
+          borderColor: theme.colors.focus,
         },
         inputWrap: {
           flex: 1,
         },
         input: {
           minHeight,
-          borderRadius: theme.radii.composerRadius,
-          borderWidth: 1,
-          borderColor: theme.colors.composerBorder,
-          backgroundColor: theme.colors.composerInput,
-          paddingHorizontal: 14,
-          paddingVertical: 10,
+          backgroundColor: 'transparent',
+          paddingHorizontal: 2,
+          paddingVertical: 6,
           fontSize: theme.typography.composerTextSize,
-          lineHeight: 20,
+          lineHeight: theme.typography.composerLineHeight,
           color: theme.colors.text,
           textAlignVertical: 'top',
         },
@@ -242,31 +260,33 @@ export function Composer({
 
   return (
     <View style={[styles.container, styleOverrides?.composer]} testID="chat.composer">
-      {renderComposerControls?.()}
-      <View style={styles.inputWrap}>
-        <TextInput
-          ref={inputRef}
-          value={value}
-          onChangeText={handleChangeText}
-          onContentSizeChange={(event: TextInputContentSizeChangeEvent) =>
-            handleContentSizeChange(event.nativeEvent.contentSize.height)
-          }
-          onLayout={handleLayout}
-          onKeyPress={handleKeyPress}
-          onBlur={handleInputBlur}
-          onFocus={handleInputFocus}
-          onSubmitEditing={handleSubmitEditing}
-          multiline
-          blurOnSubmit={false}
-          placeholder={placeholder}
-          placeholderTextColor={theme.colors.textSecondary}
-          accessibilityLabel={placeholder}
-          editable={editable}
-          style={[styles.input, { height }, inputFocusedStyle, styleOverrides?.composerInput]}
-          testID="chat.composer.input"
-        />
+      <View style={[styles.pill, inputFocused && styles.pillFocused]} testID="chat.composer.pill">
+        {renderComposerControls?.()}
+        <View style={styles.inputWrap}>
+          <TextInput
+            ref={inputRef}
+            value={value}
+            onChangeText={handleChangeText}
+            onContentSizeChange={(event: TextInputContentSizeChangeEvent) =>
+              handleContentSizeChange(event.nativeEvent.contentSize.height)
+            }
+            onLayout={handleLayout}
+            onKeyPress={handleKeyPress}
+            onBlur={handleInputBlur}
+            onFocus={handleInputFocus}
+            onSubmitEditing={handleSubmitEditing}
+            multiline
+            blurOnSubmit={false}
+            placeholder={placeholder}
+            placeholderTextColor={theme.colors.textSecondary}
+            accessibilityLabel={placeholder}
+            editable={editable}
+            style={[styles.input, { height }, inputFocusedStyle, styleOverrides?.composerInput]}
+            testID="chat.composer.input"
+          />
+        </View>
+        <View style={styles.controls}>{stopEnabled ? stopControl : sendControl}</View>
       </View>
-      <View style={styles.controls}>{stopEnabled ? stopControl : sendControl}</View>
     </View>
   )
 }

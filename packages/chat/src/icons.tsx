@@ -29,7 +29,7 @@ function makeGlyph(glyph: string) {
 }
 
 export const defaultIcons: Record<IconName, (props: IconProps) => ReactNode> = {
-  send: makeGlyph('→'),
+  send: makeGlyph('↑'),
   stop: makeGlyph('■'),
   scrollToLatest: makeGlyph('⌄'),
   more: makeGlyph('⋯'),

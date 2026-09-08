@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { Pressable, StyleSheet, Text } from 'react-native'
+import { Pressable, StyleSheet } from 'react-native'
 import { useTheme } from '../theme/ThemeContext'
 import { renderIcon } from '../icons'
 import { useFocusRing } from '../accessibility/useFocusRing'
@@ -13,32 +13,28 @@ export interface StopButtonProps {
   styleOverrides?: SurfaceStyleOverrides
 }
 
+/**
+ * Stop occupies the same circular control area as Send so the swap does not
+ * change the composer's width or lose the draft (US2-A4, FR-006). The square
+ * glyph keeps its existing meaning and accessible name.
+ */
 export function StopButton({ label, onPress, icons, styleOverrides }: StopButtonProps) {
   const { theme } = useTheme()
   const { onFocus, onBlur, focusRingStyle } = useFocusRing()
-  const target = minTouchTarget()
+  const size = Math.max(minTouchTarget(), 34)
   const styles = useMemo(
     () =>
       StyleSheet.create({
         button: {
-          flexDirection: 'row',
+          width: size,
+          height: size,
+          borderRadius: size / 2,
           alignItems: 'center',
           justifyContent: 'center',
-          gap: 6,
-          minHeight: target,
-          minWidth: target,
-          backgroundColor: theme.colors.danger,
-          borderRadius: theme.radii.controlRadius,
-          paddingHorizontal: 16,
-          paddingVertical: 8,
-        },
-        label: {
-          color: theme.colors.onPrimary,
-          fontSize: theme.typography.controlTextSize,
-          fontWeight: '600',
+          backgroundColor: theme.colors.sendBackground,
         },
       }),
-    [theme, target],
+    [theme, size],
   )
   return (
     <Pressable
@@ -51,7 +47,6 @@ export function StopButton({ label, onPress, icons, styleOverrides }: StopButton
       testID="chat.composer.stop"
     >
       {renderIcon('stop', icons, { size: 16, color: theme.colors.onPrimary })}
-      <Text style={styles.label}>{label}</Text>
     </Pressable>
   )
 }
