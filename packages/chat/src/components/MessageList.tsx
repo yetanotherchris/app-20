@@ -132,6 +132,16 @@ export function MessageList({
           flex: 1,
           backgroundColor: theme.colors.background,
         },
+        fill: {
+          flex: 1,
+          paddingHorizontal: theme.layout.sidePadding,
+        },
+        column: {
+          flex: 1,
+          width: '100%',
+          maxWidth: theme.layout.readingColumnWidth,
+          alignSelf: 'center',
+        },
         overlay: {
           position: 'absolute',
           right: 16,
@@ -160,22 +170,26 @@ export function MessageList({
       accessibilityLabel={messageListLabel}
       testID="chat.message-list"
     >
-      <LegendList
-        ref={listRef}
-        data={messages}
-        renderItem={renderItem}
-        keyExtractor={keyExtractor}
-        extraData={renderMessage}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-        onViewableItemsChanged={onViewableItemsChanged}
-        viewabilityConfig={viewabilityConfig}
-        initialScrollAtEnd
-        maintainScrollAtEnd
-        maintainScrollAtEndThreshold={followFraction}
-        maintainVisibleContentPosition
-        ListHeaderComponent={loadEarlierControl}
-      />
+      <View style={styles.fill}>
+        <View style={styles.column} testID="chat.reading-column">
+          <LegendList
+            ref={listRef}
+            data={messages}
+            renderItem={renderItem}
+            keyExtractor={keyExtractor}
+            extraData={renderMessage}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            onViewableItemsChanged={onViewableItemsChanged}
+            viewabilityConfig={viewabilityConfig}
+            initialScrollAtEnd
+            maintainScrollAtEnd
+            maintainScrollAtEndThreshold={followFraction}
+            maintainVisibleContentPosition
+            ListHeaderComponent={loadEarlierControl}
+          />
+        </View>
+      </View>
       {!isAtBottom && (
         <View style={styles.overlay}>
           {unreadCount > 0 && <UnreadBadge count={unreadCount} styleOverrides={styleOverrides} />}

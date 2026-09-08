@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { View, StyleSheet, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
+import { Platform, View, StyleSheet, type StyleProp, type TextStyle, type ViewStyle } from 'react-native'
 import { useMarkdown, type RendererInterface } from 'react-native-marked'
 import type { ContentPart } from '../types'
 import { useTheme } from '../theme/ThemeContext'
@@ -68,21 +68,49 @@ export function MarkdownText({
 
   const flatTextStyle = textStyle ? StyleSheet.flatten(textStyle) : undefined
 
+  // Body type is token-driven (FR-014): the role text style (color) is merged
+  // with the message size, line height, and weight. Heading sizes scale from
+  // the body size; strong, em, links, and inline code stay visually distinct
+  // (FR-004). The default paragraph padding is replaced by the token gap so
+  // paragraph spacing is owned by the theme.
+  const base: TextStyle = {
+    ...(flatTextStyle ?? {}),
+    fontSize: theme.typography.messageTextSize,
+    lineHeight: theme.typography.messageLineHeight,
+    fontWeight: theme.typography.messageWeight,
+  }
+
+  const headingStyle = (scale: number): TextStyle => ({
+    ...base,
+    fontSize: Math.round(theme.typography.messageTextSize * scale),
+    lineHeight: Math.round(theme.typography.messageLineHeight * scale),
+    fontWeight: theme.typography.headingWeight,
+  })
+
+  const inlineCode: TextStyle = {
+    ...base,
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
+    backgroundColor: theme.colors.systemBubble,
+    borderRadius: 4,
+    paddingHorizontal: 4,
+  }
+
   const elements = useMarkdown(text, {
     renderer,
     styles: {
-      text: flatTextStyle,
-      link: flatTextStyle,
-      codespan: flatTextStyle,
-      strong: flatTextStyle,
-      em: flatTextStyle,
-      li: flatTextStyle,
-      h1: flatTextStyle,
-      h2: flatTextStyle,
-      h3: flatTextStyle,
-      h4: flatTextStyle,
-      h5: flatTextStyle,
-      h6: flatTextStyle,
+      text: base,
+      paragraph: { paddingVertical: 0, marginBottom: theme.spacing.paragraphGap },
+      link: { ...base, fontStyle: 'normal' },
+      codespan: inlineCode,
+      strong: { ...base, fontWeight: '700' },
+      em: { ...base, fontStyle: 'italic' },
+      li: base,
+      h1: headingStyle(1.5),
+      h2: headingStyle(1.3),
+      h3: headingStyle(1.15),
+      h4: headingStyle(1),
+      h5: headingStyle(1),
+      h6: headingStyle(1),
     },
   })
 

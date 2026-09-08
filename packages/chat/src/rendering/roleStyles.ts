@@ -19,18 +19,26 @@ export function useRoleStyles(): RoleStyles {
   const { theme } = useTheme()
   return useMemo(() => {
     const styles = StyleSheet.create({
+      // The shared row treatment: turn spacing and a width cap so text wraps
+      // inside the reading column. The horizontal rhythm belongs to the column
+      // (research R6); surfaces and padding are per-role.
+      base: {
+        marginVertical: theme.spacing.bubbleMarginV,
+        marginHorizontal: theme.spacing.bubbleMarginH,
+        maxWidth: '100%',
+      },
       userBubble: {
         alignSelf: 'flex-end',
         backgroundColor: theme.colors.userBubble,
-        borderTopRightRadius: 4,
+        borderRadius: theme.radii.bubbleRadius,
+        paddingHorizontal: 14,
+        paddingVertical: 10,
       },
       userText: {
-        color: theme.colors.onPrimary,
+        color: theme.colors.userBubbleText,
       },
       assistantBubble: {
         alignSelf: 'flex-start',
-        backgroundColor: theme.colors.assistantBubble,
-        borderTopLeftRadius: 4,
       },
       assistantText: {
         color: theme.colors.text,
@@ -38,18 +46,13 @@ export function useRoleStyles(): RoleStyles {
       systemBubble: {
         alignSelf: 'stretch',
         backgroundColor: theme.colors.systemBubble,
+        borderRadius: theme.radii.bubbleRadius,
+        paddingHorizontal: 12,
+        paddingVertical: 8,
       },
       systemText: {
         color: theme.colors.textSecondary,
         fontStyle: 'italic',
-      },
-      bubble: {
-        marginVertical: theme.spacing.bubbleMarginV,
-        marginHorizontal: theme.spacing.bubbleMarginH,
-        borderRadius: theme.radii.bubbleRadius,
-        paddingHorizontal: 12,
-        paddingVertical: 8,
-        maxWidth: 520,
       },
     })
     return {
@@ -60,7 +63,7 @@ export function useRoleStyles(): RoleStyles {
         text: styles.assistantText,
       },
       system: { alignSelf: 'stretch', bubble: styles.systemBubble, text: styles.systemText },
-      base: styles.bubble,
+      base: styles.base,
     }
   }, [theme])
 }
