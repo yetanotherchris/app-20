@@ -34,6 +34,11 @@ export const defaultIcons: Record<IconName, (props: IconProps) => ReactNode> = {
   scrollToLatest: makeGlyph('⌄'),
   more: makeGlyph('⋯'),
   copy: makeGlyph('⎘'),
+  queued: makeGlyph('◷'),
+  sending: makeGlyph('↑'),
+  streaming: makeGlyph('∿'),
+  stopped: makeGlyph('■'),
+  error: makeGlyph('⚠'),
 }
 
 export function renderIcon(

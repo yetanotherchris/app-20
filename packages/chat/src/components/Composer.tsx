@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Keyboard,
   Platform,
@@ -11,6 +11,7 @@ import {
 } from 'react-native'
 import { useAutogrowHeight } from '../hooks/useAutogrowHeight'
 import { useTheme } from '../theme/ThemeContext'
+import { focusRingStyleFor } from '../accessibility/useFocusRing'
 import { SendButton, type SendButtonProps } from './SendButton'
 import { StopButton, type StopButtonProps } from './StopButton'
 import type { Capabilities, SurfaceStyleOverrides } from '../theme/types'
@@ -88,6 +89,7 @@ export function Composer({
   isBusyRef.current = isBusy
   const inputRef = useRef<TextInput | null>(null)
   const lastSubmittedRef = useRef<string | null>(null)
+  const [inputFocused, setInputFocused] = useState(false)
 
   const sendEnabled = canSend && !disabled && !readOnly && capabilities?.send !== false
   const stopEnabled = isBusy && !disabled && !readOnly && capabilities?.stop !== false
@@ -134,6 +136,17 @@ export function Composer({
         },
       }),
     [theme, minHeight],
+  )
+
+  const inputFocusedStyle = useMemo(
+    () =>
+      inputFocused
+        ? {
+            borderColor: theme.colors.focus,
+            ...focusRingStyleFor(theme, true, Platform.OS === 'web'),
+          }
+        : undefined,
+    [inputFocused, theme],
   )
 
   const performSubmit = useCallback(() => {
@@ -193,6 +206,12 @@ export function Composer({
     }
   }, [blurBehavior, value, performSubmit, sendEnabled])
 
+  const handleInputFocus = useCallback(() => setInputFocused(true), [])
+  const handleInputBlur = useCallback(() => {
+    setInputFocused(false)
+    handleBlur()
+  }, [handleBlur])
+
   const handleSendPress = useCallback(() => {
     performSubmit()
   }, [performSubmit])
@@ -234,14 +253,16 @@ export function Composer({
           }
           onLayout={handleLayout}
           onKeyPress={handleKeyPress}
-          onBlur={handleBlur}
+          onBlur={handleInputBlur}
+          onFocus={handleInputFocus}
           onSubmitEditing={handleSubmitEditing}
           multiline
           blurOnSubmit={false}
           placeholder={placeholder}
           placeholderTextColor={theme.colors.textSecondary}
+          accessibilityLabel={placeholder}
           editable={editable}
-          style={[styles.input, { height }, styleOverrides?.composerInput]}
+          style={[styles.input, { height }, inputFocusedStyle, styleOverrides?.composerInput]}
           testID="chat.composer.input"
         />
       </View>

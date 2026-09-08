@@ -1,6 +1,9 @@
 import { useMemo } from 'react'
 import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native'
 import { useTheme } from '../theme/ThemeContext'
+import { renderIcon } from '../icons'
+import { useFocusRing } from '../accessibility/useFocusRing'
+import { minTouchTarget } from '../accessibility/minTouchTarget'
 import type { SurfaceStyleOverrides } from '../theme/types'
 
 export interface LoadEarlierControlProps {
@@ -16,13 +19,16 @@ export function LoadEarlierControl({
   onPress,
   styleOverrides,
 }: LoadEarlierControlProps) {
-  const { theme } = useTheme()
+  const { theme, reducedMotion } = useTheme()
+  const { onFocus, onBlur, focusRingStyle } = useFocusRing()
+  const target = minTouchTarget()
   const styles = useMemo(
     () =>
       StyleSheet.create({
         control: {
           alignItems: 'center',
           justifyContent: 'center',
+          minHeight: target,
           paddingVertical: 8,
           paddingHorizontal: 16,
         },
@@ -31,7 +37,7 @@ export function LoadEarlierControl({
           fontSize: theme.typography.controlTextSize,
         },
       }),
-    [theme],
+    [theme, target],
   )
   return (
     <Pressable
@@ -40,11 +46,17 @@ export function LoadEarlierControl({
       accessibilityState={{ disabled: isLoading }}
       disabled={isLoading}
       onPress={onPress}
-      style={[styles.control, styleOverrides?.loadEarlier]}
+      onFocus={onFocus}
+      onBlur={onBlur}
+      style={[styles.control, focusRingStyle, styleOverrides?.loadEarlier]}
       testID="chat.load-earlier"
     >
       {isLoading ? (
-        <ActivityIndicator size="small" color={theme.colors.primary} />
+        reducedMotion ? (
+          renderIcon('sending', undefined, { size: 14, color: theme.colors.primary })
+        ) : (
+          <ActivityIndicator size="small" color={theme.colors.primary} />
+        )
       ) : (
         <Text style={styles.label}>{label}</Text>
       )}

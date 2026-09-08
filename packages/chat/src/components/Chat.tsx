@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { View } from 'react-native'
 import { ThemeProvider, useTheme } from '../theme/ThemeContext'
+import { useMessageFocusPreservation } from '../accessibility/useMessageFocusPreservation'
 import type {
   Capabilities,
   ChatStatus,
@@ -19,6 +20,7 @@ import { EmptyState } from './EmptyState'
 import { LoadingState } from './LoadingState'
 import { TypingState } from './TypingState'
 import { ErrorState } from './ErrorState'
+import { ChatStatusText } from './ChatStatusText'
 import type { ContentRendererProps } from '../rendering/ContentRenderer'
 import type { MarkdownElementRenderers } from '../rendering/MarkdownRenderer'
 import type { RendererInterface } from 'react-native-marked'
@@ -43,6 +45,9 @@ export interface ChatProps {
   theme?: ThemeName
   themeOverride?: ThemeInput
   styleOverrides?: SurfaceStyleOverrides
+  highContrast?: boolean
+  reducedMotion?: boolean
+  messageListLabel?: string
   renderMessage?: (message: Message) => React.ReactElement
   contentRenderers?: ContentRendererProps['contentRenderers']
   markdownElementRenderers?: MarkdownElementRenderers
@@ -93,6 +98,7 @@ function stateKindFor(status: ChatStatus, messages: readonly Message[]): StateVi
 
 function ChatInner(props: ChatProps) {
   const { theme } = useTheme()
+  useMessageFocusPreservation(props.messages)
   const {
     messages,
     draft,
@@ -138,6 +144,7 @@ function ChatInner(props: ChatProps) {
     renderLoadingState,
     renderTypingState,
     renderErrorState,
+    messageListLabel,
   } = props
 
   // Disabled/read-only and a disabled actions capability hide the action
@@ -218,6 +225,7 @@ function ChatInner(props: ChatProps) {
     followThreshold,
     loadEarlierLabel,
     scrollToLatestLabel,
+    messageListLabel,
     renderScrollToLatest,
     onLoadEarlier,
     onScrollToLatest,
@@ -287,6 +295,7 @@ function ChatInner(props: ChatProps) {
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }} testID="chat.root">
       {stateView ?? <MessageList {...listProps} />}
+      <ChatStatusText status={status} icons={icons} styleOverrides={styleOverrides} />
       <Composer {...composerProps} />
     </View>
   )
@@ -298,6 +307,8 @@ export function Chat(props: ChatProps) {
       themeName={props.theme}
       themeOverride={props.themeOverride}
       styleOverrides={props.styleOverrides}
+      highContrast={props.highContrast}
+      reducedMotion={props.reducedMotion}
     >
       <ChatInner {...props} />
     </ThemeProvider>

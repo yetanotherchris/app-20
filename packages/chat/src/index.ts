@@ -48,7 +48,26 @@ export { ThemeProvider, useTheme } from './theme/ThemeContext'
 export type { ThemeProviderProps, ThemeContextValue } from './theme/ThemeContext'
 export { resolveTheme, themeBaseForName } from './theme/resolveTheme'
 export type { ResolvedThemeBase } from './theme/resolveTheme'
-export { lightTheme, darkTheme, baseThemes } from './theme/themes'
+export { lightTheme, darkTheme, baseThemes, highContrastThemes } from './theme/themes'
+export { relativeLuminance, contrastRatio } from './theme/contrast'
+export { useSystemAccessibility } from './accessibility/useSystemAccessibility'
+export type {
+  SystemAccessibility,
+  AccessibilityOverrides,
+} from './accessibility/useSystemAccessibility'
+export { useFocusRing, focusRingStyleFor } from './accessibility/useFocusRing'
+export type { FocusRingState } from './accessibility/useFocusRing'
+export { useMessageFocusPreservation } from './accessibility/useMessageFocusPreservation'
+export { useDomFocusOutlineRef } from './accessibility/useDomFocusOutlineRef'
+export { minTouchTarget } from './accessibility/minTouchTarget'
+export { MESSAGE_STATUS_PRESENTATION, CHAT_STATUS_PRESENTATION } from './accessibility/status'
+export type { StatusPresentation } from './accessibility/status'
+export { MessageStatusBadge } from './components/MessageStatusBadge'
+export type { MessageStatusBadgeProps } from './components/MessageStatusBadge'
+export { ChatStatusText } from './components/ChatStatusText'
+export type { ChatStatusTextProps } from './components/ChatStatusText'
+export { StatusIndicator } from './components/StatusIndicator'
+export type { StatusIndicatorProps } from './components/StatusIndicator'
 export { defaultIcons, renderIcon } from './icons'
 export type { IconProps } from './icons'
 export type { Message, MessageRole, MessageStatus, ContentPart, VisibleRange } from './types'
@@ -60,6 +79,7 @@ export type {
   ChatThemeTypography,
   ThemeInput,
   ThemeName,
+  ContrastMode,
   SurfaceName,
   SurfaceStyleOverrides,
   MessageAction,

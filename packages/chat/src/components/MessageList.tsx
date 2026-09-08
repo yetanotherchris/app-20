@@ -24,6 +24,7 @@ export interface MessageListProps {
   followThreshold?: number
   loadEarlierLabel?: string
   scrollToLatestLabel?: string
+  messageListLabel?: string
   renderScrollToLatest?: (props: ScrollToLatestControlProps) => React.ReactElement
   onLoadEarlier: () => void
   onScrollToLatest?: () => void
@@ -45,6 +46,7 @@ export function MessageList({
   followThreshold = DEFAULT_FOLLOW_THRESHOLD,
   loadEarlierLabel = 'Load earlier messages',
   scrollToLatestLabel = 'Scroll to latest',
+  messageListLabel = 'Message list',
   renderScrollToLatest,
   onLoadEarlier,
   onScrollToLatest,
@@ -155,6 +157,7 @@ export function MessageList({
     <View
       style={[styles.container, styleOverrides?.messageList]}
       onLayout={handleLayout}
+      accessibilityLabel={messageListLabel}
       testID="chat.message-list"
     >
       <LegendList

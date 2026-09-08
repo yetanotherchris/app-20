@@ -90,6 +90,8 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
   const [readOnly, setReadOnly] = useState(false)
   const [sendDisabled, setSendDisabled] = useState(false)
   const [copyDisabled, setCopyDisabled] = useState(false)
+  const [highContrast, setHighContrast] = useState(false)
+  const [reducedMotion, setReducedMotion] = useState(false)
 
   const handleSubmit = useCallback(() => {
     const text = draft.trim()
@@ -112,6 +114,12 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
       clearTimeout(replyTimerRef.current)
       replyTimerRef.current = null
     }
+    setMessages((current) => {
+      const last = current[current.length - 1]
+      if (!last || last.role !== 'assistant') return current
+      const updated: Message = { ...last, status: 'stopped', updatedAt: new Date().toISOString() }
+      return [...current.slice(0, -1), updated]
+    })
     setChatStatus('idle')
   }, [])
 
@@ -126,7 +134,7 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
     setMessages((current) => {
       const last = current[current.length - 1]
       if (!last || last.role !== 'assistant')
-        return [...current, makeMessage('assistant', 'Streaming...')]
+        return [...current, makeMessage('assistant', 'Streaming...', 'streaming')]
       const updated: Message = {
         ...last,
         status: 'streaming',
@@ -141,6 +149,31 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
       }
       return [...current.slice(0, -1), updated]
     })
+  }, [])
+
+  const simulateStreaming = useCallback(() => {
+    setMessages((current) => [
+      ...current,
+      makeMessage('assistant', 'Streaming a response...', 'streaming'),
+    ])
+    setChatStatus('streaming')
+  }, [])
+
+  const markLastError = useCallback(() => {
+    // Keep the chat status idle so the message list stays visible and the
+    // message-level error badge renders (an error chat status replaces the
+    // list with the error state view).
+    setMessages((current) => {
+      const last = current[current.length - 1]
+      if (!last) return current
+      const updated: Message = { ...last, status: 'error', updatedAt: new Date().toISOString() }
+      return [...current.slice(0, -1), updated]
+    })
+    setChatStatus('idle')
+  }, [])
+
+  const removeLastMessage = useCallback(() => {
+    setMessages((current) => current.slice(0, -1))
   }, [])
 
   const loadEarlier = useCallback(() => {
@@ -375,6 +408,17 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
       <View style={styles.controls}>
         <DemoButton label="Append" onPress={appendMessage} testID="demo.append" />
         <DemoButton label="Stream chunk" onPress={streamNextChunk} testID="demo.stream" />
+        <DemoButton
+          label="Simulate streaming"
+          onPress={simulateStreaming}
+          testID="demo.simulate-streaming"
+        />
+        <DemoButton label="Mark last error" onPress={markLastError} testID="demo.mark-error" />
+        <DemoButton
+          label="Remove last message"
+          onPress={removeLastMessage}
+          testID="demo.remove-last-message"
+        />
         <DemoButton label="Load earlier" onPress={loadEarlier} testID="demo.load-earlier" />
         <DemoButton label="Exhaust" onPress={exhaustEarlier} testID="demo.exhaust" />
         <DemoButton label="Load 1000" onPress={loadThousand} testID="demo.load-1000" />
@@ -471,11 +515,24 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
           onPress={() => setCopyDisabled((v) => !v)}
           testID="demo.toggle-cap-copy"
         />
+        <DemoButton
+          label={highContrast ? 'High contrast: on' : 'High contrast: off'}
+          onPress={() => setHighContrast((v) => !v)}
+          testID="demo.toggle-high-contrast"
+        />
+        <DemoButton
+          label={reducedMotion ? 'Reduced motion: on' : 'Reduced motion: off'}
+          onPress={() => setReducedMotion((v) => !v)}
+          testID="demo.toggle-reduced-motion"
+        />
       </View>
     ),
     [
       appendMessage,
       streamNextChunk,
+      simulateStreaming,
+      markLastError,
+      removeLastMessage,
       loadEarlier,
       exhaustEarlier,
       loadThousand,
@@ -501,6 +558,8 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
       readOnly,
       sendDisabled,
       copyDisabled,
+      highContrast,
+      reducedMotion,
     ],
   )
 
@@ -567,6 +626,10 @@ export function ChatDemo({ initialMessages = [] }: ChatDemoProps) {
             ? { send: sendDisabled ? false : undefined, copy: copyDisabled ? false : undefined }
             : undefined
         }
+        // `|| undefined` keeps the system settings authoritative until the
+        // host forces a state; passing `false` would override detection.
+        highContrast={highContrast || undefined}
+        reducedMotion={reducedMotion || undefined}
         blurBehavior={blurBehavior}
       />
     </View>

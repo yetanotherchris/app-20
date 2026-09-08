@@ -1,4 +1,5 @@
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native'
+import { renderIcon } from '../icons'
 import { useTheme } from '../theme/ThemeContext'
 import type { SurfaceStyleOverrides } from '../theme/types'
 
@@ -6,8 +7,13 @@ export interface LoadingStateProps {
   styleOverrides?: SurfaceStyleOverrides
 }
 
+/**
+ * Loading view. The ActivityIndicator spinner animates continuously; under
+ * reduced motion it is replaced by a static glyph so no unnecessary animation
+ * plays (FR-006, research R9).
+ */
 export function LoadingState({ styleOverrides }: LoadingStateProps) {
-  const { theme } = useTheme()
+  const { theme, reducedMotion } = useTheme()
   return (
     <View
       style={[
@@ -17,7 +23,11 @@ export function LoadingState({ styleOverrides }: LoadingStateProps) {
       ]}
       testID="chat.state.loading"
     >
-      <ActivityIndicator color={theme.colors.primary} />
+      {reducedMotion ? (
+        renderIcon('sending', undefined, { size: 18, color: theme.colors.primary })
+      ) : (
+        <ActivityIndicator color={theme.colors.primary} />
+      )}
       <Text style={[styles.text, { color: theme.colors.textSecondary }]}>Loading...</Text>
     </View>
   )

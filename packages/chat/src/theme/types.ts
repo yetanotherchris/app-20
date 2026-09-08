@@ -26,6 +26,7 @@ export interface ChatThemeColors {
   composerBorder: string
   sendDisabled: string
   controlSurface: string
+  focus: string
 }
 
 export interface ChatThemeRadii {
@@ -59,6 +60,8 @@ export type ThemeInput = DeepPartial<ChatTheme>
 
 export type ThemeName = 'light' | 'dark' | 'system'
 
+export type ContrastMode = 'normal' | 'high'
+
 export type SurfaceName =
   | 'messageList'
   | 'messageBubble'
@@ -75,6 +78,8 @@ export type SurfaceName =
   | 'typing'
   | 'error'
   | 'actionMenu'
+  | 'messageStatus'
+  | 'chatStatus'
 
 export type SurfaceStyleOverrides = Partial<Record<SurfaceName, StyleProp<ViewStyle | TextStyle>>>
 
@@ -86,7 +91,17 @@ export interface MessageAction {
   onAction: (action: MessageAction, message: Message) => void
 }
 
-export type IconName = 'send' | 'stop' | 'scrollToLatest' | 'more' | 'copy'
+export type IconName =
+  | 'send'
+  | 'stop'
+  | 'scrollToLatest'
+  | 'more'
+  | 'copy'
+  | 'queued'
+  | 'sending'
+  | 'streaming'
+  | 'stopped'
+  | 'error'
 
 export type ChatStatus = 'idle' | 'submitting' | 'streaming' | 'stopping' | 'error'
 

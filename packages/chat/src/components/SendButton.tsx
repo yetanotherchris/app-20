@@ -2,6 +2,8 @@ import { useMemo } from 'react'
 import { Pressable, StyleSheet, Text } from 'react-native'
 import { useTheme } from '../theme/ThemeContext'
 import { renderIcon } from '../icons'
+import { useFocusRing } from '../accessibility/useFocusRing'
+import { minTouchTarget } from '../accessibility/minTouchTarget'
 import type { SurfaceStyleOverrides } from '../theme/types'
 
 export interface SendButtonProps {
@@ -14,6 +16,8 @@ export interface SendButtonProps {
 
 export function SendButton({ label, disabled, onPress, icons, styleOverrides }: SendButtonProps) {
   const { theme } = useTheme()
+  const { onFocus, onBlur, focusRingStyle } = useFocusRing()
+  const target = minTouchTarget()
   const styles = useMemo(
     () =>
       StyleSheet.create({
@@ -22,6 +26,8 @@ export function SendButton({ label, disabled, onPress, icons, styleOverrides }: 
           alignItems: 'center',
           justifyContent: 'center',
           gap: 6,
+          minHeight: target,
+          minWidth: target,
           backgroundColor: disabled ? theme.colors.sendDisabled : theme.colors.primary,
           borderRadius: theme.radii.controlRadius,
           paddingHorizontal: 16,
@@ -36,7 +42,7 @@ export function SendButton({ label, disabled, onPress, icons, styleOverrides }: 
           color: theme.colors.textSecondary,
         },
       }),
-    [theme, disabled],
+    [theme, disabled, target],
   )
   return (
     <Pressable
@@ -45,7 +51,9 @@ export function SendButton({ label, disabled, onPress, icons, styleOverrides }: 
       accessibilityState={{ disabled }}
       disabled={disabled}
       onPress={onPress}
-      style={[styles.button, styleOverrides?.send]}
+      onFocus={onFocus}
+      onBlur={onBlur}
+      style={[styles.button, focusRingStyle, styleOverrides?.send]}
       testID="chat.composer.send"
     >
       {renderIcon('send', icons, { size: 16, color: theme.colors.onPrimary })}

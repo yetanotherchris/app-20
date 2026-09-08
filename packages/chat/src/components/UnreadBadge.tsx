@@ -19,8 +19,9 @@ export function UnreadBadge({ count, styleOverrides }: UnreadBadgeProps) {
           backgroundColor: theme.colors.unreadBadge,
           borderRadius: 12,
           minWidth: 24,
-          height: 24,
-          paddingHorizontal: 6,
+          minHeight: 24,
+          paddingHorizontal: 8,
+          paddingVertical: 4,
         },
         count: {
           color: theme.colors.onPrimary,

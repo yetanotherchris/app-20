@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0 (2026-09-08)
+
+- Accessibility (spec 005): WCAG 2.2 AA for the default surface. Message rows
+  are keyboard focusable with a visible focus ring on every control; status is
+  conveyed by glyph and label, never color alone; reduced-motion and
+  high-contrast system settings are honored; touch targets are at least 24 CSS
+  pixels on web and 44 points on iOS; the layout reflows at 200% zoom. The
+  default themes pass WCAG contrast ratios, enforced by a unit test, and an
+  automated axe scan runs in the e2e suite.
+
 ## 0.1.0 (2026-09-07)
 
 - Initial release of the shared chat component surface from specs 001-003:

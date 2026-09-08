@@ -2,8 +2,11 @@ import { View } from 'react-native'
 import type { Message } from '../types'
 import { ContentRenderer } from '../rendering/ContentRenderer'
 import { useRoleStyles } from '../rendering/roleStyles'
+import { useTheme } from '../theme/ThemeContext'
+import { useDomFocusOutlineRef } from '../accessibility/useDomFocusOutlineRef'
 import type { MessageAction, SurfaceStyleOverrides } from '../theme/types'
 import { ActionMenu } from './ActionMenu'
+import { MessageStatusBadge } from './MessageStatusBadge'
 import type { ContentRendererProps } from '../rendering/ContentRenderer'
 
 export interface MessageBubbleProps {
@@ -32,6 +35,8 @@ export function MessageBubble({
   styleOverrides,
 }: MessageBubbleProps) {
   const roleStyles = useRoleStyles()
+  const { theme } = useTheme()
+  const rowFocusRef = useDomFocusOutlineRef(theme.colors.focus)
   const treatment = roleStyles[message.role]
   return (
     <View
@@ -41,6 +46,8 @@ export function MessageBubble({
         { alignSelf: treatment.alignSelf },
         styleOverrides?.messageBubble,
       ]}
+      ref={rowFocusRef}
+      focusable
       testID={`chat.message.${message.id}`}
     >
       <ContentRenderer
@@ -53,6 +60,7 @@ export function MessageBubble({
         markdownElementRenderers={markdownElementRenderers}
         markdownRenderer={markdownRenderer}
       />
+      <MessageStatusBadge status={message.status} icons={icons} styleOverrides={styleOverrides} />
       {messageActions && messageActions.length > 0 && onMessageAction && (
         <ActionMenu
           actions={messageActions}
