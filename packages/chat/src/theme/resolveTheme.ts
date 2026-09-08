@@ -21,6 +21,7 @@ function mergeTheme(base: ChatTheme, override: ThemeInput | undefined): ChatThem
   return {
     colors: mergeSection(base.colors, override.colors),
     radii: mergeSection(base.radii, override.radii),
+    layout: mergeSection(base.layout, override.layout),
     spacing: mergeSection(base.spacing, override.spacing),
     typography: mergeSection(base.typography, override.typography),
   }

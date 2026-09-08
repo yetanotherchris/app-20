@@ -18,6 +18,7 @@ export interface ChatThemeColors {
   codeHeader: string
   codeText: string
   userBubble: string
+  userBubbleText: string
   assistantBubble: string
   systemBubble: string
   unreadBadge: string
@@ -25,6 +26,7 @@ export interface ChatThemeColors {
   composerInput: string
   composerBorder: string
   sendDisabled: string
+  sendBackground: string
   controlSurface: string
   focus: string
 }
@@ -35,23 +37,39 @@ export interface ChatThemeRadii {
   controlRadius: number
 }
 
+export interface ChatThemeLayout {
+  readingColumnWidth: number
+  composerWidth: number
+  sidePadding: number
+}
+
 export interface ChatThemeSpacing {
   bubbleMarginH: number
   bubbleMarginV: number
   composerPaddingH: number
   composerPaddingV: number
+  paragraphGap: number
 }
 
 export interface ChatThemeTypography {
   messageTextSize: number
+  messageLineHeight: number
+  messageWeight: TextStyle['fontWeight']
   composerTextSize: number
+  composerLineHeight: number
   controlTextSize: number
+  controlLineHeight: number
+  controlWeight: TextStyle['fontWeight']
   captionTextSize: number
+  captionLineHeight: number
+  captionWeight: TextStyle['fontWeight']
+  headingWeight: TextStyle['fontWeight']
 }
 
 export interface ChatTheme {
   colors: ChatThemeColors
   radii: ChatThemeRadii
+  layout: ChatThemeLayout
   spacing: ChatThemeSpacing
   typography: ChatThemeTypography
 }
