@@ -13,6 +13,7 @@ The semantic token set from spec 004 gains a `layout` group and additional color
 | `userBubbleText` | `#0f172a` | `#f1f5f9` | `#ffffff` | `#000000` | User bubble text (research R4) |
 | `sendBackground` | `#0f172a` | `#ffffff` | `#000000` | `#ffffff` | Send/Stop/scroll-to-latest surfaces (research R8) |
 | `sendForeground` | `#ffffff` | `#0f172a` | `#ffffff` | `#000000` | Arrow/square glyphs on `sendBackground` (research R8 refinement) |
+| `composerBorderFocus` | `#8c8c94` | `#8b949e` | `#000000` | `#ffffff` | Composer pill focus border (research R7 refinement) |
 
 Changed defaults: `background` light `#f8fafc` → `#ffffff` (white canvas); `userBubble` light `#2563eb` → `#ececec`, dark `#3b82f6` → `#343536`; `composerBorder` light `#cbd5e1` → `#d9d9e3`, dark `#334155` → `#3f3f46`. `assistantBubble` and `systemBubble` keep their tokens and values; the assistant role no longer consumes `assistantBubble` by default (research R5).
 
@@ -74,7 +75,7 @@ All roles: `marginVertical: bubbleMarginV` (turn gap), `marginHorizontal: bubble
 
 `MessageList` spans the full panel width so the list's scrollbar sits at the panel edge (browser scrollbar, research R6 refinement). Each message row centers its content in a reading column: `width: '100%'`, `maxWidth: readingColumnWidth`, `alignSelf: 'center'`, inside a `sidePadding` list content padding. The scroll-to-latest and unread overlay is horizontally centered above the composer.
 
-`Composer` renders a centered pill: outer container (`sidePadding`, `composerPaddingV` top / `composerBottomGap` bottom, centered, transparent) → pill (`width: '100%'`, `maxWidth: composerWidth`, `composerSurface`, `composerBorder`, `composerRadius`, subtle shadow) → transparent `TextInput` plus the right-end control area (Send or Stop, and host composer controls). The pill vertically centers its row, so the single-line text, Send, and its arrow share one center line. Focus is indicated on the pill (neutral darker border plus a 2px neutral outline on web), never as a blue border on the input (research R7 refinement). The pill grows upward under the autogrow cap and then scrolls internally (FR-005).
+`Composer` renders a centered pill: outer container (`sidePadding`, `composerPaddingV` top / `composerBottomGap` bottom, centered, transparent) → pill (`width: '100%'`, `maxWidth: composerWidth`, `composerSurface`, `composerBorder`, `composerRadius`, subtle shadow) → transparent `TextInput` plus the right-end control area (Send or Stop, and host composer controls). The pill vertically centers its row, so the single-line text, Send, and its arrow share one center line. Focus is indicated on the pill with a subtle neutral-gray border (`composerBorderFocus`); in high contrast a 2px ring in the focus color keeps the indicator maximal. An empty draft resets the pill to its single-line height, including after a send clears a multiline draft. The pill grows upward under the autogrow cap and then scrolls internally (FR-005).
 
 ## Entity: Control (changed defaults)
 

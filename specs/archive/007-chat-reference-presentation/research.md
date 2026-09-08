@@ -60,7 +60,7 @@
 
 **Alternatives considered**: Keeping the input as the only pill and floating Send outside (does not match the reference placement); moving Send outside the pill via absolute positioning (fragile with autogrow).
 
-**Refinement (visual review 2026-09-08)**: The pill row is vertically centered so the single-line text, Send, and its arrow share one center line; the input's `paddingVertical` centers its single-line text within the minimum height. Focus is indicated on the pill with a neutral darker border and a 2px neutral outline on web, never as a colored border on the input. A `composerBottomGap` spacing token (16) provides clearance between the pill and the panel bottom.
+**Refinement (visual review 2026-09-08)**: The pill row is vertically centered so the single-line text, Send, and its arrow share one center line; the input's `paddingVertical` centers its single-line text within the minimum height. Focus is indicated on the pill with a subtle neutral-gray border (`composerBorderFocus`), never a colored border on the input; in high contrast a 2px ring in the focus color keeps the indicator maximal. A `composerBottomGap` spacing token (16) provides clearance between the pill and the panel bottom, and an empty draft resets the pill to its single-line height after a send.
 
 ## R8: Circular Send and the shared Stop area
 

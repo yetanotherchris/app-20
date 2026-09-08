@@ -15,6 +15,7 @@ export interface ChatTheme {
     userBubbleText: string   // user bubble text color
     sendBackground: string   // Send/Stop/scroll-to-latest control surface
     sendForeground: string   // arrow/square glyph color on sendBackground
+    composerBorderFocus: string  // composer pill focus border
   }
   layout: {
     readingColumnWidth: number  // 540
@@ -48,7 +49,7 @@ The list spans the full panel so its scrollbar sits at the panel edge; each mess
 
 ## Composer
 
-A centered pill at the bottom of the chat area, `composerWidth` wide at the reference panel (wider than the reading column), white surface, thin neutral outline, subtle shadow, rounded corners (`composerRadius`), with `composerBottomGap` of clearance below it. The pill's row is vertically centered, so the single-line input text, Send, and its arrow share one center line; the pill grows upward to the configured limit and then scrolls internally. Focus is indicated on the pill (a neutral darker border and, on web, a 2px neutral outline); the input itself never shows a colored border. The right end holds the circular up-arrow Send (accessible name "Send") or, when cancellation is available, a same-area Stop with a square glyph. No plus or microphone control and no reserved space for one.
+A centered pill at the bottom of the chat area, `composerWidth` wide at the reference panel (wider than the reading column), white surface, thin neutral outline, subtle shadow, rounded corners (`composerRadius`), with `composerBottomGap` of clearance below it. The pill's row is vertically centered, so the single-line input text, Send, and its arrow share one center line; the pill grows upward to the configured limit and then scrolls internally, and an empty draft resets it to the single-line height. Focus is indicated on the pill with a subtle neutral-gray border, never a colored border on the input; in high contrast a 2px ring in the focus color keeps the indicator maximal. The right end holds the circular up-arrow Send (accessible name "Send") or, when cancellation is available, a same-area Stop with a square glyph. No plus or microphone control and no reserved space for one.
 
 ## Return-to-latest
 
