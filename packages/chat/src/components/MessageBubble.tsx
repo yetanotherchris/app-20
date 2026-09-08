@@ -4,6 +4,7 @@ import { ContentRenderer } from '../rendering/ContentRenderer'
 import { useRoleStyles } from '../rendering/roleStyles'
 import type { MessageAction, SurfaceStyleOverrides } from '../theme/types'
 import { ActionMenu } from './ActionMenu'
+import { MessageStatusBadge } from './MessageStatusBadge'
 import type { ContentRendererProps } from '../rendering/ContentRenderer'
 
 export interface MessageBubbleProps {
@@ -41,6 +42,7 @@ export function MessageBubble({
         { alignSelf: treatment.alignSelf },
         styleOverrides?.messageBubble,
       ]}
+      focusable
       testID={`chat.message.${message.id}`}
     >
       <ContentRenderer
@@ -53,6 +55,7 @@ export function MessageBubble({
         markdownElementRenderers={markdownElementRenderers}
         markdownRenderer={markdownRenderer}
       />
+      <MessageStatusBadge status={message.status} icons={icons} styleOverrides={styleOverrides} />
       {messageActions && messageActions.length > 0 && onMessageAction && (
         <ActionMenu
           actions={messageActions}

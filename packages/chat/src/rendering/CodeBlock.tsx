@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import { useTheme } from '../theme/ThemeContext'
 import { renderIcon } from '../icons'
+import { useFocusRing } from '../accessibility/useFocusRing'
+import { minTouchTarget } from '../accessibility/minTouchTarget'
 import type { SurfaceStyleOverrides } from '../theme/types'
 
 export interface CodeBlockProps {
@@ -24,6 +26,8 @@ export function CodeBlock({
   styleOverrides,
 }: CodeBlockProps) {
   const { theme } = useTheme()
+  const { onFocus, onBlur, focusRingStyle } = useFocusRing()
+  const target = minTouchTarget()
   const [copyState, setCopyState] = useState<CopyState>('idle')
   const resetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -90,13 +94,17 @@ export function CodeBlock({
           backgroundColor: theme.colors.codeHeader,
         },
         language: {
-          color: theme.colors.textSecondary,
+          // codeText keeps 4.5:1 on the dark code header in every theme;
+          // textSecondary is tuned for light surfaces (axe caught this).
+          color: theme.colors.codeText,
           fontSize: 12,
         },
         copyButton: {
           flexDirection: 'row',
           alignItems: 'center',
           gap: 4,
+          minHeight: target,
+          minWidth: target,
           paddingHorizontal: 8,
           paddingVertical: 4,
           borderRadius: 4,
@@ -109,6 +117,9 @@ export function CodeBlock({
           color: theme.colors.codeText,
           fontSize: 12,
         },
+        copyLabelFailed: {
+          color: theme.colors.onPrimary,
+        },
         scroll: {
           padding: 10,
         },
@@ -118,7 +129,7 @@ export function CodeBlock({
           fontFamily: 'monospace',
         },
       }),
-    [theme],
+    [theme, target],
   )
 
   return (
@@ -134,11 +145,19 @@ export function CodeBlock({
             accessibilityRole="button"
             accessibilityLabel={`Copy code${language ? ` (${language})` : ''}`}
             onPress={handleCopy}
-            style={[styles.copyButton, copyState === 'failed' && styles.copyButtonFailed]}
+            onFocus={onFocus}
+            onBlur={onBlur}
+            style={[
+              styles.copyButton,
+              focusRingStyle,
+              copyState === 'failed' && styles.copyButtonFailed,
+            ]}
             testID={testID ? `${testID}.copy` : undefined}
           >
             {renderIcon('copy', icons, { size: 14, color: theme.colors.codeText })}
-            <Text style={styles.copyLabel}>{copyLabel}</Text>
+            <Text style={[styles.copyLabel, copyState === 'failed' && styles.copyLabelFailed]}>
+              {copyLabel}
+            </Text>
           </Pressable>
         )}
       </View>
