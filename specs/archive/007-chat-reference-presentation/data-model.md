@@ -11,7 +11,8 @@ The semantic token set from spec 004 gains a `layout` group and additional color
 | Token | Light | Dark | HC light | HC dark | Used by |
 |---|---|---|---|---|---|
 | `userBubbleText` | `#0f172a` | `#f1f5f9` | `#ffffff` | `#000000` | User bubble text (research R4) |
-| `sendBackground` | `#0f172a` | `#ffffff` | `#000000` | `#ffffff` | Send/Stop control circle (research R8) |
+| `sendBackground` | `#0f172a` | `#ffffff` | `#000000` | `#ffffff` | Send/Stop/scroll-to-latest surfaces (research R8) |
+| `sendForeground` | `#ffffff` | `#0f172a` | `#ffffff` | `#000000` | Arrow/square glyphs on `sendBackground` (research R8 refinement) |
 
 Changed defaults: `background` light `#f8fafc` → `#ffffff` (white canvas); `userBubble` light `#2563eb` → `#ececec`, dark `#3b82f6` → `#343536`; `composerBorder` light `#cbd5e1` → `#d9d9e3`, dark `#334155` → `#3f3f46`. `assistantBubble` and `systemBubble` keep their tokens and values; the assistant role no longer consumes `assistantBubble` by default (research R5).
 

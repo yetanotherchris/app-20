@@ -70,6 +70,8 @@
 
 **Alternatives considered**: Keeping the rectangular labeled button (does not match the reference or FR-006's shape); text label plus arrow (the reference is icon-only; the label stays as the accessible name).
 
+**Refinement (review 2026-09-08)**: A paired `sendForeground` color token carries the arrow/square glyph color so a host override of `sendBackground` cannot silently break the glyph contrast; the shipped themes pair `sendForeground` with `sendBackground` in the same way `onPrimary` pairs with `primary`, and the contrast test asserts the new pair.
+
 ## R9: Message actions as an inline row
 
 **Decision**: Default message actions render as a compact, left-aligned row of small buttons beneath assistant content (FR-007, US3-A1), replacing the "More" overflow menu as the default presentation. A new `MessageActions` component filters actions by availability (same rules as `ActionMenu`), renders each available action as a `Pressable` labeled with its text, left-aligned below the message, with per-action `testID` `chat.action.<id>`, touch-target minimums, and a visible focus ring. Grouping, availability predicates, context, and host customization are unchanged; with no available actions nothing renders, and the reference's share/plus/microphone controls are absent. `ActionMenu` stays exported for hosts that prefer the menu presentation.

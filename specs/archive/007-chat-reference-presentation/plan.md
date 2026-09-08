@@ -18,7 +18,7 @@ Give the shared chat component the reference light-theme ChatGPT presentation as
 
 **Testing**: Vitest unit suites (web/jsdom via RNW alias) for the new theme tokens, role treatments, composer pill, circular Send, inline message actions, Markdown paragraph/hierarchy styles, and the extended contrast pairs. A packaged-artifact vitest project imports `dist/` and exercises the public surface. Playwright `_electron` e2e for the acceptance scenarios: a new `reference-presentation.spec.ts` covers the four user stories at 390, 974, and 1440 viewport widths, plus updates to `themes-customization.spec.ts`, `streaming-operations.spec.ts`, and `accessibility.spec.ts` where the new default presentation changes prior selectors (research R11).
 
-**Target Platform**: iOS (Expo SDK 57), Windows desktop (Electron with RNW renderer). One implementation serves both (FR-016); host differences enter only through documented props.
+**Target Platform**: iOS (Expo SDK 57), Windows desktop (Electron with RNW renderer). One implementation serves both (FR-012); host differences enter only through documented props.
 
 **Project Type**: Library (shared component package) plus the existing test applications (`apps/web`, `apps/electron`) and the demo host (`packages/chat-demo`).
 

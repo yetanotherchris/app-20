@@ -13,7 +13,8 @@ export interface ChatTheme {
   colors: {
     // existing tokens...
     userBubbleText: string   // user bubble text color
-    sendBackground: string   // Send/Stop circular control surface
+    sendBackground: string   // Send/Stop/scroll-to-latest control surface
+    sendForeground: string   // arrow/square glyph color on sendBackground
   }
   layout: {
     readingColumnWidth: number  // 540
@@ -23,6 +24,7 @@ export interface ChatTheme {
   spacing: {
     // existing tokens...
     paragraphGap: number        // 8
+    composerBottomGap: number   // 16
   }
   typography: {
     // existing tokens...
