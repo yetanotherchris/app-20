@@ -42,7 +42,15 @@ export interface ChatTheme {
 
 ## Reading column
 
-At a 974 by 638 panel in the light theme, the reading column renders 540 px wide (within FR-002's 10% and 8 px centering tolerances) with the user bubbles ending at its right edge and assistant text starting at its left edge. Narrower panels shrink the column to the panel width minus `sidePadding` on each side. No drawer gutter is reserved.
+The list spans the full panel so its scrollbar sits at the panel edge; each message row centers its content in a reading column 540 px wide at the reference panel (within FR-002's 10% and 8 px centering tolerances), with user bubbles ending at its right edge and assistant text starting at its left edge. Narrower panels shrink the column to the panel width minus `sidePadding` on each side. No drawer gutter is reserved.
+
+## Composer
+
+A centered pill at the bottom of the chat area, `composerWidth` wide at the reference panel (wider than the reading column), white surface, thin neutral outline, subtle shadow, rounded corners (`composerRadius`), with `composerBottomGap` of clearance below it. The pill's row is vertically centered, so the single-line input text, Send, and its arrow share one center line; the pill grows upward to the configured limit and then scrolls internally. Focus is indicated on the pill (a neutral darker border and, on web, a 2px neutral outline); the input itself never shows a colored border. The right end holds the circular up-arrow Send (accessible name "Send") or, when cancellation is available, a same-area Stop with a square glyph. No plus or microphone control and no reserved space for one.
+
+## Return-to-latest
+
+The scroll-to-latest control (dark-grey `sendBackground` pill with a down-arrow glyph) and the unread badge render horizontally centered above the composer, never covering its input or controls.
 
 ## Role presentation
 
@@ -53,10 +61,6 @@ At a 974 by 638 panel in the light theme, the reading column renders 540 px wide
 ## Typography
 
 Body text is the platform sans-serif at `messageTextSize`/`messageLineHeight`/`messageWeight`, with paragraph bottom margins of `paragraphGap` and turn gaps larger than line gaps. Markdown headings scale from `messageTextSize` at `headingWeight`; `strong`, `em`, links, and inline code are visually distinct. All values come from theme tokens (FR-014); the component never hardcodes a size, weight, or line height.
-
-## Composer
-
-A centered pill at the bottom of the chat area, `composerWidth` wide at the reference panel (wider than the reading column), white surface, thin neutral outline, subtle shadow, rounded corners (`composerRadius`), growing upward to the configured limit and then scrolling internally. The right end holds the circular up-arrow Send (accessible name "Send") or, when cancellation is available, a same-area Stop with a square glyph. No plus or microphone control and no reserved space for one.
 
 ## Message actions
 
@@ -70,7 +74,7 @@ The same hierarchy holds on narrow and wide panels, in dark and high-contrast th
 
 | Surface | testID |
 |---|---|
-| Reading column | `chat.reading-column` |
+| Reading column | `chat.reading-column` (once per message row) |
 | Composer pill | `chat.composer.pill` |
 | Message actions row | `chat.message-actions` |
 | Per-action button | `chat.action.<id>` |

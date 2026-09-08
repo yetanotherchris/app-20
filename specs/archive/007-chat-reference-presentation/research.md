@@ -50,6 +50,8 @@
 
 **Alternatives considered**: Applying the max width to each bubble instead of a column (correct but re-does the centering for every row and leaves the scrollbar at full panel width); adding inner padding to the column (would shrink the usable 540 px).
 
+**Refinement (visual review 2026-09-08)**: The list now spans the full panel so the scrollbar sits at the panel edge (browser scrollbar); each row centers its content in the reading column instead of wrapping the whole virtualized list. The scroll-to-latest and unread overlay is horizontally centered above the composer. The reference 540/650 widths and centering are unchanged.
+
 ## R7: Composer pill
 
 **Decision**: Restructure the Composer so its default form is a centered pill: a full-width container with `sidePadding`, `alignItems: 'center'`, transparent background, and no top border, holding a pill view with `width: '100%'`, `maxWidth: composerWidth`, `composerSurface` background, `composerRadius` (24 in the light and dark themes), a 1 px `composerBorder` outline, and a subtle shadow. The `TextInput` becomes borderless and transparent inside the pill; Send/Stop and host composer controls render inside the pill at its right end, aligned to the bottom (`alignItems: 'flex-end'`). The input keeps its visible focus ring (outline on web) and the pill border switches to the focus color while focused. The pill grows upward under the existing autogrow cap and then scrolls internally (FR-005, US2-A3); with no host composer controls no plus or microphone space is reserved (US2-A6).
@@ -57,6 +59,8 @@
 **Rationale**: The reference composer is a rounded, single-form pill wider than the reading column, containing the input and the circular Send at its right end, with a white surface, thin neutral outline, and subtle shadow (US2-A1). Making the pill the container keeps the send/stop control inside the form, matching the reference, while preserving all existing input, autogrow, submit, and stop behavior (FR-010).
 
 **Alternatives considered**: Keeping the input as the only pill and floating Send outside (does not match the reference placement); moving Send outside the pill via absolute positioning (fragile with autogrow).
+
+**Refinement (visual review 2026-09-08)**: The pill row is vertically centered so the single-line text, Send, and its arrow share one center line; the input's `paddingVertical` centers its single-line text within the minimum height. Focus is indicated on the pill with a neutral darker border and a 2px neutral outline on web, never as a colored border on the input. A `composerBottomGap` spacing token (16) provides clearance between the pill and the panel bottom.
 
 ## R8: Circular Send and the shared Stop area
 

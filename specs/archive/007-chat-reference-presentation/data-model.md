@@ -30,6 +30,7 @@ Resolution rule: each surface sizes as `width: '100%'` capped by its `maxWidth` 
 | Token | Default | Used by |
 |---|---|---|
 | `paragraphGap` | 8 | Markdown paragraph bottom margin (research R3) |
+| `composerBottomGap` | 16 | Gap between the composer pill and the panel bottom (research R7 refinement) |
 | `bubbleMarginV` (changed default) | 4 → 12 | Turn gap; 24 px between consecutive messages (research R6) |
 | `bubbleMarginH` (changed default) | 12 → 0 | Horizontal rhythm owned by the reading column (research R6) |
 
@@ -70,9 +71,9 @@ All roles: `marginVertical: bubbleMarginV` (turn gap), `marginHorizontal: bubble
 
 ## Entity: Layout surface
 
-`MessageList` renders a centered reading column: outer surface (background token) → `sidePadding` wrapper → column (`width: '100%'`, `maxWidth: readingColumnWidth`, `alignSelf: 'center'`). The scroll-to-latest and unread overlay remains inside the list surface above the composer (US3-A4).
+`MessageList` spans the full panel width so the list's scrollbar sits at the panel edge (browser scrollbar, research R6 refinement). Each message row centers its content in a reading column: `width: '100%'`, `maxWidth: readingColumnWidth`, `alignSelf: 'center'`, inside a `sidePadding` list content padding. The scroll-to-latest and unread overlay is horizontally centered above the composer.
 
-`Composer` renders a centered pill: outer container (`sidePadding`, centered, transparent, no top border) → pill (`width: '100%'`, `maxWidth: composerWidth`, `composerSurface`, `composerBorder`, `composerRadius`, subtle shadow) → transparent `TextInput` plus the right-end control area (Send or Stop, and host composer controls). The pill grows upward under the autogrow cap and then scrolls internally (FR-005).
+`Composer` renders a centered pill: outer container (`sidePadding`, `composerPaddingV` top / `composerBottomGap` bottom, centered, transparent) → pill (`width: '100%'`, `maxWidth: composerWidth`, `composerSurface`, `composerBorder`, `composerRadius`, subtle shadow) → transparent `TextInput` plus the right-end control area (Send or Stop, and host composer controls). The pill vertically centers its row, so the single-line text, Send, and its arrow share one center line. Focus is indicated on the pill (neutral darker border plus a 2px neutral outline on web), never as a blue border on the input (research R7 refinement). The pill grows upward under the autogrow cap and then scrolls internally (FR-005).
 
 ## Entity: Control (changed defaults)
 
@@ -80,6 +81,7 @@ All roles: `marginVertical: bubbleMarginV` (turn gap), `marginHorizontal: bubble
 |---|---|---|
 | Send | Circular icon-only control | Up-arrow glyph, `sendBackground`, size `max(minTouchTarget, 34)`, accessible name from the send label (research R8) |
 | Stop | Same-area circular control | Square glyph, same size and surface as Send; replaces Send when busy without a width change |
+| Scroll to latest | Centered dark-grey pill | `sendBackground` surface, down-arrow glyph, positioned centered above the composer (research R6 refinement) |
 
 `renderSend`/`renderStop` replacement and the `chat.composer.send`/`chat.composer.stop` testIDs are unchanged.
 
