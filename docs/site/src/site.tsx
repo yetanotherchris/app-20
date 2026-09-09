@@ -78,7 +78,7 @@ export function DocumentationSite(): ReactElement {
         </aside>
         <main className="content">
           <section className="hero">
-            <p className="eyebrow">@app-20/chat · v{version}</p>
+            <p className="eyebrow">app-20-llmchat · v{version}</p>
             <h1>Build a controlled chat without guessing.</h1>
             <p className="lead">
               The shared React and React Native chat component for messages, Markdown, streaming
@@ -99,7 +99,7 @@ export function DocumentationSite(): ReactElement {
               and clipboard access.
             </p>
             {code(
-              "import { Chat } from '@app-20/chat'\n\n<Chat\n  messages={messages}\n  draft={draft}\n  status={status}\n  hasEarlierMessages={false}\n  isLoadingEarlier={false}\n  onChangeDraft={setDraft}\n  onSubmit={submit}\n  onStop={stop}\n  onLoadEarlier={loadEarlier}\n/>",
+              "import { LLMChat } from 'app-20-llmchat'\n\n<LLMChat.Root\n  messages={messages}\n  draft={draft}\n  status={status}\n  hasEarlierMessages={false}\n  isLoadingEarlier={false}\n  onChangeDraft={setDraft}\n  onSubmit={submit}\n  onStop={stop}\n  onLoadEarlier={loadEarlier}\n/>",
             )}
             <p className="callout">
               <strong>Version note.</strong> This repository documents the package release as{' '}
@@ -173,7 +173,7 @@ export function DocumentationSite(): ReactElement {
           <Section id="reference" title="Reference">
             <p>
               Search this table by identifier, behavior, category, or host contract. Every entry
-              targets v{version}. Consumer imports come from <code>@app-20/chat</code>, not internal
+              targets v{version}. Consumer imports come from <code>app-20-llmchat</code>, not internal
               paths.
             </p>
             <div className="table-wrap">

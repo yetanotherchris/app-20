@@ -20,13 +20,13 @@
 
 **Purpose**: Initialize the new repository structure and copy source from the monorepo
 
-- [ ] T001 Clone or initialize the new repository at https://github.com/yetanotherchris/app-20-llmchat
-- [ ] T002 Copy packages/chat/src/ to src/ in the new repository
-- [ ] T003 Copy packages/chat/tests/ to tests/ in the new repository (if tests exist outside src/)
-- [ ] T004 Copy packages/chat/tsconfig.json and tsconfig.build.json to repo root
-- [ ] T005 Copy packages/chat/CHANGELOG.md to repo root
-- [ ] T006 Copy existing GitHub Actions workflows from .github/workflows/ (if any)
-- [ ] T007 Copy documentation site source to docs/ directory
+- [x] T001 Clone or initialize the new repository at https://github.com/yetanotherchris/app-20-llmchat
+- [x] T002 Copy packages/chat/src/ to src/ in the new repository
+- [x] T003 Copy packages/chat/tests/ to tests/ in the new repository (if tests exist outside src/)
+- [x] T004 Copy packages/chat/tsconfig.json and tsconfig.build.json to repo root
+- [x] T005 Copy packages/chat/CHANGELOG.md to repo root
+- [x] T006 Copy existing GitHub Actions workflows from .github/workflows/ (if any)
+- [x] T007 Copy documentation site source to docs/ directory
 
 ---
 
@@ -36,13 +36,13 @@
 
 **CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T008 Update package.json: name to "app-20-llmchat", version to "1.0.0", private to false, add repository/homepage/bugs/keywords per data-model.md in package.json
-- [ ] T009 Update package.json: set main, module, types, exports fields per contracts/npm-package.md in package.json
-- [ ] T010 Update package.json: add scripts (build, lint, typecheck, test, test:e2e) per contracts/npm-package.md in package.json
-- [ ] T011 Update package.json: verify peerDependencies and dependencies match spec in package.json
-- [ ] T012 [P] Add README.md with installation instructions, basic usage example, and link to documentation site in README.md
-- [ ] T013 [P] Add LICENSE file (MIT) to repo root
-- [ ] T014 Verify tsconfig.json has strict mode enabled and correct paths in tsconfig.json
+- [x] T008 Update package.json: name to "app-20-llmchat", version to "1.0.0", private to false, add repository/homepage/bugs/keywords per data-model.md in package.json
+- [x] T009 Update package.json: set main, module, types, exports fields per contracts/npm-package.md in package.json
+- [x] T010 Update package.json: add scripts (build, lint, typecheck, test, test:e2e) per contracts/npm-package.md in package.json
+- [x] T011 Update package.json: verify peerDependencies and dependencies match spec in package.json
+- [x] T012 [P] Add README.md with installation instructions, basic usage example, and link to documentation site in README.md
+- [x] T013 [P] Add LICENSE file (MIT) to repo root
+- [x] T014 Verify tsconfig.json has strict mode enabled and correct paths in tsconfig.json
 
 **Checkpoint**: Foundation ready - package metadata correct, user story implementation can begin
 
@@ -56,28 +56,28 @@
 
 ### Implementation for User Story 1
 
-- [ ] T015 [US1] Rename src/components/Chat.tsx to src/components/LLMChat.Root.tsx and rename exported component from Chat to LLMChatRoot in src/components/LLMChat.Root.tsx
-- [ ] T016 [US1] Rename src/components/MessageList.tsx to src/components/LLMChat.Conversation.tsx and rename export to LLMChatConversation in src/components/LLMChat.Conversation.tsx
-- [ ] T017 [US1] Rename src/components/Composer.tsx to src/components/LLMChat.PromptInput.tsx and rename export to LLMChatPromptInput in src/components/LLMChat.PromptInput.tsx
-- [ ] T018 [US1] Rename src/components/MessageBubble.tsx to src/components/LLMChat.Bubble.tsx and rename export to LLMChatBubble in src/components/LLMChat.Bubble.tsx
-- [ ] T019 [US1] Rename src/components/MessageStatusBadge.tsx to src/components/LLMChat.Status.tsx and rename export to LLMChatStatus in src/components/LLMChat.Status.tsx
-- [ ] T020 [P] [US1] Rename src/components/SendButton.tsx to src/components/LLMChat.SendButton.tsx in src/components/LLMChat.SendButton.tsx
-- [ ] T021 [P] [US1] Rename src/components/StopButton.tsx to src/components/LLMChat.StopButton.tsx in src/components/LLMChat.StopButton.tsx
-- [ ] T022 [P] [US1] Rename src/components/ScrollToLatestControl.tsx to src/components/LLMChat.ScrollToLatest.tsx in src/components/LLMChat.ScrollToLatest.tsx
-- [ ] T023 [P] [US1] Rename src/components/LoadEarlierControl.tsx to src/components/LLMChat.LoadEarlier.tsx in src/components/LLMChat.LoadEarlier.tsx
-- [ ] T024 [P] [US1] Rename src/components/UnreadBadge.tsx to src/components/LLMChat.UnreadBadge.tsx in src/components/LLMChat.UnreadBadge.tsx
-- [ ] T025 [P] [US1] Rename src/components/EmptyState.tsx to src/components/LLMChat.EmptyState.tsx in src/components/LLMChat.EmptyState.tsx
-- [ ] T026 [P] [US1] Rename src/components/LoadingState.tsx to src/components/LLMChat.LoadingState.tsx in src/components/LLMChat.LoadingState.tsx
-- [ ] T027 [P] [US1] Rename src/components/TypingState.tsx to src/components/LLMChat.TypingState.tsx in src/components/LLMChat.TypingState.tsx
-- [ ] T028 [P] [US1] Rename src/components/ErrorState.tsx to src/components/LLMChat.ErrorState.tsx in src/components/LLMChat.ErrorState.tsx
-- [ ] T029 [US1] Update all internal imports across renamed components to use new file paths in src/components/
-- [ ] T030 [US1] Rewrite src/index.ts to export LLMChat namespace object with all sub-components per research.md R2 in src/index.ts
-- [ ] T031 [US1] Update TypeScript type exports: rename ChatProps to LLMChatRootProps, MessageListProps to LLMChatConversationProps, etc. in src/index.ts
-- [ ] T032 [US1] Update internal components (ActionMenu, MessageActions, MessageRendererBoundary) to import from renamed files in src/components/
-- [ ] T033 [US1] Update hooks, rendering, theme, accessibility imports if any reference component files in src/hooks/, src/rendering/, src/theme/, src/accessibility/
-- [ ] T034 [US1] Run npm run build and verify dist/ output contains correct type definitions in dist/
-- [ ] T035 [US1] Run npm run typecheck and verify zero errors
-- [ ] T036 [US1] Run existing unit tests and verify they pass with updated imports in tests/
+- [x] T015 [US1] Rename src/components/Chat.tsx to src/components/LLMChat.Root.tsx and rename exported component from Chat to LLMChatRoot in src/components/LLMChat.Root.tsx
+- [x] T016 [US1] Rename src/components/MessageList.tsx to src/components/LLMChat.Conversation.tsx and rename export to LLMChatConversation in src/components/LLMChat.Conversation.tsx
+- [x] T017 [US1] Rename src/components/Composer.tsx to src/components/LLMChat.PromptInput.tsx and rename export to LLMChatPromptInput in src/components/LLMChat.PromptInput.tsx
+- [x] T018 [US1] Rename src/components/MessageBubble.tsx to src/components/LLMChat.Bubble.tsx and rename export to LLMChatBubble in src/components/LLMChat.Bubble.tsx
+- [x] T019 [US1] Rename src/components/MessageStatusBadge.tsx to src/components/LLMChat.Status.tsx and rename export to LLMChatStatus in src/components/LLMChat.Status.tsx
+- [x] T020 [P] [US1] Rename src/components/SendButton.tsx to src/components/LLMChat.SendButton.tsx in src/components/LLMChat.SendButton.tsx
+- [x] T021 [P] [US1] Rename src/components/StopButton.tsx to src/components/LLMChat.StopButton.tsx in src/components/LLMChat.StopButton.tsx
+- [x] T022 [P] [US1] Rename src/components/ScrollToLatestControl.tsx to src/components/LLMChat.ScrollToLatest.tsx in src/components/LLMChat.ScrollToLatest.tsx
+- [x] T023 [P] [US1] Rename src/components/LoadEarlierControl.tsx to src/components/LLMChat.LoadEarlier.tsx in src/components/LLMChat.LoadEarlier.tsx
+- [x] T024 [P] [US1] Rename src/components/UnreadBadge.tsx to src/components/LLMChat.UnreadBadge.tsx in src/components/LLMChat.UnreadBadge.tsx
+- [x] T025 [P] [US1] Rename src/components/EmptyState.tsx to src/components/LLMChat.EmptyState.tsx in src/components/LLMChat.EmptyState.tsx
+- [x] T026 [P] [US1] Rename src/components/LoadingState.tsx to src/components/LLMChat.LoadingState.tsx in src/components/LLMChat.LoadingState.tsx
+- [x] T027 [P] [US1] Rename src/components/TypingState.tsx to src/components/LLMChat.TypingState.tsx in src/components/LLMChat.TypingState.tsx
+- [x] T028 [P] [US1] Rename src/components/ErrorState.tsx to src/components/LLMChat.ErrorState.tsx in src/components/LLMChat.ErrorState.tsx
+- [x] T029 [US1] Update all internal imports across renamed components to use new file paths in src/components/
+- [x] T030 [US1] Rewrite src/index.ts to export LLMChat namespace object with all sub-components per research.md R2 in src/index.ts
+- [x] T031 [US1] Update TypeScript type exports: rename ChatProps to LLMChatRootProps, MessageListProps to LLMChatConversationProps, etc. in src/index.ts
+- [x] T032 [US1] Update internal components (ActionMenu, MessageActions, MessageRendererBoundary) to import from renamed files in src/components/
+- [x] T033 [US1] Update hooks, rendering, theme, accessibility imports if any reference component files in src/hooks/, src/rendering/, src/theme/, src/accessibility/
+- [x] T034 [US1] Run npm run build and verify dist/ output contains correct type definitions in dist/
+- [x] T035 [US1] Run npm run typecheck and verify zero errors
+- [x] T036 [US1] Run existing unit tests and verify they pass with updated imports in tests/
 
 **Checkpoint**: User Story 1 complete - package installs, imports resolve, component renders with new API
 
@@ -91,10 +91,10 @@
 
 ### Implementation for User Story 2
 
-- [ ] T037 [US2] Create migration guide document with before/after code examples for all 14 renamed components in docs/content/migration-guide.md
-- [ ] T038 [US2] Add migration guide section to documentation site navigation in docs/
-- [ ] T039 [US2] Verify migration guide covers all components from data-model.md Component Export Mapping table in docs/content/migration-guide.md
-- [ ] T040 [US2] Add common pitfalls section (both packages installed, old import paths, workspace resolution) in docs/content/migration-guide.md
+- [x] T037 [US2] Create migration guide document with before/after code examples for all 14 renamed components in docs/content/migration-guide.md
+- [x] T038 [US2] Add migration guide section to documentation site navigation in docs/
+- [x] T039 [US2] Verify migration guide covers all components from data-model.md Component Export Mapping table in docs/content/migration-guide.md
+- [x] T040 [US2] Add common pitfalls section (both packages installed, old import paths, workspace resolution) in docs/content/migration-guide.md
 
 **Checkpoint**: User Story 2 complete - migration guide covers 100% of renamed components with copy-paste ready code
 
@@ -108,12 +108,12 @@
 
 ### Implementation for User Story 3
 
-- [ ] T041 [US3] Update quick-start guide to use app-20-llmchat package name and LLMChat API in docs/content/quick-start.md
-- [ ] T042 [US3] Update all API reference entries to use new component names (LLMChat.Root, LLMChat.Conversation, etc.) in docs/content/api-reference/
-- [ ] T043 [US3] Update all recipe examples to use LLMChat namespace imports in docs/content/recipes/
-- [ ] T044 [US3] Remove or update any references to @app-20/chat or old Chat component name across all documentation in docs/
-- [ ] T045 [US3] Update documentation site configuration (if any) to reflect new repository URL and package name in docs/
-- [ ] T046 [US3] Verify no references to old package name remain in documentation via grep in docs/
+- [x] T041 [US3] Update quick-start guide to use app-20-llmchat package name and LLMChat API in docs/content/quick-start.md
+- [x] T042 [US3] Update all API reference entries to use new component names (LLMChat.Root, LLMChat.Conversation, etc.) in docs/content/api-reference/
+- [x] T043 [US3] Update all recipe examples to use LLMChat namespace imports in docs/content/recipes/
+- [x] T044 [US3] Remove or update any references to @app-20/chat or old Chat component name across all documentation in docs/
+- [x] T045 [US3] Update documentation site configuration (if any) to reflect new repository URL and package name in docs/
+- [x] T046 [US3] Verify no references to old package name remain in documentation via grep in docs/
 
 **Checkpoint**: User Story 3 complete - documentation uses LLMChat API exclusively, migration guide accessible
 
@@ -127,12 +127,12 @@
 
 ### Implementation for User Story 4
 
-- [ ] T047 [US4] Create CI workflow (.github/workflows/ci.yml) running lint, typecheck, unit tests, e2e tests, and build on push/PR per FR-014 in .github/workflows/ci.yml
-- [ ] T048 [US4] Create npm publish workflow (.github/workflows/publish.yml) triggered on v* tag, running all checks before npm publish per FR-015/FR-016 in .github/workflows/publish.yml
-- [ ] T049 [US4] Create documentation deployment workflow (.github/workflows/docs.yml) deploying to GitHub Pages on push to main per FR-017 in .github/workflows/docs.yml
-- [ ] T050 [US4] Add node_modules and build artifact caching to all workflows per FR-018 in .github/workflows/
-- [ ] T051 [US4] Verify npm pack produces correct tarball (dist/, README, LICENSE, CHANGELOG only, under 100KB) via npm pack --dry-run
-- [ ] T052 [US4] Add .npmignore or refine files field to exclude source files and dev artifacts from published package in package.json
+- [x] T047 [US4] Create CI workflow (.github/workflows/ci.yml) running lint, typecheck, unit tests, e2e tests, and build on push/PR per FR-014 in .github/workflows/ci.yml
+- [x] T048 [US4] Create npm publish workflow (.github/workflows/publish.yml) triggered on v* tag, running all checks before npm publish per FR-015/FR-016 in .github/workflows/publish.yml
+- [x] T049 [US4] Create documentation deployment workflow (.github/workflows/docs.yml) deploying to GitHub Pages on push to main per FR-017 in .github/workflows/docs.yml
+- [x] T050 [US4] Add node_modules and build artifact caching to all workflows per FR-018 in .github/workflows/
+- [x] T051 [US4] Verify npm pack produces correct tarball (dist/, README, LICENSE, CHANGELOG only, under 100KB) via npm pack --dry-run
+- [x] T052 [US4] Add .npmignore or refine files field to exclude source files and dev artifacts from published package in package.json
 
 **Checkpoint**: User Story 4 complete - package builds, packs, and publish workflow is configured
 
@@ -142,13 +142,13 @@
 
 **Purpose**: Final validation and cleanup across all user stories
 
-- [ ] T053 [P] Run full build pipeline: npm run lint, npm run typecheck, npm run test, npm run build
-- [ ] T054 [P] Run npm pack and verify tarball contents and size
-- [ ] T055 [P] Grep entire repository for remaining references to @app-20/chat or old component names (Chat, MessageList, Composer, etc.) in src/, docs/, tests/
-- [ ] T056 [P] Verify all renamed component files exist with correct names in src/components/
-- [ ] T057 Verify LLMChat namespace export includes all 14 sub-components in src/index.ts
-- [ ] T058 Verify TypeScript types are correct with no `any` types in exported surface via npm run typecheck
-- [ ] T059 Run quickstart.md validation scenarios end-to-end
+- [x] T053 [P] Run full build pipeline: npm run lint, npm run typecheck, npm run test, npm run build
+- [x] T054 [P] Run npm pack and verify tarball contents and size
+- [x] T055 [P] Grep entire repository for remaining references to @app-20/chat or old component names (Chat, MessageList, Composer, etc.) in src/, docs/, tests/
+- [x] T056 [P] Verify all renamed component files exist with correct names in src/components/
+- [x] T057 Verify LLMChat namespace export includes all 14 sub-components in src/index.ts
+- [x] T058 Verify TypeScript types are correct with no `any` types in exported surface via npm run typecheck
+- [x] T059 Run quickstart.md validation scenarios end-to-end
 
 ---
 

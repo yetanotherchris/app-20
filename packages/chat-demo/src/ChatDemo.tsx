@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import {
-  Chat,
+  LLMChat,
   useChatSession,
   type ChatOperation,
   type ChatSessionControls,
@@ -9,7 +9,7 @@ import {
   type Message,
   type MessageAction,
   type ThemeName,
-} from '@app-20/chat'
+} from 'app-20-llmchat'
 import { largeMessageText } from './fixtures/large-message'
 import markdownSuite from './fixtures/markdown-suite.md?raw'
 import unsafeMarkdown from './fixtures/unsafe-markdown.md?raw'
@@ -613,7 +613,7 @@ export function ChatDemo({ initialMessages = DEFAULT_MESSAGES }: ChatDemoProps) 
           copied: {copiedText || 'none'}
         </Text>
       </View>
-      <Chat
+      <LLMChat.Root
         messages={messages}
         draft={draft}
         status={status}
