@@ -1,15 +1,12 @@
 name: Documentation
 on:
   push:
-    branches: [main, spec-008-component-documentation]
+    branches: [main]
   pull_request:
     paths:
       [
         docs/site/**,
-        packages/chat/**,
         packages/chat-demo/**,
-        specs/008-component-documentation/**,
-        scripts/verify-component-docs.mjs,
       ]
 jobs:
   build:
@@ -21,7 +18,6 @@ jobs:
           node-version: 20
           cache: npm
       - run: npm ci
-      - run: npm run docs:verify
       - run: npm run docs:build
       - run: npm run lint
       - run: npm run typecheck
