@@ -2,7 +2,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { resolve } from 'node:path'
 
-const svgStub = resolve(__dirname, '../../packages/chat/src/vite/stubs/react-native-svg.tsx')
+const svgStub = resolve(__dirname, 'src/stubs/react-native-svg.tsx')
 
 export default defineConfig({
   plugins: [react()],
