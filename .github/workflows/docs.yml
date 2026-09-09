@@ -1,0 +1,45 @@
+name: Documentation
+on:
+  push:
+    branches: [main, spec-008-component-documentation]
+  pull_request:
+    paths:
+      [
+        docs/site/**,
+        packages/chat/**,
+        packages/chat-demo/**,
+        specs/008-component-documentation/**,
+        scripts/verify-component-docs.mjs,
+      ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run docs:verify
+      - run: npm run docs:build
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test
+      - uses: actions/upload-pages-artifact@v3
+        if: github.ref == 'refs/heads/main'
+        with:
+          path: docs/site/dist
+  deploy:
+    if: github.ref == 'refs/heads/main'
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

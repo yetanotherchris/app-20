@@ -5,7 +5,8 @@
   "description": "Desktop and iOS LLM chat application",
   "workspaces": [
     "packages/*",
-    "apps/*"
+    "apps/*",
+    "docs/site"
   ],
   "scripts": {
     "lint": "eslint .",
@@ -18,6 +19,11 @@
     "dev:web": "npm run dev --workspace apps/web",
     "dev:electron": "npm run dev --workspace apps/electron",
     "build:web": "npm run build:chat && npm run build --workspace apps/web",
+    "docs:dev": "npm run dev --workspace @app-20/component-docs",
+    "docs:build": "npm run build:chat && npm run build --workspace @app-20/component-docs",
+    "docs:preview": "npm run preview --workspace @app-20/component-docs",
+    "docs:verify": "node scripts/verify-component-docs.mjs",
+    "docs:test:e2e": "npm run docs:build && npx playwright test --config playwright.docs.config.ts",
     "test:e2e": "npm run build:electron && playwright test"
   },
   "devDependencies": {
