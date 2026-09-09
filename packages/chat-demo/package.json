@@ -11,7 +11,7 @@
     "react-native-web": "^0.21.0"
   },
   "dependencies": {
-    "@app-20/chat": "0.1.0"
+    "@app-20/chat": "0.3.0"
   },
   "devDependencies": {
     "@types/react": "^19.0.0"
