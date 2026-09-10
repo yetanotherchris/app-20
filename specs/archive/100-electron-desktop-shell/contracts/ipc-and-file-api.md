@@ -7,23 +7,24 @@ Spec 100 exposes one fixed, typed surface between the renderer and the main proc
 - `BrowserWindow` options: `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`.
 - The renderer has no `fs`, no `path`, no `electron` import. The only privileged surface is `window.appBridge`.
 - Every path is built in main from a workspace root resolved with `fs.realpath`. A renderer request supplies a bare file name.
-- A file name that is empty, absolute, `.`, `..`, or contains `/` or `\` is rejected with `invalid-name`.
+- A file name that is empty, absolute, `.`, `..`, contains `/`, `\`, a null byte, `:`, or a Windows reserved device name (`NUL`, `CON`, ...) is rejected with `invalid-name`.
 - A resolved target outside the real workspace root is rejected with `outside-workspace`.
 - Renderer-visible errors are a code plus a fixed, path-free message.
+- Requests are refused unless they come from the main window's `webContents`.
 
 ## Channels
 
-### `app:get-version` -> `{ version: string }`
+### `app:get-version` -> `Result<{ version: string }>`
 
-Returns the packaged application version. Used by the shell top bar and as a readiness probe in tests.
+Returns the packaged application version.
 
-### `workspace:get` -> `WorkspaceInfo | null`
+### `workspace:get` -> `Result<WorkspaceInfo | null>`
 
-Returns `{ displayName }` when a workspace is configured and its root exists, otherwise `null`. Never returns the absolute path.
+Returns `{ displayName, id }` when a workspace is configured and its root exists, otherwise `ok(null)`. When a persisted workspace no longer resolves, the setting is cleared and the channel returns `err('read-failed')` so the shell can report it without an absolute path. `id` is a sha256 prefix of the real root, not the path.
 
-### `workspace:choose` -> `WorkspaceResult`
+### `workspace:choose` -> `Result<WorkspaceInfo>`
 
-Opens the OS folder chooser. On selection, resolves the directory with `fs.realpath`, persists it, and returns `{ ok: true, value: { displayName } }`. If the user cancels, returns `{ ok: false, code: 'chooser-cancelled', message }`. A persisted path that cannot be read returns `{ ok: false, code: 'read-failed' | 'outside-workspace' }` after clearing the setting.
+Opens the OS folder chooser. On selection, resolves the directory with `fs.realpath`, persists it, and returns `{ ok: true, value: { displayName, id } }`. If the user cancels, returns `{ ok: false, code: 'chooser-cancelled', message }`.
 
 ### `workspace:create` -> `WorkspaceResult`
 
@@ -53,13 +54,13 @@ Opens a file chooser, parses JSON, requires `accessKeyId` and `secretAccessKey` 
 
 Returns `{ providerKey: boolean, s3: boolean }`. Never returns the stored values.
 
-### `shell:open-external` `{ url: string }` -> `void`
+### `shell:open-external` `{ url: string }` -> `Result<Record<string, never>>`
 
 Opens `http:`/`https:` URLs in the system browser. Any other scheme returns `{ ok: false, code: 'not-permitted' }`. The renderer calls this from the chat component's `onLinkPress`.
 
 ### `app:close-decision` `{ decision: 'close' | 'cancel' }` -> `void`
 
-The renderer's answer to `app:close-requested`: `close` authorises the pending window close or quit; `cancel` clears the pending request. The handler only acts when a close is pending.
+The renderer's answer to `app:close-requested`: `close` authorises the pending window close or quit; `cancel` clears the pending request. Only `close` and `cancel` are accepted.
 
 ## Main-to-renderer events
 
@@ -69,19 +70,22 @@ Sent after `preventDefault()` on the window `close` event or the app `before-qui
 
 ### `menu:command` `{ command: MenuCommand }`
 
-Sent for renderer-owned menu items (`new-conversation`, `save-document`).
-
-### `app:notification` `{ level: 'info' | 'error'; message: string }`
-
-Sent after a main-owned menu action runs (import, workspace) so the shell can surface the result. Messages are codes rendered to copy, never paths.
+Sent for every menu item except Quit (`open-workspace`, `create-workspace`, `import-provider-key`, `import-s3-credentials`, `new-conversation`, `save-document`). The renderer runs the operation so outcomes surface in one place; Quit calls `app.quit()` in main and goes through the close gate. Main does not emit notifications.
 
 ## Error codes
 
 ```ts
 type AppErrorCode =
-  | 'no-workspace' | 'invalid-name' | 'outside-workspace'
-  | 'read-failed' | 'write-failed' | 'chooser-cancelled'
-  | 'invalid-secret' | 'secret-store-unavailable' | 'not-permitted' | 'unknown'
+  | 'no-workspace'
+  | 'invalid-name'
+  | 'outside-workspace'
+  | 'read-failed'
+  | 'write-failed'
+  | 'chooser-cancelled'
+  | 'invalid-secret'
+  | 'secret-store-unavailable'
+  | 'not-permitted'
+  | 'unknown'
 ```
 
 The renderer maps each code to a fixed, path-free user string. Unknown errors are `unknown`. No handler returns a raw `Error.message` to the renderer.

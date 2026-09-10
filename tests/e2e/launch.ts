@@ -69,11 +69,18 @@ export async function closeElectron(launched: LaunchedApp): Promise<void> {
  * test the component at the reference 974x638 panel and at narrow/wide
  * viewports (spec 007 FR-002, US4-A1).
  */
-export async function resizeWindow(launched: LaunchedApp, width: number, height: number): Promise<void> {
-  await launched.app.evaluate(({ BrowserWindow }, { width: w, height: h }) => {
-    const win = BrowserWindow.getAllWindows()[0]
-    if (win) win.setContentSize(w, h)
-  }, { width, height })
+export async function resizeWindow(
+  launched: LaunchedApp,
+  width: number,
+  height: number,
+): Promise<void> {
+  await launched.app.evaluate(
+    ({ BrowserWindow }, { width: w, height: h }) => {
+      const win = BrowserWindow.getAllWindows()[0]
+      if (win) win.setContentSize(w, h)
+    },
+    { width, height },
+  )
   await launched.page.waitForTimeout(200)
 }
 

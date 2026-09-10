@@ -32,15 +32,15 @@ The shell owns the workspace, the file operations, the window/menu lifecycle, an
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+_GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
-| Principle | How this plan satisfies it | Status |
-|-----------|----------------------------|--------|
-| I. Process Isolation | `BrowserWindow` keeps `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`. Renderer imports no `fs`/Electron. Privileged work is reached only through the preload bridge. | PASS |
-| II. Path Trust | `assertPathWithinWorkspace` resolves the real workspace root with `fs.realpath` and rejects any resolved target outside it or any filename containing a separator. Every file handler calls it. Errors returned to the renderer carry a code, never a path. | PASS |
-| III. No Data Loss | `atomicWriteFile` writes a temp file in the same directory, `fsync`s, then renames over the target. On any failure the temp file is removed and the error propagates; the renderer keeps the document dirty. Close and quit are intercepted and routed to a renderer confirmation. | PASS |
-| IV. Fixed and Typed Preload API | The preload exposes a single object of named methods. Request and response types live in `src/shared/ipc-contract.ts`; no generic `invoke(channel, ...args)` is exposed. No `any` at the boundary. | PASS |
-| V. Non-Negotiable Test Coverage | Unit tests cover path containment (including adversarial `..` and separator cases), atomic write success/failure, and IPC contract shape. E2E covers dirty/close/quit confirmation and launch. | PASS |
+| Principle                       | How this plan satisfies it                                                                                                                                                                                                                                                         | Status |
+| ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------ |
+| I. Process Isolation            | `BrowserWindow` keeps `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`. Renderer imports no `fs`/Electron. Privileged work is reached only through the preload bridge.                                                                                          | PASS   |
+| II. Path Trust                  | `assertPathWithinWorkspace` resolves the real workspace root with `fs.realpath` and rejects any resolved target outside it or any filename containing a separator. Every file handler calls it. Errors returned to the renderer carry a code, never a path.                        | PASS   |
+| III. No Data Loss               | `atomicWriteFile` writes a temp file in the same directory, `fsync`s, then renames over the target. On any failure the temp file is removed and the error propagates; the renderer keeps the document dirty. Close and quit are intercepted and routed to a renderer confirmation. | PASS   |
+| IV. Fixed and Typed Preload API | The preload exposes a single object of named methods. Request and response types live in `src/shared/ipc-contract.ts`; no generic `invoke(channel, ...args)` is exposed. No `any` at the boundary.                                                                                 | PASS   |
+| V. Non-Negotiable Test Coverage | Unit tests cover path containment (including adversarial `..` and separator cases), atomic write success/failure, and IPC contract shape. E2E covers dirty/close/quit confirmation and launch.                                                                                     | PASS   |
 
 No violations. Complexity Tracking is not required.
 

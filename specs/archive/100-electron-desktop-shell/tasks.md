@@ -156,3 +156,18 @@
 ## Implementation Strategy
 
 MVP is US1 (launch to chat). US2 (no data loss) and US3 (workspace) follow, then US4 (menu). Each story leaves the app usable. Given the constitution, US2 is treated as P1 and not deferred.
+
+## Post-review follow-ups (PR #19)
+
+- [x] C1 New Conversation saves the current document before starting fresh (`App.tsx`).
+- [x] C2 Real IPC contract-shape test with compile-time channel coverage (`ipc-contract.test.ts`).
+- [x] M1 Restrict `will-navigate` and `will-redirect` to the exact app document or dev origin (`security.ts`).
+- [x] M2 Key the session on a non-path workspace id, not the basename (`workspace.ts`, `useWorkspace.ts`).
+- [x] M3 Validate persisted conversation JSON instead of asserting (`conversation/storedConversation.ts`).
+- [x] M4 Exercise the symlink-escape branch with a directory junction (`paths.test.ts`).
+- [x] M5 e2e for quit mid-stream, using the stream-delay seam (`shell.spec.ts`, `research.md` R13).
+- [x] M6 e2e for a real restart against the same user-data dir (`shell.spec.ts`).
+- [x] M7 Report an unreadable workspace without a path and clear the setting (`workspace.ts`, `shell.spec.ts`).
+- [x] Minors: `read-failed` mapping, draft persisted and dirty-tracked, failed save stays dirty, close dialog uses the real code, close event re-sent, startup never blocks on settings, `:`/reserved names rejected, dead `app:notification`/`quit` removed, shared modal styles, IPC sender validation, file size caps, exclusive temp create, `will-redirect` guard.
+- [ ] T050 Commit the review fixes.
+- [ ] T051 Reply to each review comment with the fix commit hash.

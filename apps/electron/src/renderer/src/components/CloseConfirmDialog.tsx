@@ -1,6 +1,7 @@
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { Pressable, Text, View } from 'react-native'
 import type { CloseReason } from '../../../shared/ipc-contract'
 import type { ClosePhase } from '../hooks/useCloseGuard'
+import { modalStyles } from './modalStyles'
 
 export interface CloseConfirmDialogProps {
   reason: CloseReason
@@ -20,105 +21,50 @@ export function CloseConfirmDialog({
   onCancel,
 }: CloseConfirmDialogProps) {
   const saving = phase === 'saving'
+  const disabled = saving ? modalStyles.disabledButton : null
 
   return (
-    <View style={styles.overlay} testID="shell.close-dialog">
-      <View style={styles.panel}>
-        <Text style={styles.title}>
+    <View style={modalStyles.overlay} testID="shell.close-dialog">
+      <View style={modalStyles.panel}>
+        <Text style={modalStyles.title}>
           {reason === 'quit' ? 'Quit without saving?' : 'Close without saving?'}
         </Text>
-        <Text style={styles.body}>This conversation has unsaved changes.</Text>
+        <Text style={modalStyles.body}>This conversation has unsaved changes.</Text>
         {phase === 'error' && error ? (
-          <Text style={styles.error} testID="shell.close-error">
+          <Text style={modalStyles.error} testID="shell.close-error">
             {error}
           </Text>
         ) : null}
-        <View style={styles.actions}>
+        <View style={modalStyles.actions}>
           <Pressable
             accessibilityRole="button"
             disabled={saving}
             onPress={onSave}
-            style={[styles.button, styles.primary, saving ? styles.disabled : null]}
+            style={[modalStyles.button, modalStyles.primaryButton, disabled]}
             testID="shell.close-save"
           >
-            <Text style={styles.buttonLabel}>{saving ? 'Saving...' : 'Save'}</Text>
+            <Text style={modalStyles.buttonLabel}>{saving ? 'Saving...' : 'Save'}</Text>
           </Pressable>
           <Pressable
             accessibilityRole="button"
             disabled={saving}
             onPress={onDiscard}
-            style={[styles.button, saving ? styles.disabled : null]}
+            style={[modalStyles.button, disabled]}
             testID="shell.close-discard"
           >
-            <Text style={styles.buttonLabel}>Discard</Text>
+            <Text style={modalStyles.buttonLabel}>Discard</Text>
           </Pressable>
           <Pressable
             accessibilityRole="button"
             disabled={saving}
             onPress={onCancel}
-            style={[styles.button, saving ? styles.disabled : null]}
+            style={[modalStyles.button, disabled]}
             testID="shell.close-cancel"
           >
-            <Text style={styles.buttonLabel}>Cancel</Text>
+            <Text style={modalStyles.buttonLabel}>Cancel</Text>
           </Pressable>
         </View>
       </View>
     </View>
   )
 }
-
-const styles = StyleSheet.create({
-  overlay: {
-    position: 'absolute',
-    top: 0,
-    right: 0,
-    bottom: 0,
-    left: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(15, 23, 42, 0.55)',
-  },
-  panel: {
-    width: 420,
-    maxWidth: '90%',
-    borderRadius: 10,
-    padding: 24,
-    backgroundColor: '#ffffff',
-    gap: 12,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#0f172a',
-  },
-  body: {
-    fontSize: 14,
-    color: '#334155',
-  },
-  error: {
-    fontSize: 13,
-    color: '#b91c1c',
-  },
-  actions: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 4,
-  },
-  button: {
-    backgroundColor: '#475569',
-    borderRadius: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  primary: {
-    backgroundColor: '#1d4ed8',
-  },
-  disabled: {
-    opacity: 0.6,
-  },
-  buttonLabel: {
-    color: '#ffffff',
-    fontSize: 14,
-    fontWeight: '600',
-  },
-})

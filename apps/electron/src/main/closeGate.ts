@@ -15,7 +15,9 @@ export function resetCloseAuthorisation(): void {
 }
 
 export function requestClose(reason: CloseReason): void {
-  if (authorised || pendingReason !== null) return
+  // Re-send on every close attempt: if the renderer had not subscribed when the
+  // first request was sent, the next attempt must not be dropped.
+  if (authorised) return
   pendingReason = reason
   sendToRenderer('app:close-requested', { reason })
 }

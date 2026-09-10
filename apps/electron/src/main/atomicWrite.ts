@@ -12,7 +12,9 @@ export async function atomicWriteFile(filePath: string, content: string): Promis
   const tempPath = join(directory, `.${basename(filePath)}.${process.pid}.${Date.now()}.tmp`)
 
   try {
-    const handle = await fs.open(tempPath, 'w')
+    // 'wx' fails if the temp path already exists, so a pre-planted symlink or
+    // file at the predictable name cannot redirect the write.
+    const handle = await fs.open(tempPath, 'wx')
     try {
       await handle.writeFile(content, 'utf8')
       await handle.sync()

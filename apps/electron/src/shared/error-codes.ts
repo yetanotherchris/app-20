@@ -1,14 +1,17 @@
-export type AppErrorCode =
-  | 'no-workspace'
-  | 'invalid-name'
-  | 'outside-workspace'
-  | 'read-failed'
-  | 'write-failed'
-  | 'chooser-cancelled'
-  | 'invalid-secret'
-  | 'secret-store-unavailable'
-  | 'not-permitted'
-  | 'unknown'
+export const APP_ERROR_CODES = [
+  'no-workspace',
+  'invalid-name',
+  'outside-workspace',
+  'read-failed',
+  'write-failed',
+  'chooser-cancelled',
+  'invalid-secret',
+  'secret-store-unavailable',
+  'not-permitted',
+  'unknown',
+] as const
+
+export type AppErrorCode = (typeof APP_ERROR_CODES)[number]
 
 export interface Ok<T> {
   ok: true
@@ -35,5 +38,3 @@ export const ERROR_MESSAGES: Record<AppErrorCode, string> = {
   'not-permitted': 'That link cannot be opened.',
   unknown: 'Something went wrong.',
 }
-
-export const APP_ERROR_CODES = Object.keys(ERROR_MESSAGES) as AppErrorCode[]

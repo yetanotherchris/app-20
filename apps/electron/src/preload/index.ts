@@ -41,7 +41,6 @@ const appBridge: AppBridge = {
   reportCloseDecision: (decision) => invoke('app:close-decision', { decision }),
   onCloseRequested: (handler) => subscribe('app:close-requested', handler),
   onMenuCommand: (handler) => subscribe('menu:command', handler),
-  onNotification: (handler) => subscribe('app:notification', handler),
 }
 
 contextBridge.exposeInMainWorld('appBridge', appBridge)

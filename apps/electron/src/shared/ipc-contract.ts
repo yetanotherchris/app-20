@@ -6,6 +6,8 @@ export interface AppVersion {
 
 export interface WorkspaceInfo {
   displayName: string
+  /** Stable, non-path identifier for the workspace root (sha256 prefix). */
+  id: string
 }
 
 export type SecretKind = 'provider-key' | 's3'
@@ -22,7 +24,6 @@ export type MenuCommand =
   | 'import-s3-credentials'
   | 'new-conversation'
   | 'save-document'
-  | 'quit'
 
 export type CloseReason = 'close' | 'quit'
 export type CloseDecision = 'close' | 'cancel'
@@ -33,11 +34,6 @@ export interface CloseRequestedEvent {
 
 export interface MenuCommandEvent {
   command: MenuCommand
-}
-
-export interface NotificationEvent {
-  level: 'info' | 'error'
-  message: string
 }
 
 type Empty = Record<string, never>
@@ -63,7 +59,6 @@ export interface IpcContract {
 export interface IpcEvents {
   'app:close-requested': CloseRequestedEvent
   'menu:command': MenuCommandEvent
-  'app:notification': NotificationEvent
 }
 
 export type IpcChannel = keyof IpcContract
@@ -72,6 +67,40 @@ export type IpcEventChannel = keyof IpcEvents
 export type IpcRequest<C extends IpcChannel> = IpcContract[C]['request']
 export type IpcResponse<C extends IpcChannel> = IpcContract[C]['response']
 export type IpcEventPayload<C extends IpcEventChannel> = IpcEvents[C]
+
+/** Runtime list of invoke channels. Kept in sync with IpcContract at compile time. */
+export const IPC_CHANNELS = [
+  'app:get-version',
+  'workspace:get',
+  'workspace:choose',
+  'workspace:create',
+  'workspace:list',
+  'file:read',
+  'file:write',
+  'secrets:import-provider-key',
+  'secrets:import-s3',
+  'secrets:status',
+  'shell:open-external',
+  'app:close-decision',
+] as const satisfies readonly IpcChannel[]
+
+/** Runtime list of main-to-renderer event channels. */
+export const IPC_EVENT_CHANNELS = [
+  'app:close-requested',
+  'menu:command',
+] as const satisfies readonly IpcEventChannel[]
+
+type ChannelIsListed<C extends IpcChannel> = C extends (typeof IPC_CHANNELS)[number] ? true : never
+type EventChannelIsListed<C extends IpcEventChannel> = C extends (typeof IPC_EVENT_CHANNELS)[number]
+  ? true
+  : never
+
+/** Resolves to `true` only while every declared channel appears in IPC_CHANNELS. */
+export type AllChannelsListed = { [C in IpcChannel]: ChannelIsListed<C> }[IpcChannel]
+/** Resolves to `true` only while every declared event channel appears in IPC_EVENT_CHANNELS. */
+export type AllEventChannelsListed = {
+  [C in IpcEventChannel]: EventChannelIsListed<C>
+}[IpcEventChannel]
 
 /** The fixed surface exposed on `window.appBridge`. */
 export interface AppBridge {
@@ -89,5 +118,4 @@ export interface AppBridge {
   reportCloseDecision: (decision: CloseDecision) => Promise<void>
   onCloseRequested: (handler: (event: CloseRequestedEvent) => void) => () => void
   onMenuCommand: (handler: (event: MenuCommandEvent) => void) => () => void
-  onNotification: (handler: (event: NotificationEvent) => void) => () => void
 }

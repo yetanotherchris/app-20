@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import type { AppErrorCode } from '../../../shared/error-codes'
 import type { CloseReason } from '../../../shared/ipc-contract'
 import { messageForCode } from '../errorMessages'
 
@@ -16,7 +17,7 @@ export interface CloseGuard {
 export interface CloseGuardOptions {
   dirty: boolean
   stop: () => void
-  save: () => Promise<boolean>
+  save: () => Promise<AppErrorCode | null>
 }
 
 /**
@@ -48,14 +49,14 @@ export function useCloseGuard({ dirty, stop, save }: CloseGuardOptions): CloseGu
 
   const chooseSave = useCallback(async () => {
     setPhase('saving')
-    const saved = await save()
-    if (saved) {
+    const code = await save()
+    if (code === null) {
       setRequest(null)
       await window.appBridge.reportCloseDecision('close')
       return
     }
     setPhase('error')
-    setError(messageForCode('write-failed'))
+    setError(messageForCode(code))
   }, [save])
 
   const chooseDiscard = useCallback(() => {

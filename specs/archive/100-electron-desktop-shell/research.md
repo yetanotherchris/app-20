@@ -20,7 +20,7 @@ Phase 0 decisions for spec 100. Each entry states the decision, why it was chose
 
 ## R3. Path validation in main
 
-**Decision**: `paths.ts` exposes `resolveRealRoot(root)` (`fs.realpath`) and `assertPathWithinWorkspace(root, fileName)`. A request supplies a *file name*, not a path. The name is rejected if empty, absolute, `.`/`..`, or contains `/` or `\\`. The target is built as `resolve(realRoot, fileName)` and re-checked with `path.relative` to confirm it does not escape the root. Handlers call this before any read or write.
+**Decision**: `paths.ts` exposes `resolveRealRoot(root)` (`fs.realpath`) and `assertPathWithinWorkspace(root, fileName)`. A request supplies a _file name_, not a path. The name is rejected if empty, absolute, `.`/`..`, or contains `/` or `\\`. The target is built as `resolve(realRoot, fileName)` and re-checked with `path.relative` to confirm it does not escape the root. Handlers call this before any read or write.
 
 **Rationale**: Matches constitution II and spec 100 FR-006. Rejecting separators in the name removes the traversal vector at the source; the `relative` check is the defence-in-depth gate against symlinked roots and unusual inputs.
 
@@ -89,3 +89,19 @@ Phase 0 decisions for spec 100. Each entry states the decision, why it was chose
 **Rationale**: Spec 100 FR-007 and SC-005. A closed union makes the renderer copy deterministic and a leak of an absolute path a compile-visible mistake, not a runtime accident.
 
 **Alternatives considered**: Return `error.message` and strip paths with a regex (brittle, can miss Windows forms); log full errors to the renderer (leaks).
+
+## R12. Workspace identity without exposing the path
+
+**Decision**: `WorkspaceInfo` carries `id`, a sha256 prefix of the real workspace root, alongside `displayName`. The renderer keys its session on `id`, not `displayName`.
+
+**Rationale**: Two different folders can share a basename; keying the session on the basename left the previous conversation in place and could save it into the wrong folder. A hash identifies the root without revealing the path (FR-007).
+
+**Alternatives considered**: Expose the absolute path (leaks and contradicts FR-007); key on basename plus a random per-import token (not stable across restarts).
+
+## R13. Streaming delay test seam
+
+**Decision**: Main appends a `streamDelay` query parameter when `APP20_STREAM_DELAY_MS` is set, and the renderer uses it as the local echo delay.
+
+**Rationale**: The provisional transport completes in about 120 ms, too fast to deterministically observe a quit mid-stream. The seam lets the e2e hold the operation in flight, prove `useCloseGuard` stops it, and keep the partial message. It mirrors the existing `APP20_RENDERER_SURFACE` harness seam and affects only timing.
+
+**Alternatives considered**: A fixed long delay in production (worse UX); a unit test of the hook (does not exercise the real close gate end to end).

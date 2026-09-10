@@ -3,7 +3,13 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { AppError } from './errors'
-import { assertPathWithinWorkspace, assertSafeFileName, isWithin } from './paths'
+import {
+  assertPathWithinWorkspace,
+  assertSafeFileName,
+  isWithin,
+  listWorkspaceFileNames,
+  resolveRealRoot,
+} from './paths'
 
 describe('assertSafeFileName', () => {
   it('accepts a bare file name', () => {
@@ -20,6 +26,10 @@ describe('assertSafeFileName', () => {
     'nested\\file.json',
     '/etc/passwd',
     'C:\\Windows\\system.ini',
+    'file.txt:stream',
+    'NUL',
+    'con.json',
+    'bad\0name',
   ]
 
   for (const name of rejected) {
@@ -35,6 +45,10 @@ describe('isWithin', () => {
   it('accepts the root and its children', () => {
     expect(isWithin(root, root)).toBe(true)
     expect(isWithin(root, join(root, 'a.json'))).toBe(true)
+  })
+
+  it('accepts a child whose name starts with two dots', () => {
+    expect(isWithin(root, join(root, '..config.json'))).toBe(true)
   })
 
   it('rejects a sibling and a parent', () => {
@@ -65,26 +79,43 @@ describe('assertPathWithinWorkspace', () => {
     })
   })
 
-  it('rejects an existing symlink that escapes the workspace', async () => {
+  it('rejects a linked directory that points outside the workspace', async () => {
     const outside = await mkdtemp(join(tmpdir(), 'app20-outside-'))
     try {
-      await writeFile(join(outside, 'secret.txt'), 'secret')
+      const linkType = process.platform === 'win32' ? 'junction' : 'dir'
+      await symlink(outside, join(root, 'linked'), linkType)
 
-      let linked = true
-      try {
-        await symlink(join(outside, 'secret.txt'), join(root, 'link.json'))
-      } catch {
-        // File symlinks need a privilege Windows may not grant; the separator
-        // and traversal checks above still cover the containment rule.
-        linked = false
-      }
-      if (!linked) return
-
-      await expect(assertPathWithinWorkspace(root, 'link.json')).rejects.toMatchObject({
+      await expect(assertPathWithinWorkspace(root, 'linked')).rejects.toMatchObject({
         code: 'outside-workspace',
       })
     } finally {
       await rm(outside, { recursive: true, force: true })
     }
+  })
+
+  it('fails with read-failed when the root does not exist', async () => {
+    await expect(resolveRealRoot(join(root, 'missing'))).rejects.toMatchObject({
+      code: 'read-failed',
+    })
+  })
+})
+
+describe('listWorkspaceFileNames', () => {
+  let root: string
+
+  beforeEach(async () => {
+    root = await mkdtemp(join(tmpdir(), 'app20-list-'))
+  })
+
+  afterEach(async () => {
+    await rm(root, { recursive: true, force: true })
+  })
+
+  it('lists files only, not directories', async () => {
+    await writeFile(join(root, 'a.json'), '{}')
+    await writeFile(join(root, 'b.json'), '{}')
+    await symlink(root, join(root, 'sub'), process.platform === 'win32' ? 'junction' : 'dir')
+
+    expect((await listWorkspaceFileNames(root)).sort()).toEqual(['a.json', 'b.json'])
   })
 })

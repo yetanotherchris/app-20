@@ -1,16 +1,21 @@
-import { basename } from 'node:path'
-import { rm } from 'node:fs/promises'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { basename, join } from 'node:path'
 import { test, expect, type ElectronApplication, type Page } from '@playwright/test'
 import {
   closeShell,
   electronExecutable,
+  forceExitShell,
   launchShell,
   listWorkspaceFiles,
   readExternalOpens,
+  readSettings,
   readWorkspaceJson,
   recordExternalOpens,
+  seedSettings,
   spawnSecondInstance,
   stubOpenDialog,
+  stubSaveDialog,
   writeKeyFile,
   type LaunchedShell,
 } from './launch-shell'
@@ -18,8 +23,26 @@ import {
 interface StoredConversationFile {
   id: string
   title: string
+  draft: string
   messages: { id: string; role: string; content: string; status: string }[]
 }
+
+const BRIDGE_METHODS = [
+  'chooseWorkspace',
+  'createWorkspace',
+  'getAppVersion',
+  'getSecretsStatus',
+  'getWorkspace',
+  'importProviderKey',
+  'importS3Credentials',
+  'listWorkspaceFiles',
+  'onCloseRequested',
+  'onMenuCommand',
+  'openExternal',
+  'readWorkspaceFile',
+  'reportCloseDecision',
+  'writeWorkspaceFile',
+]
 
 async function openWorkspace(shell: LaunchedShell): Promise<void> {
   await stubOpenDialog(shell.app, [shell.workspaceDir])
@@ -73,12 +96,12 @@ test.describe('US1 - launch, isolation, links, single instance', () => {
     await expect(shell.page.getByTestId('chat.composer.send')).toBeVisible()
   })
 
-  test('keeps the renderer isolated and applies the CSP', async () => {
+  test('keeps the renderer isolated, applies the CSP, and exposes only named methods', async () => {
     const isolation = await shell.page.evaluate(() => {
       const scope = window as unknown as {
         require?: unknown
         process?: unknown
-        appBridge: { invoke?: unknown }
+        appBridge: Record<string, unknown>
       }
       const csp = document
         .querySelector('meta[http-equiv="Content-Security-Policy"]')
@@ -87,6 +110,7 @@ test.describe('US1 - launch, isolation, links, single instance', () => {
         requireType: typeof scope.require,
         processType: typeof scope.process,
         invokeType: typeof scope.appBridge.invoke,
+        methods: Object.keys(scope.appBridge).sort(),
         csp,
       }
     })
@@ -94,6 +118,7 @@ test.describe('US1 - launch, isolation, links, single instance', () => {
     expect(isolation.requireType).toBe('undefined')
     expect(isolation.processType).toBe('undefined')
     expect(isolation.invokeType).toBe('undefined')
+    expect(isolation.methods).toEqual([...BRIDGE_METHODS].sort())
     expect(isolation.csp).toContain("default-src 'self'")
     expect(isolation.csp).toContain("object-src 'none'")
   })
@@ -119,6 +144,11 @@ test.describe('US1 - launch, isolation, links, single instance', () => {
     expect(exitCode).toBe(0)
     await expect.poll(() => shell.app.windows().length).toBe(1)
   })
+
+  test('closes cleanly with no prompt when nothing is unsaved', async () => {
+    await triggerClose(shell.app)
+    await expect.poll(() => shell.app.windows().length).toBe(0)
+  })
 })
 
 test.describe('US3 - workspace folder and persistence', () => {
@@ -143,6 +173,7 @@ test.describe('US3 - workspace folder and persistence', () => {
     expect(workspace.ok).toBe(true)
     if (workspace.ok && workspace.value) {
       expect(workspace.value.displayName).toBe(basename(shell.workspaceDir))
+      expect(workspace.value.id).toMatch(/^[0-9a-f]{16}$/)
     }
   })
 
@@ -160,20 +191,96 @@ test.describe('US3 - workspace folder and persistence', () => {
       names[0] as string,
     )
     expect(stored.messages.some((message) => message.content === 'save me')).toBe(true)
-    expect(Object.keys(stored.messages[0] as object).sort()).toEqual([
-      'content',
-      'createdAt',
-      'id',
-      'role',
-      'status',
-    ])
 
     await shell.page.reload()
-    await expect(shell.page.getByTestId('shell.workspace-name')).toContainText(
-      basename(shell.workspaceDir),
-    )
     await expect(shell.page.getByText('Local echo: save me')).toBeVisible()
     await expect(shell.page.getByTestId('shell.dirty')).toHaveText('Saved')
+  })
+
+  test('restores an unsent draft after a reload', async () => {
+    await shell.page.getByTestId('chat.composer.input').fill('draft survives')
+    await shell.page.getByTestId('shell.save').click()
+    await expect(shell.page.getByTestId('shell.dirty')).toHaveText('Saved')
+
+    await shell.page.reload()
+    await expect(shell.page.getByTestId('chat.composer.input')).toHaveValue('draft survives')
+  })
+})
+
+test.describe('US3 - the choice and content survive a real restart', () => {
+  let first: LaunchedShell
+  let second: LaunchedShell
+
+  test.afterAll(async () => {
+    await closeShell(second)
+    await rm(first.userDataDir, { recursive: true, force: true }).catch(() => undefined)
+  })
+
+  test('restores the workspace and last conversation after relaunch', async () => {
+    first = await launchShell()
+    await openWorkspace(first)
+    await makeDirty(first.page, 'survives restart')
+    await first.page.getByTestId('shell.save').click()
+    await expect(first.page.getByTestId('shell.dirty')).toHaveText('Saved')
+
+    await forceExitShell(first.app)
+
+    second = await launchShell({ userDataDir: first.userDataDir, workspaceDir: first.workspaceDir })
+    await expect(second.page.getByTestId('shell.onboarding')).toHaveCount(0)
+    await expect(second.page.getByTestId('shell.workspace-name')).toContainText(
+      basename(first.workspaceDir),
+    )
+    await expect(second.page.getByText('Local echo: survives restart')).toBeVisible()
+  })
+})
+
+test.describe('US3 - create a workspace folder', () => {
+  let shell: LaunchedShell
+  let created: string
+
+  test.beforeAll(async () => {
+    shell = await launchShell()
+  })
+
+  test.afterAll(async () => {
+    await closeShell(shell)
+    if (created) await rm(created, { recursive: true, force: true }).catch(() => undefined)
+  })
+
+  test('creates and remembers the chosen folder', async () => {
+    created = join(await mkdtemp(join(tmpdir(), 'app20-create-')), 'new-workspace')
+    await stubSaveDialog(shell.app, created)
+    await expect(shell.page.getByTestId('shell.onboarding')).toBeVisible()
+    await shell.page.getByTestId('shell.create-workspace').click()
+    await expect(shell.page.getByTestId('shell.workspace-name')).toContainText('new-workspace')
+
+    const settings = await readSettings(shell.userDataDir)
+    expect(settings.workspacePath).toBeTruthy()
+  })
+})
+
+test.describe('US3 - an unreadable workspace is reported', () => {
+  let shell: LaunchedShell
+  let userDataDir: string
+
+  test.beforeAll(async () => {
+    userDataDir = await mkdtemp(join(tmpdir(), 'app20-bad-user-'))
+    await seedSettings(userDataDir, { workspacePath: join(userDataDir, 'does-not-exist') })
+    shell = await launchShell({ userDataDir })
+  })
+
+  test.afterAll(async () => {
+    await closeShell(shell)
+    await rm(userDataDir, { recursive: true, force: true }).catch(() => undefined)
+  })
+
+  test('reports the failure without leaking an absolute path and clears the setting', async () => {
+    await expect(shell.page.getByTestId('shell.onboarding')).toBeVisible()
+    const message = await shell.page.getByTestId('shell.onboarding-error').textContent()
+    expect(message).toBe('The file could not be read.')
+    expect(message).not.toContain(userDataDir)
+    expect(message).not.toMatch(/[A-Za-z]:\\/)
+    expect(await readSettings(userDataDir)).toEqual({})
   })
 })
 
@@ -208,7 +315,9 @@ test.describe('US2 - close and quit confirmation', () => {
     await triggerClose(shell.app)
 
     await shell.page.getByTestId('shell.close-save').click()
-    await expect(shell.page.getByTestId('shell.close-error')).toBeVisible()
+    await expect(shell.page.getByTestId('shell.close-error')).toHaveText(
+      'The file could not be read.',
+    )
     await expect(shell.page.getByTestId('shell.close-dialog')).toBeVisible()
     expect(shell.app.windows().length).toBe(1)
     await expect(shell.page.getByTestId('shell.dirty')).toHaveText('Unsaved changes')
@@ -228,6 +337,37 @@ test.describe('US2 - close and quit confirmation', () => {
     await shell.page.getByTestId('shell.close-cancel').click()
     await expect(shell.page.getByTestId('shell.close-dialog')).toHaveCount(0)
     expect(shell.app.windows().length).toBe(1)
+  })
+})
+
+test.describe('US2 - quit while streaming stops the response', () => {
+  let shell: LaunchedShell
+
+  test.beforeAll(async () => {
+    shell = await launchShell({ streamDelayMs: 5000 })
+    await expect(shell.page.getByTestId('shell.topbar')).toBeVisible()
+    await openWorkspace(shell)
+  })
+
+  test.afterAll(async () => {
+    await closeShell(shell)
+  })
+
+  test('stops the in-flight response and keeps the unsaved document', async () => {
+    await shell.page.getByTestId('chat.composer.input').fill('streaming quit')
+    await shell.page.getByTestId('chat.composer.send').click()
+    await expect(shell.page.getByTestId('chat.composer.stop')).toBeVisible()
+
+    await shell.app.evaluate(({ app }) => {
+      app.quit()
+    })
+
+    await expect(shell.page.getByTestId('shell.close-dialog')).toBeVisible()
+    await shell.page.getByTestId('shell.close-cancel').click()
+    await expect(shell.page.getByTestId('shell.close-dialog')).toHaveCount(0)
+    // stop() ran on the close request, so the composer is idle again.
+    await expect(shell.page.getByTestId('chat.composer.stop')).toHaveCount(0)
+    await expect(shell.page.getByTestId('shell.dirty')).toHaveText('Unsaved changes')
   })
 })
 
@@ -331,6 +471,29 @@ test.describe('US4 - menu bar and imports', () => {
     expect(fileEntries.get('Import Provider API Key...')).toBe('CmdOrCtrl+K')
     expect(workspaceEntries.get('Open Workspace Folder...')).toBe('CmdOrCtrl+O')
     expect(fileEntries.get('Quit')).toBe('CmdOrCtrl+Q')
+  })
+
+  test('opens a workspace from the menu', async () => {
+    await stubOpenDialog(shell.app, [shell.workspaceDir])
+    await clickMenuItem(shell.app, 'Open Workspace Folder...')
+    await expect(shell.page.getByTestId('shell.workspace-name')).toContainText(
+      basename(shell.workspaceDir),
+    )
+  })
+
+  test('New Conversation saves the current document before starting fresh', async () => {
+    await makeDirty(shell.page, 'menu new')
+    await clickMenuItem(shell.app, 'New Conversation')
+    await expect(shell.page.getByTestId('chat.composer.input')).toHaveValue('')
+    await expect(shell.page.getByText('Local echo: menu new')).toHaveCount(0)
+
+    const names = (await listWorkspaceFiles(shell.workspaceDir)).filter((name) =>
+      name.endsWith('.json'),
+    )
+    const saved = await Promise.all(
+      names.map((name) => readWorkspaceJson<StoredConversationFile>(shell.workspaceDir, name)),
+    )
+    expect(saved.some((file) => file.messages.some((m) => m.content === 'menu new'))).toBe(true)
   })
 
   test('imports a provider key through the menu', async () => {

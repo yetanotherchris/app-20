@@ -15,6 +15,7 @@ describe('atomicWriteFile', () => {
   })
 
   afterEach(async () => {
+    vi.restoreAllMocks()
     await rm(directory, { recursive: true, force: true })
   })
 
@@ -40,13 +41,23 @@ describe('atomicWriteFile', () => {
     await expect(atomicWriteFile(missing, 'value')).rejects.toMatchObject({ code: 'write-failed' })
   })
 
-  it('keeps the previous version and removes the temp file when the rename fails', async () => {
+  it('keeps the previous version and removes the temp file when the write cannot start', async () => {
     await writeFile(target, 'previous')
-    const rename = vi.spyOn(fs, 'rename').mockRejectedValueOnce(new Error('rename failed'))
+    vi.spyOn(fs, 'open').mockRejectedValueOnce(new Error('open denied'))
 
     await expect(atomicWriteFile(target, 'next')).rejects.toMatchObject({ code: 'write-failed' })
 
-    rename.mockRestore()
+    expect(await readFile(target, 'utf8')).toBe('previous')
+    const leftovers = (await readdir(directory)).filter((name) => name.endsWith('.tmp'))
+    expect(leftovers).toEqual([])
+  })
+
+  it('keeps the previous version and removes the temp file when the rename fails', async () => {
+    await writeFile(target, 'previous')
+    vi.spyOn(fs, 'rename').mockRejectedValueOnce(new Error('rename failed'))
+
+    await expect(atomicWriteFile(target, 'next')).rejects.toMatchObject({ code: 'write-failed' })
+
     expect(await readFile(target, 'utf8')).toBe('previous')
     const leftovers = (await readdir(directory)).filter((name) => name.endsWith('.tmp'))
     expect(leftovers).toEqual([])

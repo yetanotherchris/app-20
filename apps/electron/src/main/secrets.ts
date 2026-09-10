@@ -6,6 +6,8 @@ import type { SecretKind, SecretsStatus } from '../shared/ipc-contract'
 import { atomicWriteFile } from './atomicWrite'
 import { AppError, err, failure, ok } from './errors'
 
+const MAX_SECRET_BYTES = 64 * 1024
+
 interface StoredSecrets {
   providerKey?: string
   s3?: string
@@ -48,8 +50,15 @@ export async function getSecretsStatus(): Promise<SecretsStatus> {
 
 async function pickFile(title: string): Promise<string | null> {
   const result = await dialog.showOpenDialog({ title, properties: ['openFile'] })
-  if (result.canceled || result.filePaths.length === 0) return null
-  return result.filePaths[0] as string
+  const chosen = result.filePaths[0]
+  if (result.canceled || !chosen) return null
+  return chosen
+}
+
+async function readCapped(filePath: string): Promise<string> {
+  const stats = await fs.stat(filePath)
+  if (stats.size > MAX_SECRET_BYTES) throw new AppError('invalid-secret')
+  return fs.readFile(filePath, 'utf8')
 }
 
 async function store(kind: SecretKind, plaintext: string): Promise<Result<{ kind: SecretKind }>> {
@@ -66,7 +75,7 @@ export async function importProviderKey(): Promise<Result<{ kind: SecretKind }>>
   if (!file) return err('chooser-cancelled')
 
   try {
-    const key = (await fs.readFile(file, 'utf8')).trim()
+    const key = (await readCapped(file)).trim()
     if (key.length === 0 || key.length > 8192 || key.includes('\n') || key.includes('\r')) {
       throw new AppError('invalid-secret')
     }
@@ -81,7 +90,7 @@ export async function importS3Credentials(): Promise<Result<{ kind: SecretKind }
   if (!file) return err('chooser-cancelled')
 
   try {
-    const raw = await fs.readFile(file, 'utf8')
+    const raw = await readCapped(file)
     const parsed: unknown = JSON.parse(raw)
     if (parsed === null || typeof parsed !== 'object') throw new AppError('invalid-secret')
 

@@ -3,7 +3,11 @@ import { StyleSheet, View } from 'react-native'
 import { LLMChat } from 'app-20-llmchat'
 import type { MenuCommand } from '../../shared/ipc-contract'
 import { CloseConfirmDialog } from './components/CloseConfirmDialog'
-import { Notifications, type NotificationItem } from './components/Notifications'
+import {
+  Notifications,
+  type NotificationItem,
+  type NotificationLevel,
+} from './components/Notifications'
 import { ShellTopBar } from './components/ShellTopBar'
 import { WorkspaceOnboarding } from './components/WorkspaceOnboarding'
 import { messageForCode } from './errorMessages'
@@ -11,15 +15,21 @@ import { useCloseGuard } from './hooks/useCloseGuard'
 import { useShellSession } from './hooks/useShellSession'
 import { useWorkspace } from './hooks/useWorkspace'
 
-let notificationCounter = 0
+function streamDelayFromLocation(): number | undefined {
+  const raw = new URLSearchParams(window.location.search).get('streamDelay')
+  if (!raw) return undefined
+  const value = Number(raw)
+  return Number.isFinite(value) && value > 0 ? value : undefined
+}
 
 export function App() {
   const workspace = useWorkspace()
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
+  const notificationIdRef = useRef(0)
 
-  const pushNotification = useCallback((level: 'info' | 'error', message: string) => {
-    notificationCounter += 1
-    setNotifications((previous) => [...previous, { id: notificationCounter, level, message }])
+  const pushNotification = useCallback((level: NotificationLevel, message: string) => {
+    notificationIdRef.current += 1
+    setNotifications((previous) => [...previous, { id: notificationIdRef.current, level, message }])
   }, [])
 
   const reportError = useCallback(
@@ -27,18 +37,32 @@ export function App() {
     [pushNotification],
   )
 
-  const session = useShellSession(workspace.key, reportError)
+  const session = useShellSession(workspace.key, reportError, streamDelayFromLocation())
+
+  const saveWithNotification = useCallback(async () => {
+    const code = await session.save()
+    if (code === null) pushNotification('info', 'Conversation saved.')
+    else pushNotification('error', messageForCode(code))
+  }, [session, pushNotification])
+
+  // Starting a new conversation must never discard unsaved work, so save first
+  // and abort if the save fails (constitution III).
+  const createNewConversation = useCallback(async () => {
+    if (session.dirty) {
+      const code = await session.save()
+      if (code !== null) {
+        pushNotification('error', messageForCode(code))
+        return
+      }
+    }
+    session.newConversation()
+  }, [session, pushNotification])
+
   const closeGuard = useCloseGuard({
     dirty: session.dirty,
     stop: session.stop,
     save: session.save,
   })
-
-  const saveWithNotification = useCallback(async () => {
-    const saved = await session.save()
-    if (saved) pushNotification('info', 'Conversation saved.')
-    else pushNotification('error', messageForCode('write-failed'))
-  }, [session, pushNotification])
 
   const runImport = useCallback(
     async (kind: 'provider-key' | 's3') => {
@@ -74,16 +98,14 @@ export function App() {
           await runImport('s3')
           break
         case 'new-conversation':
-          session.newConversation()
+          await createNewConversation()
           break
         case 'save-document':
           await saveWithNotification()
           break
-        case 'quit':
-          break
       }
     },
-    [workspace, runImport, session, saveWithNotification],
+    [workspace, runImport, createNewConversation, saveWithNotification],
   )
 
   const menuCommandRef = useRef(handleMenuCommand)
@@ -95,10 +117,6 @@ export function App() {
     })
   }, [])
 
-  useEffect(() => {
-    return window.appBridge.onNotification((event) => pushNotification(event.level, event.message))
-  }, [pushNotification])
-
   const showOnboarding = !workspace.key && !workspace.loading
 
   return (
@@ -107,7 +125,7 @@ export function App() {
         workspaceName={workspace.info?.displayName ?? null}
         dirty={session.dirty}
         saving={session.saving}
-        onNewConversation={session.newConversation}
+        onNewConversation={createNewConversation}
         onSave={() => {
           void saveWithNotification()
         }}

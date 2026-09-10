@@ -1,8 +1,10 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 
+export type NotificationLevel = 'info' | 'error'
+
 export interface NotificationItem {
   id: number
-  level: 'info' | 'error'
+  level: NotificationLevel
   message: string
 }
 

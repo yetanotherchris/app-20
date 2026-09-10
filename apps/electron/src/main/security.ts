@@ -1,4 +1,4 @@
-import { shell, type BrowserWindow } from 'electron'
+import { shell, type BrowserWindow, type Event as ElectronEvent } from 'electron'
 import { AppError } from './errors'
 
 function parseHttpUrl(url: string): URL | null {
@@ -17,27 +17,39 @@ export async function openExternalUrl(url: string): Promise<void> {
   await shell.openExternal(parsed.toString())
 }
 
-function isAppLocation(url: string): boolean {
-  if (url.startsWith('file://')) return true
-  const rendererUrl = process.env['ELECTRON_RENDERER_URL']
-  return Boolean(rendererUrl && url.startsWith(rendererUrl))
+function isDevOrigin(url: string): boolean {
+  const devBase = process.env['ELECTRON_RENDERER_URL']
+  if (!devBase) return false
+  try {
+    return new URL(url).origin === new URL(devBase).origin
+  } catch {
+    return false
+  }
 }
 
 /**
- * Deny-by-default for new windows and navigation. Only http/https reaches the
- * system browser; nothing opens inside the app window (spec 100 FR-011).
+ * Deny-by-default for new windows and navigation. Only the exact app document
+ * (a reload) and the dev-server origin are allowed to stay; every other URL is
+ * either blocked or, for http/https, handed to the system browser. Treating all
+ * `file://` as trusted would let a local HTML file replace the window and gain
+ * the preload bridge (spec 100 FR-011).
  */
 export function configureWebContents(window: BrowserWindow): void {
-  window.webContents.setWindowOpenHandler(({ url }) => {
+  const contents = window.webContents
+
+  contents.setWindowOpenHandler(({ url }) => {
     const parsed = parseHttpUrl(url)
     if (parsed) void shell.openExternal(parsed.toString())
     return { action: 'deny' }
   })
 
-  window.webContents.on('will-navigate', (event, url) => {
-    if (isAppLocation(url)) return
+  const guard = (event: ElectronEvent, url: string): void => {
+    if (url === contents.getURL() || isDevOrigin(url)) return
     event.preventDefault()
     const parsed = parseHttpUrl(url)
     if (parsed) void shell.openExternal(parsed.toString())
-  })
+  }
+
+  contents.on('will-navigate', guard)
+  contents.on('will-redirect', guard)
 }

@@ -9,7 +9,6 @@ export interface WorkspaceController {
   error: string | null
   choose: () => Promise<void>
   create: () => Promise<void>
-  refresh: () => Promise<void>
 }
 
 export function useWorkspace(): WorkspaceController {
@@ -17,24 +16,24 @@ export function useWorkspace(): WorkspaceController {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
-  const refresh = useCallback(async () => {
-    setLoading(true)
-    try {
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
       const result = await window.appBridge.getWorkspace()
+      if (cancelled) return
       if (result.ok) {
         setInfo(result.value)
         setError(null)
       } else {
+        setInfo(null)
         setError(messageForCode(result.code))
       }
-    } finally {
       setLoading(false)
+    })()
+    return () => {
+      cancelled = true
     }
   }, [])
-
-  useEffect(() => {
-    void refresh()
-  }, [refresh])
 
   const choose = useCallback(async () => {
     const result = await window.appBridge.chooseWorkspace()
@@ -56,5 +55,5 @@ export function useWorkspace(): WorkspaceController {
     }
   }, [])
 
-  return { info, key: info?.displayName ?? null, loading, error, choose, create, refresh }
+  return { info, key: info?.id ?? null, loading, error, choose, create }
 }

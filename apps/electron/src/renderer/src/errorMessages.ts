@@ -8,11 +8,3 @@ import { ERROR_MESSAGES, type AppErrorCode } from '../../shared/error-codes'
 export function messageForCode(code: AppErrorCode): string {
   return ERROR_MESSAGES[code]
 }
-
-export function containsAbsolutePath(text: string): boolean {
-  return (
-    /(?:^|\s)[A-Za-z]:\\/.test(text) ||
-    text.includes('\\\\') ||
-    /(?:^|\s)\/(?:home|Users|root)\//.test(text)
-  )
-}

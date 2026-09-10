@@ -11,40 +11,54 @@ export interface LaunchedShell {
   workspaceDir: string
 }
 
+export interface LaunchShellOptions {
+  userDataDir?: string
+  workspaceDir?: string
+  streamDelayMs?: number
+}
+
 export function electronMainPath(): string {
   return join(process.cwd(), 'apps/electron/out/main/index.js')
 }
 
-function cleanEnv(): Record<string, string> {
+function cleanEnv(extra: Record<string, string> = {}): Record<string, string> {
   const result: Record<string, string> = {}
   for (const [key, value] of Object.entries(process.env)) {
     if (value !== undefined) result[key] = value
   }
-  return result
+  return { ...result, ...extra }
 }
 
-export async function launchShell(options: { userDataDir?: string } = {}): Promise<LaunchedShell> {
+export async function launchShell(options: LaunchShellOptions = {}): Promise<LaunchedShell> {
   const userDataDir = options.userDataDir ?? (await mkdtemp(join(tmpdir(), 'app20-user-')))
-  const workspaceDir = await mkdtemp(join(tmpdir(), 'app20-ws-'))
+  const workspaceDir = options.workspaceDir ?? (await mkdtemp(join(tmpdir(), 'app20-ws-')))
+  const extra: Record<string, string> = {}
+  if (options.streamDelayMs && options.streamDelayMs > 0) {
+    extra['APP20_STREAM_DELAY_MS'] = String(options.streamDelayMs)
+  }
+
   const app = await _electron.launch({
     args: [electronMainPath(), `--user-data-dir=${userDataDir}`],
-    env: cleanEnv(),
+    env: cleanEnv(extra),
   })
   const page = await app.firstWindow()
   await page.waitForLoadState('domcontentloaded')
   return { app, page, userDataDir, workspaceDir }
 }
 
-export async function closeShell(launched: LaunchedShell): Promise<void> {
-  // The shell can be sitting on a close-confirmation dialog, so force the main
-  // process down rather than waiting on a gated quit.
-  await launched.app
-    .evaluate(({ app }) => {
-      app.exit(0)
+/** Force the main process down without going through the gated quit. */
+export async function forceExitShell(app: ElectronApplication): Promise<void> {
+  await app
+    .evaluate(({ app: electronApp }) => {
+      electronApp.exit(0)
     })
     .catch(() => undefined)
-  await launched.app.close().catch(() => undefined)
-  await rm(launched.workspaceDir, { recursive: true, force: true })
+  await app.close().catch(() => undefined)
+}
+
+export async function closeShell(launched: LaunchedShell): Promise<void> {
+  await forceExitShell(launched.app)
+  await rm(launched.workspaceDir, { recursive: true, force: true }).catch(() => undefined)
 }
 
 export async function stubOpenDialog(app: ElectronApplication, filePaths: string[]): Promise<void> {
@@ -87,6 +101,23 @@ export async function listWorkspaceFiles(workspaceDir: string): Promise<string[]
 
 export async function readWorkspaceJson<T>(workspaceDir: string, name: string): Promise<T> {
   return JSON.parse(await readFile(join(workspaceDir, name), 'utf8')) as T
+}
+
+export async function seedSettings(
+  userDataDir: string,
+  settings: { workspacePath?: string },
+): Promise<void> {
+  await writeFile(join(userDataDir, 'settings.json'), JSON.stringify(settings))
+}
+
+export async function readSettings(userDataDir: string): Promise<{ workspacePath?: string }> {
+  try {
+    return JSON.parse(await readFile(join(userDataDir, 'settings.json'), 'utf8')) as {
+      workspacePath?: string
+    }
+  } catch {
+    return {}
+  }
 }
 
 export function electronExecutable(app: ElectronApplication): string {

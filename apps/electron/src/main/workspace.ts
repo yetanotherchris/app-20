@@ -1,26 +1,46 @@
 import { dialog } from 'electron'
+import { createHash } from 'node:crypto'
 import { promises as fs } from 'node:fs'
 import { basename } from 'node:path'
+import type { AppErrorCode, Result } from '../shared/error-codes'
 import type { WorkspaceInfo } from '../shared/ipc-contract'
 import { AppError, err, failure, ok } from './errors'
 import { resolveRealRoot } from './paths'
 import { readSettings, writeSettings } from './settings'
-import type { Result } from '../shared/error-codes'
 
 let workspaceRoot: string | null = null
+let workspaceLoadError: AppErrorCode | null = null
+
+function workspaceInfo(realRoot: string): WorkspaceInfo {
+  return {
+    displayName: basename(realRoot),
+    id: createHash('sha256').update(realRoot).digest('hex').slice(0, 16),
+  }
+}
+
+async function forgetWorkspace(): Promise<void> {
+  workspaceRoot = null
+  workspaceLoadError = 'read-failed'
+  await writeSettings({}).catch(() => undefined)
+}
 
 export async function loadWorkspace(): Promise<void> {
-  const settings = await readSettings()
-  if (!settings.workspacePath) {
-    workspaceRoot = null
-    return
-  }
-
   try {
-    workspaceRoot = await resolveRealRoot(settings.workspacePath)
+    const settings = await readSettings()
+    workspaceLoadError = null
+    if (!settings.workspacePath) {
+      workspaceRoot = null
+      return
+    }
+
+    try {
+      workspaceRoot = await resolveRealRoot(settings.workspacePath)
+    } catch {
+      await forgetWorkspace()
+    }
   } catch {
+    // A settings failure must not block startup; the renderer falls back to onboarding.
     workspaceRoot = null
-    await writeSettings({})
   }
 }
 
@@ -29,17 +49,18 @@ export async function requireWorkspaceRoot(): Promise<string> {
   return workspaceRoot
 }
 
-export async function getWorkspaceInfo(): Promise<WorkspaceInfo | null> {
-  if (!workspaceRoot) return null
-
-  try {
-    workspaceRoot = await resolveRealRoot(workspaceRoot)
-    return { displayName: basename(workspaceRoot) }
-  } catch {
-    workspaceRoot = null
-    await writeSettings({})
-    return null
+export async function getWorkspaceInfo(): Promise<Result<WorkspaceInfo | null>> {
+  if (workspaceRoot) {
+    try {
+      workspaceRoot = await resolveRealRoot(workspaceRoot)
+      return ok(workspaceInfo(workspaceRoot))
+    } catch {
+      await forgetWorkspace()
+    }
   }
+
+  if (workspaceLoadError) return err(workspaceLoadError)
+  return ok(null)
 }
 
 export async function chooseWorkspace(): Promise<Result<WorkspaceInfo>> {
@@ -47,8 +68,9 @@ export async function chooseWorkspace(): Promise<Result<WorkspaceInfo>> {
     title: 'Open Workspace Folder',
     properties: ['openDirectory'],
   })
-  if (result.canceled || result.filePaths.length === 0) return err('chooser-cancelled')
-  return adoptWorkspace(result.filePaths[0] as string)
+  const chosen = result.filePaths[0]
+  if (result.canceled || !chosen) return err('chooser-cancelled')
+  return adoptWorkspace(chosen)
 }
 
 export async function createWorkspace(): Promise<Result<WorkspaceInfo>> {
@@ -71,8 +93,9 @@ async function adoptWorkspace(path: string): Promise<Result<WorkspaceInfo>> {
   try {
     const real = await resolveRealRoot(path)
     workspaceRoot = real
+    workspaceLoadError = null
     await writeSettings({ workspacePath: real })
-    return ok({ displayName: basename(real) })
+    return ok(workspaceInfo(real))
   } catch (error) {
     return failure(error)
   }

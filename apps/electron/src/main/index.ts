@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron'
+import { app } from 'electron'
 import { isCloseAuthorised, requestClose, resetCloseAuthorisation } from './closeGate'
 import { registerIpcHandlers } from './ipc'
 import { buildApplicationMenu } from './menu'
@@ -20,7 +20,7 @@ if (!hasSingleInstanceLock) {
   app.quit()
 } else {
   app.on('second-instance', () => {
-    const window = BrowserWindow.getAllWindows()[0]
+    const window = getMainWindow()
     if (!window) return
     if (window.isMinimized()) window.restore()
     window.focus()
@@ -43,7 +43,7 @@ if (!hasSingleInstanceLock) {
     openWindow()
 
     app.on('activate', () => {
-      if (BrowserWindow.getAllWindows().length === 0) {
+      if (getMainWindow() === null) {
         resetCloseAuthorisation()
         openWindow()
       }
