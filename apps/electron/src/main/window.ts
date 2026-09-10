@@ -33,7 +33,9 @@ export function createMainWindow(): BrowserWindow {
   })
 
   mainWindow = window
-  window.once('ready-to-show', () => window.show())
+  // Show without activating: launching the app must not steal focus from
+  // whatever the user is doing. The click on the window itself focuses it.
+  window.once('ready-to-show', () => window.showInactive())
   window.on('closed', () => {
     if (mainWindow === window) mainWindow = null
   })
