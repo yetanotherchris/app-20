@@ -169,5 +169,5 @@ MVP is US1 (launch to chat). US2 (no data loss) and US3 (workspace) follow, then
 - [x] M6 e2e for a real restart against the same user-data dir (`shell.spec.ts`).
 - [x] M7 Report an unreadable workspace without a path and clear the setting (`workspace.ts`, `shell.spec.ts`).
 - [x] Minors: `read-failed` mapping, draft persisted and dirty-tracked, failed save stays dirty, close dialog uses the real code, close event re-sent, startup never blocks on settings, `:`/reserved names rejected, dead `app:notification`/`quit` removed, shared modal styles, IPC sender validation, file size caps, exclusive temp create, `will-redirect` guard.
-- [ ] T050 Commit the review fixes.
-- [ ] T051 Reply to each review comment with the fix commit hash.
+- [x] T050 Commit the review fixes.
+- [x] T051 Reply to each review comment with the fix commit hash.
