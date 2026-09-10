@@ -4,9 +4,16 @@
 
 **Created**: 2026-09-07
 
-**Status**: Draft
+**Status**: Archived
 
 **Input**: User description: "Conversation storage for beta: one JSON file per conversation plus a manifest, an app-owned OpenAI-compatible schema, local persistence, and no SQLite."
+
+## Clarifications
+
+### Session 2026-09-10
+
+- The conversation envelope carries an optional `draft` string so an unsent composer draft survives restart. This retains the user-visible behavior spec 100 delivered provisionally; it is not an OpenAI message field and is never sent to a provider.
+- The manifest `model` value is recorded from the requested model. Until spec 102 supplies one it may be empty; the storage layer records whatever model string it is given rather than inventing one.
 
 ## User Scenarios & Testing
 
