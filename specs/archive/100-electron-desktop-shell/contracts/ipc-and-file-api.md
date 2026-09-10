@@ -6,9 +6,9 @@ Spec 100 exposes one fixed, typed surface between the renderer and the main proc
 
 - `BrowserWindow` options: `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`.
 - The renderer has no `fs`, no `path`, no `electron` import. The only privileged surface is `window.appBridge`.
-- Every path is built in main from a workspace root resolved with `fs.realpath`. A renderer request supplies a bare file name.
+- Every path is built in main from the app-managed conversation folder resolved with `fs.realpath`. A renderer request supplies a bare file name.
 - A file name that is empty, absolute, `.`, `..`, contains `/`, `\`, a null byte, `:`, or a Windows reserved device name (`NUL`, `CON`, ...) is rejected with `invalid-name`.
-- A resolved target outside the real workspace root is rejected with `outside-workspace`.
+- A resolved target outside the real conversation folder is rejected with `outside-folder`.
 - Renderer-visible errors are a code plus a fixed, path-free message.
 - Requests are refused unless they come from the main window's `webContents`.
 
@@ -18,43 +18,39 @@ Spec 100 exposes one fixed, typed surface between the renderer and the main proc
 
 Returns the packaged application version.
 
-### `workspace:get` -> `Result<WorkspaceInfo | null>`
+### `folder:get` -> `Result<ConversationFolderInfo>`
 
-Returns `{ displayName, id }` when a workspace is configured and its root exists, otherwise `ok(null)`. When a persisted workspace no longer resolves, the setting is cleared and the channel returns `err('read-failed')` so the shell can report it without an absolute path. `id` is a sha256 prefix of the real root, not the path.
+Returns `{ displayName, id }` for the app-managed folder. On startup main creates `<userData>/conversations` (the app config directory, overridable with `APP20_CONVERSATION_DIR`) and resolves it; if creation or resolution fails, returns `err('read-failed')` so the shell can report it without an absolute path. `id` is a sha256 prefix of the real path, not the path.
 
-### `workspace:choose` -> `Result<WorkspaceInfo>`
+### `folder:list` -> `Result<{ names: string[] }>`
 
-Opens the OS folder chooser. On selection, resolves the directory with `fs.realpath`, persists it, and returns `{ ok: true, value: { displayName, id } }`. If the user cancels, returns `{ ok: false, code: 'chooser-cancelled', message }`.
+Lists regular files directly inside the conversation folder, returning bare names (no directories, no absolute paths).
 
-### `workspace:create` -> `WorkspaceResult`
+### `folder:reveal` -> `Result<{}>`
 
-Opens a save-style chooser for a new folder path, creates it with `fs.mkdir(recursive: true)`, resolves it, persists it, and returns the same shape as `workspace:choose`.
+Opens the conversation folder in the OS file manager with `shell.openPath`.
 
-### `workspace:list` -> `{ names: string[] }`
+### `file:read` `{ name: string }` -> `Result<{ content: string }>`
 
-Lists regular files directly inside the workspace root, returning bare names (no directories, no absolute paths).
+Validates the name, resolves it within the conversation folder, reads UTF-8 (capped at 8 MB). Missing or oversized files return `{ ok: false, code: 'read-failed' }` with a path-free message.
 
-### `file:read` `{ name: string }` -> `ReadResult`
+### `file:write` `{ name: string; content: string }` -> `Result<{ savedAt: string }>`
 
-Validates the name, resolves it within the workspace, reads UTF-8. Missing file returns `{ ok: false, code: 'read-failed' }` with a path-free message.
+Validates the name and resolves it within the conversation folder, then writes atomically (temp file in the same directory, `fsync`, rename). On success returns `{ ok: true, value: { savedAt } }`. On failure returns `{ ok: false, code: 'write-failed' }`; the caller keeps the document dirty.
 
-### `file:write` `{ name: string; content: string }` -> `WriteResult`
-
-Validates the name and resolves it within the workspace, then writes atomically (temp file in the same directory, `fsync`, rename). On success returns `{ ok: true, value: { savedAt } }`. On failure returns `{ ok: false, code: 'write-failed' }`; the caller keeps the document dirty.
-
-### `secrets:import-provider-key` -> `ImportResult`
+### `secrets:import-provider-key` -> `Result<{ kind }>`
 
 Opens a file chooser, reads the file (capped), trims it, rejects empty or multi-line content with `invalid-secret`, encrypts with `safeStorage`, and writes `userData/secrets.json`. `secret-store-unavailable` when `safeStorage.isEncryptionAvailable()` is false.
 
-### `secrets:import-s3` -> `ImportResult`
+### `secrets:import-s3` -> `Result<{ kind }>`
 
 Opens a file chooser, parses JSON, requires `accessKeyId` and `secretAccessKey` strings, encrypts, and stores. Rejects malformed input with `invalid-secret`.
 
-### `secrets:status` -> `SecretsStatus`
+### `secrets:status` -> `Result<SecretsStatus>`
 
 Returns `{ providerKey: boolean, s3: boolean }`. Never returns the stored values.
 
-### `shell:open-external` `{ url: string }` -> `Result<Record<string, never>>`
+### `shell:open-external` `{ url: string }` -> `Result<{}>`
 
 Opens `http:`/`https:` URLs in the system browser. Any other scheme returns `{ ok: false, code: 'not-permitted' }`. The renderer calls this from the chat component's `onLinkPress`.
 
@@ -70,15 +66,15 @@ Sent after `preventDefault()` on the window `close` event or the app `before-qui
 
 ### `menu:command` `{ command: MenuCommand }`
 
-Sent for every menu item except Quit (`open-workspace`, `create-workspace`, `import-provider-key`, `import-s3-credentials`, `new-conversation`, `save-document`). The renderer runs the operation so outcomes surface in one place; Quit calls `app.quit()` in main and goes through the close gate. Main does not emit notifications.
+Sent for every menu item except Quit (`reveal-workspace`, `import-provider-key`, `import-s3-credentials`, `new-conversation`, `save-document`). The renderer runs the operation so outcomes surface in one place; Quit calls `app.quit()` in main and goes through the close gate. Main does not emit notifications.
 
 ## Error codes
 
 ```ts
 type AppErrorCode =
-  | 'no-workspace'
+  | 'no-folder'
   | 'invalid-name'
-  | 'outside-workspace'
+  | 'outside-folder'
   | 'read-failed'
   | 'write-failed'
   | 'chooser-cancelled'

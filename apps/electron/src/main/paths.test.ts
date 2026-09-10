@@ -4,10 +4,10 @@ import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { AppError } from './errors'
 import {
-  assertPathWithinWorkspace,
+  assertPathWithinFolder,
   assertSafeFileName,
   isWithin,
-  listWorkspaceFileNames,
+  listFolderFileNames,
   resolveRealRoot,
 } from './paths'
 
@@ -57,7 +57,7 @@ describe('isWithin', () => {
   })
 })
 
-describe('assertPathWithinWorkspace', () => {
+describe('assertPathWithinFolder', () => {
   let root: string
 
   beforeEach(async () => {
@@ -68,13 +68,13 @@ describe('assertPathWithinWorkspace', () => {
     await rm(root, { recursive: true, force: true })
   })
 
-  it('resolves a bare name inside the real workspace root', async () => {
-    const target = await assertPathWithinWorkspace(root, 'note.json')
+  it('resolves a bare name inside the real conversation folder', async () => {
+    const target = await assertPathWithinFolder(root, 'note.json')
     expect(target.endsWith('note.json')).toBe(true)
   })
 
   it('rejects a traversal name', async () => {
-    await expect(assertPathWithinWorkspace(root, '../escape.json')).rejects.toMatchObject({
+    await expect(assertPathWithinFolder(root, '../escape.json')).rejects.toMatchObject({
       code: 'invalid-name',
     })
   })
@@ -85,8 +85,8 @@ describe('assertPathWithinWorkspace', () => {
       const linkType = process.platform === 'win32' ? 'junction' : 'dir'
       await symlink(outside, join(root, 'linked'), linkType)
 
-      await expect(assertPathWithinWorkspace(root, 'linked')).rejects.toMatchObject({
-        code: 'outside-workspace',
+      await expect(assertPathWithinFolder(root, 'linked')).rejects.toMatchObject({
+        code: 'outside-folder',
       })
     } finally {
       await rm(outside, { recursive: true, force: true })
@@ -100,7 +100,7 @@ describe('assertPathWithinWorkspace', () => {
   })
 })
 
-describe('listWorkspaceFileNames', () => {
+describe('listFolderFileNames', () => {
   let root: string
 
   beforeEach(async () => {
@@ -116,6 +116,6 @@ describe('listWorkspaceFileNames', () => {
     await writeFile(join(root, 'b.json'), '{}')
     await symlink(root, join(root, 'sub'), process.platform === 'win32' ? 'junction' : 'dir')
 
-    expect((await listWorkspaceFileNames(root)).sort()).toEqual(['a.json', 'b.json'])
+    expect((await listFolderFileNames(root)).sort()).toEqual(['a.json', 'b.json'])
   })
 })

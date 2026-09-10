@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import { test, expect, type ElectronApplication, type Page } from '@playwright/test'
@@ -7,15 +7,14 @@ import {
   electronExecutable,
   forceExitShell,
   launchShell,
-  listWorkspaceFiles,
+  listConversationFiles,
+  readConversationJson,
   readExternalOpens,
-  readSettings,
-  readWorkspaceJson,
+  readFolderReveals,
   recordExternalOpens,
-  seedSettings,
+  recordFolderReveals,
   spawnSecondInstance,
   stubOpenDialog,
-  stubSaveDialog,
   writeKeyFile,
   type LaunchedShell,
 } from './launch-shell'
@@ -28,30 +27,20 @@ interface StoredConversationFile {
 }
 
 const BRIDGE_METHODS = [
-  'chooseWorkspace',
-  'createWorkspace',
   'getAppVersion',
+  'getConversationFolder',
   'getSecretsStatus',
-  'getWorkspace',
   'importProviderKey',
   'importS3Credentials',
-  'listWorkspaceFiles',
+  'listConversationFiles',
   'onCloseRequested',
   'onMenuCommand',
   'openExternal',
-  'readWorkspaceFile',
+  'readConversationFile',
   'reportCloseDecision',
-  'writeWorkspaceFile',
+  'revealConversationFolder',
+  'writeConversationFile',
 ]
-
-async function openWorkspace(shell: LaunchedShell): Promise<void> {
-  await stubOpenDialog(shell.app, [shell.workspaceDir])
-  await expect(shell.page.getByTestId('shell.onboarding')).toBeVisible()
-  await shell.page.getByTestId('shell.choose-workspace').click()
-  await expect(shell.page.getByTestId('shell.workspace-name')).toContainText(
-    basename(shell.workspaceDir),
-  )
-}
 
 async function makeDirty(page: Page, text = 'unsaved draft'): Promise<void> {
   await page.getByTestId('chat.composer.input').fill(text)
@@ -83,7 +72,6 @@ test.describe('US1 - launch, isolation, links, single instance', () => {
   test.beforeAll(async () => {
     shell = await launchShell()
     await expect(shell.page.getByTestId('shell.topbar')).toBeVisible()
-    await openWorkspace(shell)
   })
 
   test.afterAll(async () => {
@@ -91,7 +79,9 @@ test.describe('US1 - launch, isolation, links, single instance', () => {
   })
 
   test('opens to a chat screen with a composer', async () => {
-    await expect(shell.page.getByTestId('shell.workspace-name')).toBeVisible()
+    await expect(shell.page.getByTestId('shell.workspace-name')).toContainText(
+      basename(shell.conversationDir),
+    )
     await expect(shell.page.getByTestId('chat.composer.input')).toBeVisible()
     await expect(shell.page.getByTestId('chat.composer.send')).toBeVisible()
   })
@@ -140,7 +130,11 @@ test.describe('US1 - launch, isolation, links, single instance', () => {
   })
 
   test('a second launch focuses the existing window instead of opening another', async () => {
-    const exitCode = await spawnSecondInstance(electronExecutable(shell.app), shell.userDataDir)
+    const exitCode = await spawnSecondInstance(
+      electronExecutable(shell.app),
+      shell.userDataDir,
+      shell.conversationDir,
+    )
     expect(exitCode).toBe(0)
     await expect.poll(() => shell.app.windows().length).toBe(1)
   })
@@ -151,30 +145,31 @@ test.describe('US1 - launch, isolation, links, single instance', () => {
   })
 })
 
-test.describe('US3 - workspace folder and persistence', () => {
+test.describe('US3 - app-managed conversation folder', () => {
   test.describe.configure({ mode: 'serial' })
   let shell: LaunchedShell
 
   test.beforeAll(async () => {
     shell = await launchShell()
     await expect(shell.page.getByTestId('shell.topbar')).toBeVisible()
-    await openWorkspace(shell)
   })
 
   test.afterAll(async () => {
     await closeShell(shell)
   })
 
-  test('shows only the workspace display name, never the absolute path', async () => {
+  test('creates and uses the folder without asking, and never leaks its path', async () => {
     const name = await shell.page.getByTestId('shell.workspace-name').textContent()
-    expect(name).not.toContain(shell.workspaceDir)
+    expect(name).toContain(basename(shell.conversationDir))
+    expect(name).not.toContain(shell.conversationDir)
 
-    const workspace = await shell.page.evaluate(() => window.appBridge.getWorkspace())
-    expect(workspace.ok).toBe(true)
-    if (workspace.ok && workspace.value) {
-      expect(workspace.value.displayName).toBe(basename(shell.workspaceDir))
-      expect(workspace.value.id).toMatch(/^[0-9a-f]{16}$/)
+    const folder = await shell.page.evaluate(() => window.appBridge.getConversationFolder())
+    expect(folder.ok).toBe(true)
+    if (folder.ok) {
+      expect(folder.value.displayName).toBe(basename(shell.conversationDir))
+      expect(folder.value.id).toMatch(/^[0-9a-f]{16}$/)
     }
+    expect(await shell.page.getByTestId('shell.folder-error').count()).toBe(0)
   })
 
   test('writes a JSON conversation file and restores it after a reload', async () => {
@@ -182,12 +177,12 @@ test.describe('US3 - workspace folder and persistence', () => {
     await shell.page.getByTestId('shell.save').click()
     await expect(shell.page.getByTestId('shell.dirty')).toHaveText('Saved')
 
-    const names = (await listWorkspaceFiles(shell.workspaceDir)).filter((name) =>
+    const names = (await listConversationFiles(shell.conversationDir)).filter((name) =>
       name.endsWith('.json'),
     )
     expect(names.length).toBe(1)
-    const stored = await readWorkspaceJson<StoredConversationFile>(
-      shell.workspaceDir,
+    const stored = await readConversationJson<StoredConversationFile>(
+      shell.conversationDir,
       names[0] as string,
     )
     expect(stored.messages.some((message) => message.content === 'save me')).toBe(true)
@@ -207,80 +202,79 @@ test.describe('US3 - workspace folder and persistence', () => {
   })
 })
 
-test.describe('US3 - the choice and content survive a real restart', () => {
+test.describe('US3 - content survives a real restart', () => {
   let first: LaunchedShell
   let second: LaunchedShell
 
   test.afterAll(async () => {
     await closeShell(second)
-    await rm(first.userDataDir, { recursive: true, force: true }).catch(() => undefined)
+    await closeShell(first)
   })
 
-  test('restores the workspace and last conversation after relaunch', async () => {
+  test('restores the last conversation after relaunch', async () => {
     first = await launchShell()
-    await openWorkspace(first)
     await makeDirty(first.page, 'survives restart')
     await first.page.getByTestId('shell.save').click()
     await expect(first.page.getByTestId('shell.dirty')).toHaveText('Saved')
 
     await forceExitShell(first.app)
 
-    second = await launchShell({ userDataDir: first.userDataDir, workspaceDir: first.workspaceDir })
-    await expect(second.page.getByTestId('shell.onboarding')).toHaveCount(0)
+    second = await launchShell({
+      userDataDir: first.userDataDir,
+      conversationDir: first.conversationDir,
+    })
+    await expect(second.page.getByTestId('shell.folder-error')).toHaveCount(0)
     await expect(second.page.getByTestId('shell.workspace-name')).toContainText(
-      basename(first.workspaceDir),
+      basename(first.conversationDir),
     )
     await expect(second.page.getByText('Local echo: survives restart')).toBeVisible()
   })
 })
 
-test.describe('US3 - create a workspace folder', () => {
+test.describe('US3 - reveal the folder', () => {
   let shell: LaunchedShell
-  let created: string
 
   test.beforeAll(async () => {
     shell = await launchShell()
+    await expect(shell.page.getByTestId('shell.topbar')).toBeVisible()
   })
 
   test.afterAll(async () => {
     await closeShell(shell)
-    if (created) await rm(created, { recursive: true, force: true }).catch(() => undefined)
   })
 
-  test('creates and remembers the chosen folder', async () => {
-    created = join(await mkdtemp(join(tmpdir(), 'app20-create-')), 'new-workspace')
-    await stubSaveDialog(shell.app, created)
-    await expect(shell.page.getByTestId('shell.onboarding')).toBeVisible()
-    await shell.page.getByTestId('shell.create-workspace').click()
-    await expect(shell.page.getByTestId('shell.workspace-name')).toContainText('new-workspace')
+  test('opens the conversation folder from the menu', async () => {
+    await recordFolderReveals(shell.app)
+    await clickMenuItem(shell.app, 'Show Conversations Folder')
 
-    const settings = await readSettings(shell.userDataDir)
-    expect(settings.workspacePath).toBeTruthy()
+    await expect.poll(() => readFolderReveals(shell.app).then((paths) => paths.length)).toBe(1)
+    const [revealed] = await readFolderReveals(shell.app)
+    expect(revealed ? basename(revealed) : '').toBe(basename(shell.conversationDir))
   })
 })
 
-test.describe('US3 - an unreadable workspace is reported', () => {
+test.describe('US3 - an unreadable folder is reported', () => {
   let shell: LaunchedShell
-  let userDataDir: string
+  let blocker: string
 
   test.beforeAll(async () => {
-    userDataDir = await mkdtemp(join(tmpdir(), 'app20-bad-user-'))
-    await seedSettings(userDataDir, { workspacePath: join(userDataDir, 'does-not-exist') })
-    shell = await launchShell({ userDataDir })
+    blocker = await mkdtemp(join(tmpdir(), 'app20-blocker-'))
+    const file = join(blocker, 'not-a-folder')
+    await writeFile(file, 'x')
+    shell = await launchShell({ conversationDir: join(file, 'nested') })
   })
 
   test.afterAll(async () => {
     await closeShell(shell)
-    await rm(userDataDir, { recursive: true, force: true }).catch(() => undefined)
+    await rm(blocker, { recursive: true, force: true }).catch(() => undefined)
   })
 
-  test('reports the failure without leaking an absolute path and clears the setting', async () => {
-    await expect(shell.page.getByTestId('shell.onboarding')).toBeVisible()
-    const message = await shell.page.getByTestId('shell.onboarding-error').textContent()
+  test('reports the failure without leaking an absolute path', async () => {
+    await expect(shell.page.getByTestId('shell.folder-error')).toBeVisible()
+    const message = await shell.page.getByTestId('shell.folder-error').textContent()
     expect(message).toBe('The file could not be read.')
-    expect(message).not.toContain(userDataDir)
+    expect(message).not.toContain(blocker)
     expect(message).not.toMatch(/[A-Za-z]:\\/)
-    expect(await readSettings(userDataDir)).toEqual({})
   })
 })
 
@@ -291,7 +285,6 @@ test.describe('US2 - close and quit confirmation', () => {
   test.beforeAll(async () => {
     shell = await launchShell()
     await expect(shell.page.getByTestId('shell.topbar')).toBeVisible()
-    await openWorkspace(shell)
   })
 
   test.afterAll(async () => {
@@ -311,7 +304,7 @@ test.describe('US2 - close and quit confirmation', () => {
 
   test('a failed save keeps the window open and the document dirty', async () => {
     await makeDirty(shell.page, 'fail save')
-    await rm(shell.workspaceDir, { recursive: true, force: true })
+    await rm(shell.conversationDir, { recursive: true, force: true })
     await triggerClose(shell.app)
 
     await shell.page.getByTestId('shell.close-save').click()
@@ -346,7 +339,6 @@ test.describe('US2 - quit while streaming stops the response', () => {
   test.beforeAll(async () => {
     shell = await launchShell({ streamDelayMs: 5000 })
     await expect(shell.page.getByTestId('shell.topbar')).toBeVisible()
-    await openWorkspace(shell)
   })
 
   test.afterAll(async () => {
@@ -365,7 +357,6 @@ test.describe('US2 - quit while streaming stops the response', () => {
     await expect(shell.page.getByTestId('shell.close-dialog')).toBeVisible()
     await shell.page.getByTestId('shell.close-cancel').click()
     await expect(shell.page.getByTestId('shell.close-dialog')).toHaveCount(0)
-    // stop() ran on the close request, so the composer is idle again.
     await expect(shell.page.getByTestId('chat.composer.stop')).toHaveCount(0)
     await expect(shell.page.getByTestId('shell.dirty')).toHaveText('Unsaved changes')
   })
@@ -377,7 +368,6 @@ test.describe('US2 - Discard closes without saving', () => {
   test.beforeAll(async () => {
     shell = await launchShell()
     await expect(shell.page.getByTestId('shell.topbar')).toBeVisible()
-    await openWorkspace(shell)
   })
 
   test.afterAll(async () => {
@@ -389,7 +379,7 @@ test.describe('US2 - Discard closes without saving', () => {
     await triggerClose(shell.app)
     await shell.page.getByTestId('shell.close-discard').click()
     await expect.poll(() => shell.app.windows().length).toBe(0)
-    expect(await listWorkspaceFiles(shell.workspaceDir)).toEqual([])
+    expect(await listConversationFiles(shell.conversationDir)).toEqual([])
   })
 })
 
@@ -399,7 +389,6 @@ test.describe('US2 - Save before close', () => {
   test.beforeAll(async () => {
     shell = await launchShell()
     await expect(shell.page.getByTestId('shell.topbar')).toBeVisible()
-    await openWorkspace(shell)
   })
 
   test.afterAll(async () => {
@@ -412,12 +401,12 @@ test.describe('US2 - Save before close', () => {
     await shell.page.getByTestId('shell.close-save').click()
     await expect.poll(() => shell.app.windows().length).toBe(0)
 
-    const names = (await listWorkspaceFiles(shell.workspaceDir)).filter((name) =>
+    const names = (await listConversationFiles(shell.conversationDir)).filter((name) =>
       name.endsWith('.json'),
     )
     expect(names.length).toBe(1)
-    const stored = await readWorkspaceJson<StoredConversationFile>(
-      shell.workspaceDir,
+    const stored = await readConversationJson<StoredConversationFile>(
+      shell.conversationDir,
       names[0] as string,
     )
     expect(stored.messages.some((message) => message.content === 'save on close')).toBe(true)
@@ -437,7 +426,7 @@ test.describe('US4 - menu bar and imports', () => {
     await closeShell(shell)
   })
 
-  test('provides workspace, import, and quit entries with accelerators', async () => {
+  test('provides reveal, import, and quit entries with accelerators', async () => {
     const menu = await shell.app.evaluate(({ Menu }) => {
       const applicationMenu = Menu.getApplicationMenu()
       return (applicationMenu?.items ?? []).map((item) => ({
@@ -455,8 +444,8 @@ test.describe('US4 - menu bar and imports', () => {
         entry.accelerator,
       ]),
     )
-    const workspaceEntries = new Map(
-      (menu.find((entry) => entry.label === 'Workspace')?.children ?? []).map((entry) => [
+    const folderEntries = new Map(
+      (menu.find((entry) => entry.label === 'Conversations')?.children ?? []).map((entry) => [
         entry.label,
         entry.accelerator,
       ]),
@@ -465,20 +454,12 @@ test.describe('US4 - menu bar and imports', () => {
     expect(fileEntries.has('Import Provider API Key...')).toBe(true)
     expect(fileEntries.has('Import S3 Credentials...')).toBe(true)
     expect(fileEntries.has('Quit')).toBe(true)
-    expect(workspaceEntries.has('Open Workspace Folder...')).toBe(true)
-    expect(workspaceEntries.has('Create Workspace Folder...')).toBe(true)
+    expect(folderEntries.has('Show Conversations Folder')).toBe(true)
+    expect(folderEntries.has('New Conversation')).toBe(true)
 
     expect(fileEntries.get('Import Provider API Key...')).toBe('CmdOrCtrl+K')
-    expect(workspaceEntries.get('Open Workspace Folder...')).toBe('CmdOrCtrl+O')
+    expect(folderEntries.get('Show Conversations Folder')).toBe('CmdOrCtrl+Shift+F')
     expect(fileEntries.get('Quit')).toBe('CmdOrCtrl+Q')
-  })
-
-  test('opens a workspace from the menu', async () => {
-    await stubOpenDialog(shell.app, [shell.workspaceDir])
-    await clickMenuItem(shell.app, 'Open Workspace Folder...')
-    await expect(shell.page.getByTestId('shell.workspace-name')).toContainText(
-      basename(shell.workspaceDir),
-    )
   })
 
   test('New Conversation saves the current document before starting fresh', async () => {
@@ -487,11 +468,13 @@ test.describe('US4 - menu bar and imports', () => {
     await expect(shell.page.getByTestId('chat.composer.input')).toHaveValue('')
     await expect(shell.page.getByText('Local echo: menu new')).toHaveCount(0)
 
-    const names = (await listWorkspaceFiles(shell.workspaceDir)).filter((name) =>
+    const names = (await listConversationFiles(shell.conversationDir)).filter((name) =>
       name.endsWith('.json'),
     )
     const saved = await Promise.all(
-      names.map((name) => readWorkspaceJson<StoredConversationFile>(shell.workspaceDir, name)),
+      names.map((name) =>
+        readConversationJson<StoredConversationFile>(shell.conversationDir, name),
+      ),
     )
     expect(saved.some((file) => file.messages.some((m) => m.content === 'menu new'))).toBe(true)
   })

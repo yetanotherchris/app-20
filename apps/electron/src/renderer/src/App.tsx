@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { StyleSheet, View } from 'react-native'
+import { StyleSheet, Text, View } from 'react-native'
 import { LLMChat } from 'app-20-llmchat'
 import type { MenuCommand } from '../../shared/ipc-contract'
 import { CloseConfirmDialog } from './components/CloseConfirmDialog'
@@ -9,11 +9,10 @@ import {
   type NotificationLevel,
 } from './components/Notifications'
 import { ShellTopBar } from './components/ShellTopBar'
-import { WorkspaceOnboarding } from './components/WorkspaceOnboarding'
 import { messageForCode } from './errorMessages'
 import { useCloseGuard } from './hooks/useCloseGuard'
+import { useConversationFolder } from './hooks/useConversationFolder'
 import { useShellSession } from './hooks/useShellSession'
-import { useWorkspace } from './hooks/useWorkspace'
 
 function streamDelayFromLocation(): number | undefined {
   const raw = new URLSearchParams(window.location.search).get('streamDelay')
@@ -23,7 +22,7 @@ function streamDelayFromLocation(): number | undefined {
 }
 
 export function App() {
-  const workspace = useWorkspace()
+  const folder = useConversationFolder()
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const notificationIdRef = useRef(0)
 
@@ -37,7 +36,7 @@ export function App() {
     [pushNotification],
   )
 
-  const session = useShellSession(workspace.key, reportError, streamDelayFromLocation())
+  const session = useShellSession(folder.key, reportError, streamDelayFromLocation())
 
   const saveWithNotification = useCallback(async () => {
     const code = await session.save()
@@ -85,11 +84,8 @@ export function App() {
   const handleMenuCommand = useCallback(
     async (command: MenuCommand) => {
       switch (command) {
-        case 'open-workspace':
-          await workspace.choose()
-          break
-        case 'create-workspace':
-          await workspace.create()
+        case 'reveal-workspace':
+          await folder.reveal()
           break
         case 'import-provider-key':
           await runImport('provider-key')
@@ -105,7 +101,7 @@ export function App() {
           break
       }
     },
-    [workspace, runImport, createNewConversation, saveWithNotification],
+    [folder, runImport, createNewConversation, saveWithNotification],
   )
 
   const menuCommandRef = useRef(handleMenuCommand)
@@ -117,12 +113,12 @@ export function App() {
     })
   }, [])
 
-  const showOnboarding = !workspace.key && !workspace.loading
+  const folderReady = folder.key !== null
 
   return (
     <View style={styles.app}>
       <ShellTopBar
-        workspaceName={workspace.info?.displayName ?? null}
+        workspaceName={folder.info?.displayName ?? null}
         dirty={session.dirty}
         saving={session.saving}
         onNewConversation={createNewConversation}
@@ -130,6 +126,11 @@ export function App() {
           void saveWithNotification()
         }}
       />
+      {folder.error ? (
+        <View style={styles.folderError} testID="shell.folder-error">
+          <Text style={styles.folderErrorText}>{folder.error}</Text>
+        </View>
+      ) : null}
       <View style={styles.chat}>
         <LLMChat.Root
           messages={session.messages}
@@ -137,7 +138,7 @@ export function App() {
           status={session.status}
           hasEarlierMessages={false}
           isLoadingEarlier={false}
-          disabled={!workspace.key}
+          disabled={!folderReady}
           onChangeDraft={session.setDraft}
           onSubmit={session.submit}
           onStop={session.stop}
@@ -145,20 +146,9 @@ export function App() {
           onLinkPress={(href) => {
             void window.appBridge.openExternal(href)
           }}
-          placeholder={workspace.key ? 'Send a message' : 'Open a workspace to start chatting'}
+          placeholder={folderReady ? 'Send a message' : 'Conversation folder is unavailable'}
         />
       </View>
-      {showOnboarding ? (
-        <WorkspaceOnboarding
-          error={workspace.error}
-          onChoose={() => {
-            void workspace.choose()
-          }}
-          onCreate={() => {
-            void workspace.create()
-          }}
-        />
-      ) : null}
       {closeGuard.request ? (
         <CloseConfirmDialog
           reason={closeGuard.request}
@@ -185,6 +175,15 @@ const styles = StyleSheet.create({
   app: {
     flex: 1,
     backgroundColor: '#f8fafc',
+  },
+  folderError: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#fee2e2',
+  },
+  folderErrorText: {
+    fontSize: 13,
+    color: '#b91c1c',
   },
   chat: {
     flex: 1,

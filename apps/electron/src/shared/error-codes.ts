@@ -1,7 +1,7 @@
 export const APP_ERROR_CODES = [
-  'no-workspace',
+  'no-folder',
   'invalid-name',
-  'outside-workspace',
+  'outside-folder',
   'read-failed',
   'write-failed',
   'chooser-cancelled',
@@ -27,9 +27,9 @@ export interface Err {
 export type Result<T> = Ok<T> | Err
 
 export const ERROR_MESSAGES: Record<AppErrorCode, string> = {
-  'no-workspace': 'No workspace folder is open.',
+  'no-folder': 'No conversation folder is available.',
   'invalid-name': 'That file name is not allowed.',
-  'outside-workspace': 'That file is outside the workspace folder.',
+  'outside-folder': 'That file is outside the conversation folder.',
   'read-failed': 'The file could not be read.',
   'write-failed': 'The file could not be saved.',
   'chooser-cancelled': 'No folder was chosen.',

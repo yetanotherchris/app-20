@@ -16,37 +16,42 @@ npm run dev:electron     # development run with HMR
 
 The built entry point is `apps/electron/out/main/index.js`. The Playwright suite launches it with `_electron.launch`.
 
+The app stores conversations in `<userData>/conversations` (the app config directory: `%APPDATA%\app-20\conversations` on Windows, `~/.config/app-20/conversations` on Linux) and creates it on first launch. `APP20_CONVERSATION_DIR` overrides the location, which the e2e suite uses to keep test data out of the real config directory.
+
 ## Automated validation
 
 ```powershell
 npm run lint
 npm run typecheck
 npm run test          # Vitest unit tests (paths, atomic write, contract shape)
+npm run build:electron
+npm run dev:smoke     # serve-mode resolution check (catches the app-20-llmchat dev condition)
 npm run test:e2e      # builds Electron, then Playwright against the built app
+npm run verify        # all of the above in order
 ```
 
-The e2e suite launches the product shell through `tests/e2e/launch-shell.ts`. The existing component suite launches the demo surface through `tests/e2e/launch.ts`.
+`dev:smoke` exists because the production build resolves dependencies with the `default` export condition while the dev server uses `development`, which `app-20-llmchat` points at an unpublished file.
+
+The e2e suite in `tests/e2e/shell.spec.ts` launches the shell through `tests/e2e/launch-shell.ts`. The shared component's own tests live in its separate repository (`app-20-llmchat`); the in-repo component harness and its e2e were retired (research R16).
 
 ## Scenario: launch to the chat screen
 
-1. Launch the built app with a workspace already configured.
-2. A window opens; the chat screen renders with the composer.
-3. Launch a second instance: the existing window is focused and no second window appears.
+1. Launch the built app. A window opens; the chat screen renders with the composer.
+2. Launch a second instance: the existing window is focused and no second window appears.
 
 Expected: `chat.composer.input` is visible; `BrowserWindow.getAllWindows().length` stays 1.
 
-## Scenario: workspace onboarding
+## Scenario: conversations folder
 
-1. Launch with no `settings.json` (empty `userData`).
-2. The onboarding panel offers Choose Folder and Create Folder.
-3. Choose an existing folder. The selection is remembered.
+1. Launch the app. It creates `<userData>/conversations` without prompting.
+2. Choose Conversations > Show Conversations Folder.
 
-Expected: the shell shows the workspace display name; `settings.json` contains an absolute `workspacePath`; the renderer never receives that absolute path.
+Expected: the shell shows the folder display name and never the absolute path; the OS file manager opens the folder.
 
 ## Scenario: save and unsaved changes
 
-1. Configure a workspace, send a prompt, and save (Ctrl+S or the Save menu item).
-2. A JSON file appears in the workspace folder.
+1. Send a prompt, then save (Ctrl+S or File > Save).
+2. A JSON file appears in the conversations folder.
 3. Edit again so the document is dirty, then close the window (or quit).
 4. A confirmation appears with Save, Discard, and Cancel.
 
@@ -54,7 +59,7 @@ Expected: choosing Cancel keeps the app open and the document dirty; choosing Sa
 
 ## Scenario: failed save
 
-1. Configure the workspace, create content, then make the workspace unwritable (for example, point the file name at a locked path by stubbing the write in e2e).
+1. Create content, then make the conversations folder unreadable (for example, delete it in e2e).
 2. Trigger close and choose Save.
 
 Expected: the window stays open; an error is shown; the document is still dirty; no content is discarded.
@@ -63,8 +68,8 @@ Expected: the window stays open; an error is shown; the document is still dirty;
 
 Open the application menu. It contains:
 
-- File: Import Provider API Key..., Import S3 Credentials..., Quit
-- Workspace: Open Workspace Folder..., Create Workspace Folder...
+- File: Import Provider API Key..., Import S3 Credentials..., Save, Quit
+- Conversations: Show Conversations Folder, New Conversation
 - Edit/View: standard entries
 
 Each import command opens a file chooser. A valid file reports success; a malformed file reports a clear, path-free error and stores nothing.

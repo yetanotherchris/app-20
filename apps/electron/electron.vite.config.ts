@@ -1,8 +1,15 @@
 import { defineConfig } from 'electron-vite'
 import react from '@vitejs/plugin-react'
+import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
 import type { Plugin } from 'vite'
 
+const requireFromConfig = createRequire(__filename)
+// app-20-llmchat ships a `development` export condition that points at
+// `src/index.ts`, which is not in its published files. Vite's dev server
+// prefers that condition and fails to resolve the package, while the
+// production build uses `default` and works. Pin the published entry.
+const llmchatEntry = requireFromConfig.resolve('app-20-llmchat')
 const svgStub = resolve(__dirname, 'src/renderer/src/stubs/react-native-svg.tsx')
 
 const CONTENT_SECURITY_POLICY = [
@@ -54,6 +61,7 @@ export default defineConfig({
     plugins: [react(), contentSecurityPolicyPlugin()],
     resolve: {
       alias: [
+        { find: 'app-20-llmchat', replacement: llmchatEntry },
         { find: 'react-native', replacement: 'react-native-web' },
         // The chat component never renders SVG on web (FR-007); stubbing avoids
         // bundling react-native-svg's Fabric source, which imports react-native

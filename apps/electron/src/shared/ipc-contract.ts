@@ -4,9 +4,9 @@ export interface AppVersion {
   version: string
 }
 
-export interface WorkspaceInfo {
+export interface ConversationFolderInfo {
   displayName: string
-  /** Stable, non-path identifier for the workspace root (sha256 prefix). */
+  /** Stable, non-path identifier for the folder (sha256 prefix of the real path). */
   id: string
 }
 
@@ -18,8 +18,7 @@ export interface SecretsStatus {
 }
 
 export type MenuCommand =
-  | 'open-workspace'
-  | 'create-workspace'
+  | 'reveal-workspace'
   | 'import-provider-key'
   | 'import-s3-credentials'
   | 'new-conversation'
@@ -40,10 +39,9 @@ type Empty = Record<string, never>
 
 export interface IpcContract {
   'app:get-version': { request: void; response: Result<AppVersion> }
-  'workspace:get': { request: void; response: Result<WorkspaceInfo | null> }
-  'workspace:choose': { request: void; response: Result<WorkspaceInfo> }
-  'workspace:create': { request: void; response: Result<WorkspaceInfo> }
-  'workspace:list': { request: void; response: Result<{ names: string[] }> }
+  'folder:get': { request: void; response: Result<ConversationFolderInfo> }
+  'folder:list': { request: void; response: Result<{ names: string[] }> }
+  'folder:reveal': { request: void; response: Result<Empty> }
   'file:read': { request: { name: string }; response: Result<{ content: string }> }
   'file:write': {
     request: { name: string; content: string }
@@ -71,10 +69,9 @@ export type IpcEventPayload<C extends IpcEventChannel> = IpcEvents[C]
 /** Runtime list of invoke channels. Kept in sync with IpcContract at compile time. */
 export const IPC_CHANNELS = [
   'app:get-version',
-  'workspace:get',
-  'workspace:choose',
-  'workspace:create',
-  'workspace:list',
+  'folder:get',
+  'folder:list',
+  'folder:reveal',
   'file:read',
   'file:write',
   'secrets:import-provider-key',
@@ -105,12 +102,11 @@ export type AllEventChannelsListed = {
 /** The fixed surface exposed on `window.appBridge`. */
 export interface AppBridge {
   getAppVersion: () => Promise<Result<AppVersion>>
-  getWorkspace: () => Promise<Result<WorkspaceInfo | null>>
-  chooseWorkspace: () => Promise<Result<WorkspaceInfo>>
-  createWorkspace: () => Promise<Result<WorkspaceInfo>>
-  listWorkspaceFiles: () => Promise<Result<{ names: string[] }>>
-  readWorkspaceFile: (name: string) => Promise<Result<{ content: string }>>
-  writeWorkspaceFile: (name: string, content: string) => Promise<Result<{ savedAt: string }>>
+  getConversationFolder: () => Promise<Result<ConversationFolderInfo>>
+  listConversationFiles: () => Promise<Result<{ names: string[] }>>
+  revealConversationFolder: () => Promise<Result<Empty>>
+  readConversationFile: (name: string) => Promise<Result<{ content: string }>>
+  writeConversationFile: (name: string, content: string) => Promise<Result<{ savedAt: string }>>
   importProviderKey: () => Promise<Result<{ kind: SecretKind }>>
   importS3Credentials: () => Promise<Result<{ kind: SecretKind }>>
   getSecretsStatus: () => Promise<Result<SecretsStatus>>

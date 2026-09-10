@@ -1,9 +1,9 @@
 import { app } from 'electron'
 import { isCloseAuthorised, requestClose, resetCloseAuthorisation } from './closeGate'
+import { loadConversationFolder } from './conversationFolder'
 import { registerIpcHandlers } from './ipc'
 import { buildApplicationMenu } from './menu'
 import { createMainWindow, getMainWindow } from './window'
-import { loadWorkspace } from './workspace'
 
 function openWindow(): void {
   const window = createMainWindow()
@@ -39,7 +39,7 @@ if (!hasSingleInstanceLock) {
   void app.whenReady().then(async () => {
     registerIpcHandlers()
     buildApplicationMenu()
-    await loadWorkspace()
+    await loadConversationFolder()
     openWindow()
 
     app.on('activate', () => {

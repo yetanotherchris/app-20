@@ -105,3 +105,27 @@ Phase 0 decisions for spec 100. Each entry states the decision, why it was chose
 **Rationale**: The provisional transport completes in about 120 ms, too fast to deterministically observe a quit mid-stream. The seam lets the e2e hold the operation in flight, prove `useCloseGuard` stops it, and keep the partial message. It mirrors the existing `APP20_RENDERER_SURFACE` harness seam and affects only timing.
 
 **Alternatives considered**: A fixed long delay in production (worse UX); a unit test of the hook (does not exercise the real close gate end to end).
+
+## R14. App-managed conversation folder (supersedes R2)
+
+**Decision**: The shell owns a fixed conversation folder instead of asking the user to choose one. It defaults to `<userData>/conversations`, the app config directory (`~/.config/app-20/conversations` on Linux, `%APPDATA%\app-20\conversations` on Windows), is created with `mkdir(recursive: true)` on startup, and is resolved with `fs.realpath`. Tests and advanced runs override it with `APP20_CONVERSATION_DIR`. The `settings.json` store is removed; a user-configurable location is future work.
+
+**Rationale**: The user decision of 2026-09-10 removed the first-run picker. `docs/overview.md` never required a user-chosen folder, only that conversations are JSON files on the device. The app config directory is the conventional place for app-owned data together with `secrets.json`, and it needs no extra permission or `documents` path lookup. The env override keeps tests off the real config directory.
+
+**Alternatives considered**: Keep the picker (rejected by the user); `<documents>/app-20` (visible but imposes a folder in the user's documents); store in `userData` root next to settings (mixes app config and user conversations).
+
+## R15. Dev-mode resolution gate
+
+**Decision**: `scripts/dev-smoke.mjs` loads the real renderer config with Vite's `loadConfigFromFile`, starts a dev server in middleware mode, and resolves and transforms `app-20-llmchat` through the chat demo. It runs in-process (no Electron) and is part of `npm run verify` and the `quality.yml` workflow.
+
+**Rationale**: The production build selects the `default` export condition and worked, while the dev server selects `development`, which `app-20-llmchat` points at an unpublished `src/index.ts`. Only a serve-mode check catches this. Running Vite in-process avoids launching and killing an Electron process tree.
+
+**Alternatives considered**: Spawn `electron-vite dev` and grep the log (kills the process tree, slower); a CI-only manual check (the bug shipped this way).
+
+## R16. Retire the component e2e and the demo harness controls (supersedes R1)
+
+**Decision**: Remove the deterministic control buttons and status row from `packages/chat-demo/src/ChatDemo.tsx`, leaving a minimal live demo (local-echo transport, working composer). Delete the seven component e2e specs and `tests/e2e/launch.ts`, remove the Electron `APP20_RENDERER_SURFACE` demo surface, and drop the `@app-20/chat-demo` dependency from `apps/electron`. Update the docs site copy and its e2e accordingly. `apps/web` keeps rendering the simplified demo; `docs/site` keeps it as the live example.
+
+**Rationale**: The shared chat component is now a standalone package with its own repository and tests (`app-20-llmchat`), so the in-repo harness and the e2e suite that drove it are redundant. The buttons also leaked a test harness into the demo surfaces. R1's surface selector no longer has a consumer and is removed.
+
+**Alternatives considered**: Keep the harness for the docs live example (rejected; the docs only need a working chat); keep the component e2e running against the demo surface (rejected; the tests moved with the component).

@@ -28,12 +28,11 @@ function subscribe<C extends IpcEventChannel>(
 
 const appBridge: AppBridge = {
   getAppVersion: () => invoke('app:get-version'),
-  getWorkspace: () => invoke('workspace:get'),
-  chooseWorkspace: () => invoke('workspace:choose'),
-  createWorkspace: () => invoke('workspace:create'),
-  listWorkspaceFiles: () => invoke('workspace:list'),
-  readWorkspaceFile: (name) => invoke('file:read', { name }),
-  writeWorkspaceFile: (name, content) => invoke('file:write', { name, content }),
+  getConversationFolder: () => invoke('folder:get'),
+  listConversationFiles: () => invoke('folder:list'),
+  revealConversationFolder: () => invoke('folder:reveal'),
+  readConversationFile: (name) => invoke('file:read', { name }),
+  writeConversationFile: (name, content) => invoke('file:write', { name, content }),
   importProviderKey: () => invoke('secrets:import-provider-key'),
   importS3Credentials: () => invoke('secrets:import-s3'),
   getSecretsStatus: () => invoke('secrets:status'),

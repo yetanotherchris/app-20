@@ -9,10 +9,9 @@ import {
 
 const EXPECTED_CHANNELS = [
   'app:get-version',
-  'workspace:get',
-  'workspace:choose',
-  'workspace:create',
-  'workspace:list',
+  'folder:get',
+  'folder:list',
+  'folder:reveal',
   'file:read',
   'file:write',
   'secrets:import-provider-key',

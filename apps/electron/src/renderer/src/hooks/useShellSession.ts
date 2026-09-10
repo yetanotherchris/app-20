@@ -34,7 +34,7 @@ export interface ShellSession {
  * and are owned by spec 101 to finalise (see research R10).
  */
 export function useShellSession(
-  workspaceKey: string | null,
+  folderKey: string | null,
   reportError: (message: string) => void,
   streamDelayMs?: number,
 ): ShellSession {
@@ -65,13 +65,13 @@ export function useShellSession(
   }, [])
 
   const save = useCallback(async (): Promise<AppErrorCode | null> => {
-    if (!workspaceKey) return 'no-workspace'
+    if (!folderKey) return 'no-folder'
 
     setSaving(true)
     try {
       const id = conversationIdRef.current
       const content = JSON.stringify(toStored(id, messagesRef.current, draftRef.current), null, 2)
-      const result = await window.appBridge.writeWorkspaceFile(`${id}.json`, content)
+      const result = await window.appBridge.writeConversationFile(`${id}.json`, content)
       if (result.ok) {
         setDirty(false)
         return null
@@ -84,11 +84,11 @@ export function useShellSession(
     } finally {
       setSaving(false)
     }
-  }, [workspaceKey])
+  }, [folderKey])
 
   const submit = useCallback(() => {
     const prompt = draft.trim()
-    if (!prompt || !workspaceKey) return
+    if (!prompt || !folderKey) return
 
     const user = createMessage('user', prompt, 'complete')
     const assistant = createMessage('assistant', '', 'streaming')
@@ -122,7 +122,7 @@ export function useShellSession(
       setDirty(true)
       setStatus('idle')
     }, echoDelayMs)
-  }, [draft, workspaceKey, clearReplyTimer, echoDelayMs])
+  }, [draft, folderKey, clearReplyTimer, echoDelayMs])
 
   const stop = useCallback(() => {
     clearReplyTimer()
@@ -150,11 +150,11 @@ export function useShellSession(
     setStatus('idle')
     setDirty(false)
     conversationIdRef.current = createId('conversation')
-    if (!workspaceKey) return
+    if (!folderKey) return
 
     let cancelled = false
     void (async () => {
-      const listed = await window.appBridge.listWorkspaceFiles()
+      const listed = await window.appBridge.listConversationFiles()
       if (cancelled) return
       if (!listed.ok) {
         reportError(messageForCode(listed.code))
@@ -167,7 +167,7 @@ export function useShellSession(
       const latest = names[names.length - 1]
       if (!latest) return
 
-      const read = await window.appBridge.readWorkspaceFile(latest)
+      const read = await window.appBridge.readConversationFile(latest)
       if (cancelled) return
       if (!read.ok) {
         reportError(messageForCode(read.code))
@@ -189,7 +189,7 @@ export function useShellSession(
     return () => {
       cancelled = true
     }
-  }, [workspaceKey, clearReplyTimer, reportError])
+  }, [folderKey, clearReplyTimer, reportError])
 
   return {
     messages,

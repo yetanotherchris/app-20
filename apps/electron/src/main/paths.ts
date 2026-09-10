@@ -35,19 +35,19 @@ export function isWithin(root: string, target: string): boolean {
 }
 
 /**
- * Resolves a bare file name against the real workspace root and fails closed if
+ * Resolves a bare file name against the real conversation folder and fails closed if
  * the result (including a symlink target that already exists) escapes it.
  */
-export async function assertPathWithinWorkspace(root: string, fileName: string): Promise<string> {
+export async function assertPathWithinFolder(root: string, fileName: string): Promise<string> {
   assertSafeFileName(fileName)
 
   const realRoot = await resolveRealRoot(root)
   const target = resolve(realRoot, fileName)
-  if (!isWithin(realRoot, target)) throw new AppError('outside-workspace')
+  if (!isWithin(realRoot, target)) throw new AppError('outside-folder')
 
   try {
     const realTarget = await fs.realpath(target)
-    if (!isWithin(realRoot, realTarget)) throw new AppError('outside-workspace')
+    if (!isWithin(realRoot, realTarget)) throw new AppError('outside-folder')
   } catch (error) {
     if (error instanceof AppError) throw error
     // The target does not exist yet (a new save); the parent check above holds.
@@ -56,7 +56,7 @@ export async function assertPathWithinWorkspace(root: string, fileName: string):
   return target
 }
 
-export async function listWorkspaceFileNames(root: string): Promise<string[]> {
+export async function listFolderFileNames(root: string): Promise<string[]> {
   const realRoot = await resolveRealRoot(root)
   const entries = await fs.readdir(realRoot, { withFileTypes: true })
   return entries.filter((entry) => entry.isFile()).map((entry) => entry.name)

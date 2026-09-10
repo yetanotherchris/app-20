@@ -4,16 +4,15 @@ import type { Result } from '../shared/error-codes'
 import type { IpcChannel, IpcRequest } from '../shared/ipc-contract'
 import { atomicWriteFile } from './atomicWrite'
 import { resolveClose } from './closeGate'
+import {
+  getConversationFolderInfo,
+  requireConversationFolder,
+  revealConversationFolder,
+} from './conversationFolder'
 import { AppError, failure, ok } from './errors'
-import { assertPathWithinWorkspace, listWorkspaceFileNames } from './paths'
+import { assertPathWithinFolder, listFolderFileNames } from './paths'
 import { getSecretsStatus, importProviderKey, importS3Credentials } from './secrets'
 import { openExternalUrl } from './security'
-import {
-  chooseWorkspace,
-  createWorkspace,
-  getWorkspaceInfo,
-  requireWorkspaceRoot,
-} from './workspace'
 import { getMainWindow } from './window'
 
 const MAX_READ_BYTES = 8 * 1024 * 1024
@@ -55,14 +54,16 @@ function handleVoid<C extends IpcChannel>(
 
 export function registerIpcHandlers(): void {
   handle('app:get-version', () => ok({ version: app.getVersion() }))
-  handle('workspace:get', () => getWorkspaceInfo())
-  handle('workspace:choose', () => chooseWorkspace())
-  handle('workspace:create', () => createWorkspace())
-  handle('workspace:list', async () =>
-    ok({ names: await listWorkspaceFileNames(await requireWorkspaceRoot()) }),
+  handle('folder:get', () => getConversationFolderInfo())
+  handle('folder:list', async () =>
+    ok({ names: await listFolderFileNames(await requireConversationFolder()) }),
   )
+  handle('folder:reveal', async () => {
+    await revealConversationFolder()
+    return ok({})
+  })
   handle('file:read', async (request) => {
-    const target = await assertPathWithinWorkspace(await requireWorkspaceRoot(), request.name)
+    const target = await assertPathWithinFolder(await requireConversationFolder(), request.name)
     try {
       const stats = await fs.stat(target)
       if (stats.size > MAX_READ_BYTES) throw new AppError('read-failed')
@@ -73,7 +74,7 @@ export function registerIpcHandlers(): void {
     }
   })
   handle('file:write', async (request) => {
-    const target = await assertPathWithinWorkspace(await requireWorkspaceRoot(), request.name)
+    const target = await assertPathWithinFolder(await requireConversationFolder(), request.name)
     await atomicWriteFile(target, request.content)
     return ok({ savedAt: new Date().toISOString() })
   })

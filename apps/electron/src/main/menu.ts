@@ -36,17 +36,12 @@ export function buildApplicationMenu(): void {
       ],
     },
     {
-      label: 'Workspace',
+      label: 'Conversations',
       submenu: [
         {
-          label: 'Open Workspace Folder...',
-          accelerator: 'CmdOrCtrl+O',
-          click: () => dispatch('open-workspace'),
-        },
-        {
-          label: 'Create Workspace Folder...',
-          accelerator: 'CmdOrCtrl+Shift+O',
-          click: () => dispatch('create-workspace'),
+          label: 'Show Conversations Folder',
+          accelerator: 'CmdOrCtrl+Shift+F',
+          click: () => dispatch('reveal-workspace'),
         },
         { type: 'separator' },
         {

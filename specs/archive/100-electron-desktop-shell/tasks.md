@@ -171,3 +171,11 @@ MVP is US1 (launch to chat). US2 (no data loss) and US3 (workspace) follow, then
 - [x] Minors: `read-failed` mapping, draft persisted and dirty-tracked, failed save stays dirty, close dialog uses the real code, close event re-sent, startup never blocks on settings, `:`/reserved names rejected, dead `app:notification`/`quit` removed, shared modal styles, IPC sender validation, file size caps, exclusive temp create, `will-redirect` guard.
 - [x] T050 Commit the review fixes.
 - [x] T051 Reply to each review comment with the fix commit hash.
+
+## Post-decision follow-ups (2026-09-10)
+
+- [x] Remove the first-run folder picker; the shell uses an app-managed conversation folder (`<userData>/conversations`), created on startup. Renamed workspace -> conversation folder across the contract, main, renderer, tests, and docs; removed `settings.json` and the onboarding UI.
+- [x] Fix dev-mode resolution of `app-20-llmchat` (broken `development` export condition) in `apps/electron/electron.vite.config.ts` and `apps/web/vite.config.ts`.
+- [x] Add a serve-mode gate: `scripts/dev-smoke.mjs`, `npm run dev:smoke`, `npm run verify`, and `.github/workflows/quality.yml`.
+- [x] Retire the component e2e and the demo harness controls: simplified `ChatDemo`, deleted the seven component specs and `tests/e2e/launch.ts`, removed the Electron demo surface, updated the docs site and its e2e.
+- [x] T052 Commit and push the folder change, the dev gate, and the component e2e retirement.

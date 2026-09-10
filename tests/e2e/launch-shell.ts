@@ -8,12 +8,12 @@ export interface LaunchedShell {
   app: ElectronApplication
   page: Page
   userDataDir: string
-  workspaceDir: string
+  conversationDir: string
 }
 
 export interface LaunchShellOptions {
   userDataDir?: string
-  workspaceDir?: string
+  conversationDir?: string
   streamDelayMs?: number
 }
 
@@ -31,8 +31,9 @@ function cleanEnv(extra: Record<string, string> = {}): Record<string, string> {
 
 export async function launchShell(options: LaunchShellOptions = {}): Promise<LaunchedShell> {
   const userDataDir = options.userDataDir ?? (await mkdtemp(join(tmpdir(), 'app20-user-')))
-  const workspaceDir = options.workspaceDir ?? (await mkdtemp(join(tmpdir(), 'app20-ws-')))
-  const extra: Record<string, string> = {}
+  const conversationDir =
+    options.conversationDir ?? (await mkdtemp(join(tmpdir(), 'app20-conversations-')))
+  const extra: Record<string, string> = { APP20_CONVERSATION_DIR: conversationDir }
   if (options.streamDelayMs && options.streamDelayMs > 0) {
     extra['APP20_STREAM_DELAY_MS'] = String(options.streamDelayMs)
   }
@@ -43,7 +44,7 @@ export async function launchShell(options: LaunchShellOptions = {}): Promise<Lau
   })
   const page = await app.firstWindow()
   await page.waitForLoadState('domcontentloaded')
-  return { app, page, userDataDir, workspaceDir }
+  return { app, page, userDataDir, conversationDir }
 }
 
 /** Force the main process down without going through the gated quit. */
@@ -58,7 +59,7 @@ export async function forceExitShell(app: ElectronApplication): Promise<void> {
 
 export async function closeShell(launched: LaunchedShell): Promise<void> {
   await forceExitShell(launched.app)
-  await rm(launched.workspaceDir, { recursive: true, force: true }).catch(() => undefined)
+  await rm(launched.conversationDir, { recursive: true, force: true }).catch(() => undefined)
 }
 
 export async function stubOpenDialog(app: ElectronApplication, filePaths: string[]): Promise<void> {
@@ -68,15 +69,6 @@ export async function stubOpenDialog(app: ElectronApplication, filePaths: string
       filePaths: paths,
     })) as typeof dialog.showOpenDialog
   }, filePaths)
-}
-
-export async function stubSaveDialog(app: ElectronApplication, filePath: string): Promise<void> {
-  await app.evaluate(({ dialog }, path) => {
-    dialog.showSaveDialog = (async () => ({
-      canceled: false,
-      filePath: path,
-    })) as typeof dialog.showSaveDialog
-  }, filePath)
 }
 
 export async function recordExternalOpens(app: ElectronApplication): Promise<void> {
@@ -95,29 +87,29 @@ export async function readExternalOpens(app: ElectronApplication): Promise<strin
   )
 }
 
-export async function listWorkspaceFiles(workspaceDir: string): Promise<string[]> {
-  return readdir(workspaceDir)
+export async function recordFolderReveals(app: ElectronApplication): Promise<void> {
+  await app.evaluate(({ shell }) => {
+    const scope = globalThis as unknown as { __revealedFolders: string[] }
+    scope.__revealedFolders = []
+    shell.openPath = (async (path: string) => {
+      scope.__revealedFolders.push(path)
+      return ''
+    }) as typeof shell.openPath
+  })
 }
 
-export async function readWorkspaceJson<T>(workspaceDir: string, name: string): Promise<T> {
-  return JSON.parse(await readFile(join(workspaceDir, name), 'utf8')) as T
+export async function readFolderReveals(app: ElectronApplication): Promise<string[]> {
+  return app.evaluate(
+    () => (globalThis as unknown as { __revealedFolders: string[] }).__revealedFolders,
+  )
 }
 
-export async function seedSettings(
-  userDataDir: string,
-  settings: { workspacePath?: string },
-): Promise<void> {
-  await writeFile(join(userDataDir, 'settings.json'), JSON.stringify(settings))
+export async function listConversationFiles(conversationDir: string): Promise<string[]> {
+  return readdir(conversationDir)
 }
 
-export async function readSettings(userDataDir: string): Promise<{ workspacePath?: string }> {
-  try {
-    return JSON.parse(await readFile(join(userDataDir, 'settings.json'), 'utf8')) as {
-      workspacePath?: string
-    }
-  } catch {
-    return {}
-  }
+export async function readConversationJson<T>(conversationDir: string, name: string): Promise<T> {
+  return JSON.parse(await readFile(join(conversationDir, name), 'utf8')) as T
 }
 
 export function electronExecutable(app: ElectronApplication): string {
@@ -129,9 +121,10 @@ export function electronExecutable(app: ElectronApplication): string {
 export async function spawnSecondInstance(
   executable: string,
   userDataDir: string,
+  conversationDir: string,
 ): Promise<number | null> {
   const child = spawn(executable, [electronMainPath(), `--user-data-dir=${userDataDir}`], {
-    env: cleanEnv(),
+    env: cleanEnv({ APP20_CONVERSATION_DIR: conversationDir }),
     stdio: 'ignore',
   })
   return new Promise((resolve) => {
