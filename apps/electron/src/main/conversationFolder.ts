@@ -47,6 +47,10 @@ export async function requireConversationFolder(): Promise<string> {
   return conversationFolder
 }
 
+export function hasConversationFolder(): boolean {
+  return conversationFolder !== null
+}
+
 export async function getConversationFolderInfo(): Promise<Result<ConversationFolderInfo>> {
   if (!conversationFolder) return err(folderError ?? 'read-failed')
 

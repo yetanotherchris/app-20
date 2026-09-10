@@ -50,6 +50,9 @@ export default defineConfig({
   main: {
     build: {
       outDir: 'out/main',
+      // The conversation storage package is source-only TypeScript with no build
+      // step, so it must be bundled into main rather than required at runtime.
+      externalizeDeps: { exclude: ['@app-20/conversation-storage'] },
     },
   },
   preload: {

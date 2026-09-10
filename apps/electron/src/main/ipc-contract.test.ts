@@ -10,10 +10,10 @@ import {
 const EXPECTED_CHANNELS = [
   'app:get-version',
   'folder:get',
-  'folder:list',
   'folder:reveal',
-  'file:read',
-  'file:write',
+  'conversations:list',
+  'conversations:read',
+  'conversations:save',
   'secrets:import-provider-key',
   'secrets:import-s3',
   'secrets:status',

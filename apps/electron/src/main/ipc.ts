@@ -1,21 +1,14 @@
 import { app, ipcMain, type IpcMainInvokeEvent } from 'electron'
-import { promises as fs } from 'node:fs'
+import { parseConversation } from '@app-20/conversation-storage'
 import type { Result } from '../shared/error-codes'
 import type { IpcChannel, IpcRequest } from '../shared/ipc-contract'
-import { atomicWriteFile } from './atomicWrite'
 import { resolveClose } from './closeGate'
-import {
-  getConversationFolderInfo,
-  requireConversationFolder,
-  revealConversationFolder,
-} from './conversationFolder'
+import { getConversationFolderInfo, revealConversationFolder } from './conversationFolder'
+import { getConversationStore } from './conversationStore'
 import { AppError, failure, ok } from './errors'
-import { assertPathWithinFolder, listFolderFileNames } from './paths'
 import { getSecretsStatus, importProviderKey, importS3Credentials } from './secrets'
 import { openExternalUrl } from './security'
 import { getMainWindow } from './window'
-
-const MAX_READ_BYTES = 8 * 1024 * 1024
 
 function isTrustedSender(event: IpcMainInvokeEvent): boolean {
   const window = getMainWindow()
@@ -55,28 +48,21 @@ function handleVoid<C extends IpcChannel>(
 export function registerIpcHandlers(): void {
   handle('app:get-version', () => ok({ version: app.getVersion() }))
   handle('folder:get', () => getConversationFolderInfo())
-  handle('folder:list', async () =>
-    ok({ names: await listFolderFileNames(await requireConversationFolder()) }),
-  )
   handle('folder:reveal', async () => {
     await revealConversationFolder()
     return ok({})
   })
-  handle('file:read', async (request) => {
-    const target = await assertPathWithinFolder(await requireConversationFolder(), request.name)
-    try {
-      const stats = await fs.stat(target)
-      if (stats.size > MAX_READ_BYTES) throw new AppError('read-failed')
-      return ok({ content: await fs.readFile(target, 'utf8') })
-    } catch (error) {
-      if (error instanceof AppError) throw error
-      throw new AppError('read-failed')
-    }
+  handle('conversations:list', async () => ok(await getConversationStore().list()))
+  handle('conversations:read', async (request) => {
+    const load = await getConversationStore().read(request.id)
+    if (load.kind === 'ok') return ok({ conversation: load.conversation })
+    throw new AppError(load.kind === 'corrupt' ? 'conversation-corrupt' : 'conversation-not-found')
   })
-  handle('file:write', async (request) => {
-    const target = await assertPathWithinFolder(await requireConversationFolder(), request.name)
-    await atomicWriteFile(target, request.content)
-    return ok({ savedAt: new Date().toISOString() })
+  handle('conversations:save', async (request) => {
+    const conversation = parseConversation(request.conversation)
+    if (!conversation) throw new AppError('invalid-conversation')
+    await getConversationStore().save(conversation)
+    return ok({ savedAt: conversation.updatedAt })
   })
   handle('secrets:import-provider-key', () => importProviderKey())
   handle('secrets:import-s3', () => importS3Credentials())

@@ -29,10 +29,10 @@ function subscribe<C extends IpcEventChannel>(
 const appBridge: AppBridge = {
   getAppVersion: () => invoke('app:get-version'),
   getConversationFolder: () => invoke('folder:get'),
-  listConversationFiles: () => invoke('folder:list'),
   revealConversationFolder: () => invoke('folder:reveal'),
-  readConversationFile: (name) => invoke('file:read', { name }),
-  writeConversationFile: (name, content) => invoke('file:write', { name, content }),
+  listConversations: () => invoke('conversations:list'),
+  readConversation: (id) => invoke('conversations:read', { id }),
+  saveConversation: (conversation) => invoke('conversations:save', { conversation }),
   importProviderKey: () => invoke('secrets:import-provider-key'),
   importS3Credentials: () => invoke('secrets:import-s3'),
   getSecretsStatus: () => invoke('secrets:status'),

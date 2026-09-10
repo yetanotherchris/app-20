@@ -62,6 +62,17 @@ export async function closeShell(launched: LaunchedShell): Promise<void> {
   await rm(launched.conversationDir, { recursive: true, force: true }).catch(() => undefined)
 }
 
+/** Clicks an application-menu item by label (used to drive renderer-owned commands). */
+export async function clickMenuItem(app: ElectronApplication, label: string): Promise<void> {
+  await app.evaluate(({ Menu }, target) => {
+    type Item = { label?: string; submenu?: { items: Item[] } | null; click?: () => void }
+    const flatten = (items: Item[]): Item[] =>
+      items.flatMap((item) => [item, ...(item.submenu ? flatten(item.submenu.items) : [])])
+    const items = flatten((Menu.getApplicationMenu()?.items ?? []) as unknown as Item[])
+    items.find((item) => item.label === target)?.click?.()
+  }, label)
+}
+
 export async function stubOpenDialog(app: ElectronApplication, filePaths: string[]): Promise<void> {
   await app.evaluate(({ dialog }, paths) => {
     dialog.showOpenDialog = (async () => ({
@@ -106,6 +117,15 @@ export async function readFolderReveals(app: ElectronApplication): Promise<strin
 
 export async function listConversationFiles(conversationDir: string): Promise<string[]> {
   return readdir(conversationDir)
+}
+
+export const MANIFEST_FILE_NAME = 'manifest.json'
+
+/** Conversation JSON files only; the manifest is excluded. */
+export async function listConversationJsonFiles(conversationDir: string): Promise<string[]> {
+  return (await readdir(conversationDir)).filter(
+    (name) => name.endsWith('.json') && name !== MANIFEST_FILE_NAME,
+  )
 }
 
 export async function readConversationJson<T>(conversationDir: string, name: string): Promise<T> {
