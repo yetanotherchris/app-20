@@ -1,9 +1,10 @@
-import { app, shell } from 'electron'
+import { shell } from 'electron'
 import { createHash } from 'node:crypto'
 import { promises as fs } from 'node:fs'
-import { basename, join } from 'node:path'
+import { basename } from 'node:path'
 import type { AppErrorCode, Result } from '../shared/error-codes'
 import type { ConversationFolderInfo } from '../shared/ipc-contract'
+import { conversationsDir } from './appData'
 import { AppError, err, ok } from './errors'
 import { resolveRealRoot } from './paths'
 
@@ -12,17 +13,10 @@ let folderError: AppErrorCode | null = null
 
 /**
  * The app owns its conversation folder; the user is never asked to choose one.
- * It lives under the app config directory (Electron `userData`), which is
- * `~/.config/app-20/conversations` on Linux and `%APPDATA%\app-20\conversations`
- * on Windows. Tests and advanced runs override it with APP20_CONVERSATION_DIR.
- * Making the location user-configurable is future work.
+ * It lives under the app data directory (`~/.config/app-20/conversations`).
+ * Tests and advanced runs override it with APP20_CONVERSATION_DIR or
+ * APP20_DATA_DIR. Making the location user-configurable is future work.
  */
-function conversationFolderPath(): string {
-  const override = process.env['APP20_CONVERSATION_DIR']
-  if (override) return override
-  return join(app.getPath('userData'), 'conversations')
-}
-
 function folderInfo(realRoot: string): ConversationFolderInfo {
   return {
     displayName: basename(realRoot),
@@ -34,7 +28,7 @@ export async function loadConversationFolder(): Promise<void> {
   folderError = null
   conversationFolder = null
   try {
-    const target = conversationFolderPath()
+    const target = conversationsDir()
     await fs.mkdir(target, { recursive: true })
     conversationFolder = await resolveRealRoot(target)
   } catch {

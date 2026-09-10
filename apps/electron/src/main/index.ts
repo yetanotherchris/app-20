@@ -1,4 +1,5 @@
 import { app } from 'electron'
+import { migrateLegacyData } from './appData'
 import { isCloseAuthorised, requestClose, resetCloseAuthorisation } from './closeGate'
 import { hasConversationFolder, loadConversationFolder } from './conversationFolder'
 import { reconcileConversations } from './conversationStore'
@@ -40,6 +41,7 @@ if (!hasSingleInstanceLock) {
   void app.whenReady().then(async () => {
     registerIpcHandlers()
     buildApplicationMenu()
+    await migrateLegacyData().catch(() => undefined)
     await loadConversationFolder()
     if (hasConversationFolder()) {
       // Best-effort repair so the history is consistent before the window reads
