@@ -1,8 +1,8 @@
-import { app, dialog, safeStorage } from 'electron'
+import { dialog, safeStorage } from 'electron'
 import { promises as fs } from 'node:fs'
-import { join } from 'node:path'
 import type { Result } from '../shared/error-codes'
 import type { SecretKind, SecretsStatus } from '../shared/ipc-contract'
+import { secretsFilePath } from './appData'
 import { atomicWriteFile } from './atomicWrite'
 import { AppError, err, failure, ok } from './errors'
 
@@ -13,13 +13,9 @@ interface StoredSecrets {
   s3?: string
 }
 
-function secretsPath(): string {
-  return join(app.getPath('userData'), 'secrets.json')
-}
-
 async function readStored(): Promise<StoredSecrets> {
   try {
-    const raw = await fs.readFile(secretsPath(), 'utf8')
+    const raw = await fs.readFile(secretsFilePath(), 'utf8')
     const parsed: unknown = JSON.parse(raw)
     if (parsed !== null && typeof parsed === 'object') {
       const value = parsed as { providerKey?: unknown; s3?: unknown }
@@ -35,7 +31,7 @@ async function readStored(): Promise<StoredSecrets> {
 }
 
 async function writeStored(stored: StoredSecrets): Promise<void> {
-  await atomicWriteFile(secretsPath(), JSON.stringify(stored))
+  await atomicWriteFile(secretsFilePath(), JSON.stringify(stored))
 }
 
 function encrypt(plaintext: string): string {
@@ -46,6 +42,21 @@ function encrypt(plaintext: string): string {
 export async function getSecretsStatus(): Promise<SecretsStatus> {
   const stored = await readStored()
   return { providerKey: Boolean(stored.providerKey), s3: Boolean(stored.s3) }
+}
+
+/**
+ * Decrypts the stored provider key for the main-process provider only. The
+ * plaintext never leaves this process and is never logged or returned to the
+ * renderer (spec 103 FR-005). An absent or unreadable secret returns null.
+ */
+export async function getProviderKey(): Promise<string | null> {
+  const stored = await readStored()
+  if (!stored.providerKey) return null
+  try {
+    return safeStorage.decryptString(Buffer.from(stored.providerKey, 'base64'))
+  } catch {
+    return null
+  }
 }
 
 async function pickFile(title: string): Promise<string | null> {

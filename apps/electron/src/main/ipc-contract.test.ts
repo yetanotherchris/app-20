@@ -14,6 +14,8 @@ const EXPECTED_CHANNELS = [
   'conversations:list',
   'conversations:read',
   'conversations:save',
+  'chat:start',
+  'chat:stop',
   'secrets:import-provider-key',
   'secrets:import-s3',
   'secrets:status',
@@ -21,7 +23,12 @@ const EXPECTED_CHANNELS = [
   'app:close-decision',
 ] as const
 
-const EXPECTED_EVENT_CHANNELS = ['app:close-requested', 'menu:command'] as const
+const EXPECTED_EVENT_CHANNELS = [
+  'app:close-requested',
+  'menu:command',
+  'chat:chunk',
+  'chat:complete',
+] as const
 
 describe('IPC channel contract', () => {
   it('lists every declared invoke channel exactly once', () => {

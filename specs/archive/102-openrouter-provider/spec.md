@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-07
 
-**Status**: Draft
+**Status**: Archived
 
 **Input**: User description: "The AI provider for beta: OpenRouter chat completions with streaming, the automatic model selection, and a provider interface that later providers can implement."
 

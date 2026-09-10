@@ -1,0 +1,11 @@
+{
+  "name": "@app-20/ai-provider",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Platform-neutral chat provider interface and OpenRouter chat-completions implementation for app-20",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  }
+}

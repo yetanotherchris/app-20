@@ -33,7 +33,9 @@ export function createMainWindow(): BrowserWindow {
   })
 
   mainWindow = window
-  window.once('ready-to-show', () => window.show())
+  // Show without activating: launching the app must not steal focus from
+  // whatever the user is doing. The click on the window itself focuses it.
+  window.once('ready-to-show', () => window.showInactive())
   window.on('closed', () => {
     if (mainWindow === window) mainWindow = null
   })
@@ -44,20 +46,9 @@ export function createMainWindow(): BrowserWindow {
 
 function loadRenderer(window: BrowserWindow): void {
   const rendererUrl = process.env['ELECTRON_RENDERER_URL']
-  const streamDelay = process.env['APP20_STREAM_DELAY_MS']
-  const query: Record<string, string> = {}
-  if (streamDelay) query['streamDelay'] = streamDelay
-
   if (rendererUrl) {
-    const search = new URLSearchParams(query).toString()
-    void window.loadURL(search ? `${rendererUrl}?${search}` : rendererUrl)
+    void window.loadURL(rendererUrl)
     return
   }
-
-  const file = join(__dirname, '../renderer/index.html')
-  if (Object.keys(query).length > 0) {
-    void window.loadFile(file, { query })
-    return
-  }
-  void window.loadFile(file)
+  void window.loadFile(join(__dirname, '../renderer/index.html'))
 }

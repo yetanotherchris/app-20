@@ -14,7 +14,9 @@ export interface LaunchedShell {
 export interface LaunchShellOptions {
   userDataDir?: string
   conversationDir?: string
-  streamDelayMs?: number
+  openRouterEndpoint?: string
+  /** Import this provider key before the first prompt; tests that send need one. */
+  providerKey?: string
 }
 
 export function electronMainPath(): string {
@@ -33,9 +35,12 @@ export async function launchShell(options: LaunchShellOptions = {}): Promise<Lau
   const userDataDir = options.userDataDir ?? (await mkdtemp(join(tmpdir(), 'app20-user-')))
   const conversationDir =
     options.conversationDir ?? (await mkdtemp(join(tmpdir(), 'app20-conversations-')))
-  const extra: Record<string, string> = { APP20_CONVERSATION_DIR: conversationDir }
-  if (options.streamDelayMs && options.streamDelayMs > 0) {
-    extra['APP20_STREAM_DELAY_MS'] = String(options.streamDelayMs)
+  const extra: Record<string, string> = {
+    APP20_CONVERSATION_DIR: conversationDir,
+    APP20_DATA_DIR: userDataDir,
+  }
+  if (options.openRouterEndpoint) {
+    extra['APP20_OPENROUTER_ENDPOINT'] = options.openRouterEndpoint
   }
 
   const app = await _electron.launch({
@@ -44,11 +49,24 @@ export async function launchShell(options: LaunchShellOptions = {}): Promise<Lau
   })
   const page = await app.firstWindow()
   await page.waitForLoadState('domcontentloaded')
+
+  const providerKey = options.providerKey ?? process.env['APP20_TEST_PROVIDER_KEY']
+  if (providerKey) {
+    const keyFile = await writeKeyFile(userDataDir, 'provider-key.txt', providerKey)
+    await stubOpenDialog(app, [keyFile])
+    await clickMenuItem(app, 'Import Provider API Key...')
+    await page.waitForFunction(async () => {
+      const status = await window.appBridge.getSecretsStatus()
+      return status.ok && status.value.providerKey
+    })
+  }
+
   return { app, page, userDataDir, conversationDir }
 }
 
 /** Force the main process down without going through the gated quit. */
-export async function forceExitShell(app: ElectronApplication): Promise<void> {
+export async function forceExitShell(app: ElectronApplication | undefined): Promise<void> {
+  if (!app) return
   await app
     .evaluate(({ app: electronApp }) => {
       electronApp.exit(0)
@@ -57,7 +75,8 @@ export async function forceExitShell(app: ElectronApplication): Promise<void> {
   await app.close().catch(() => undefined)
 }
 
-export async function closeShell(launched: LaunchedShell): Promise<void> {
+export async function closeShell(launched: LaunchedShell | undefined): Promise<void> {
+  if (!launched) return
   await forceExitShell(launched.app)
   await rm(launched.conversationDir, { recursive: true, force: true }).catch(() => undefined)
 }
@@ -144,7 +163,7 @@ export async function spawnSecondInstance(
   conversationDir: string,
 ): Promise<number | null> {
   const child = spawn(executable, [electronMainPath(), `--user-data-dir=${userDataDir}`], {
-    env: cleanEnv({ APP20_CONVERSATION_DIR: conversationDir }),
+    env: cleanEnv({ APP20_CONVERSATION_DIR: conversationDir, APP20_DATA_DIR: userDataDir }),
     stdio: 'ignore',
   })
   return new Promise((resolve) => {

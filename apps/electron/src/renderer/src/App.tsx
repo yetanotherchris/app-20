@@ -14,13 +14,6 @@ import { useCloseGuard } from './hooks/useCloseGuard'
 import { useConversationFolder } from './hooks/useConversationFolder'
 import { useShellSession } from './hooks/useShellSession'
 
-function streamDelayFromLocation(): number | undefined {
-  const raw = new URLSearchParams(window.location.search).get('streamDelay')
-  if (!raw) return undefined
-  const value = Number(raw)
-  return Number.isFinite(value) && value > 0 ? value : undefined
-}
-
 export function App() {
   const folder = useConversationFolder()
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
@@ -36,7 +29,7 @@ export function App() {
     [pushNotification],
   )
 
-  const session = useShellSession(folder.key, reportError, streamDelayFromLocation())
+  const session = useShellSession(folder.key, reportError)
 
   const saveWithNotification = useCallback(async () => {
     const code = await session.save()
@@ -143,6 +136,8 @@ export function App() {
           onSubmit={session.submit}
           onStop={session.stop}
           onLoadEarlier={() => undefined}
+          messageActions={session.messageActions}
+          onMessageAction={session.onMessageAction}
           onLinkPress={(href) => {
             void window.appBridge.openExternal(href)
           }}
