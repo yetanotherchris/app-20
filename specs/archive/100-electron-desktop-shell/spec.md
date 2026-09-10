@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-07
 
-**Status**: Draft
+**Status**: Archived
 
 **Input**: User description: "The Windows desktop application shell: a window that opens to the chat screen, folder-based workspaces, menus, and quit and close flows that never discard unsaved work."
 
@@ -111,3 +111,6 @@ The user reaches key actions from the menu bar.
 - Unreadable or corrupt files are reported rather than silently skipped.
 - Launching a second instance focuses the existing window.
 - 100 owns the close and quit confirmation; spec 105 references it rather than restating it.
+- 100 is the shell only. Conversation schema and manifest are owned by 101, the provider by 102, secret storage rules by 103, and the session flow by 105. The shell exposes the operations those specs will call.
+- To make its own US3 file scenario testable before 101 lands, the shell persists the active document as a provisional JSON envelope in the workspace. Spec 101 owns the final schema; the shell will delegate to it when it exists.
+- The shell's menu import actions implement a working file chooser plus a `safeStorage`-encrypted store outside the workspace. Spec 103 owns richer validation, rotation, and removal.

@@ -1,3 +1,5 @@
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { _electron, type ElectronApplication, type Page } from '@playwright/test'
 
@@ -8,15 +10,32 @@ interface ChatScrollableWindow extends Window {
 export interface LaunchedApp {
   app: ElectronApplication
   page: Page
+  userDataDir: string
+}
+
+function cleanEnv(): Record<string, string> {
+  const result: Record<string, string> = {}
+  for (const [key, value] of Object.entries(process.env)) {
+    if (value !== undefined) result[key] = value
+  }
+  return result
 }
 
 export async function launchElectron(): Promise<LaunchedApp> {
   const main = join(process.cwd(), 'apps/electron/out/main/index.js')
-  const app = await _electron.launch({ args: [main] })
+  // A per-launch user data directory keeps the shell's single-instance lock
+  // from making concurrently running component suites quit on startup.
+  const userDataDir = await mkdtemp(join(tmpdir(), 'app20-demo-user-'))
+  const app = await _electron.launch({
+    args: [main, `--user-data-dir=${userDataDir}`],
+    // The existing component suite drives the ChatDemo harness; the product
+    // shell is the default surface for launch-shell.ts.
+    env: { ...cleanEnv(), APP20_RENDERER_SURFACE: 'demo' },
+  })
   const page = await app.firstWindow()
   await page.addInitScript(() => {
     // Expose the chat list's scroll container finder to test helpers.
-    ;(window as ChatScrollableWindow).__findChatScrollable = () => {
+    ;(window as unknown as ChatScrollableWindow).__findChatScrollable = () => {
       const root = document.querySelector('[data-testid="chat.message-list"]')
       if (!root) return null
       const candidates = Array.from(root.querySelectorAll('div')).filter((el) => {
@@ -30,11 +49,19 @@ export async function launchElectron(): Promise<LaunchedApp> {
   // The init script only applies on navigation, so reload once to install it.
   await page.reload()
   await page.waitForLoadState('domcontentloaded')
-  return { app, page }
+  return { app, page, userDataDir }
 }
 
 export async function closeElectron(launched: LaunchedApp): Promise<void> {
-  await launched.app.close()
+  // The shell gates window close and quit; the demo surface does not answer the
+  // close prompt, so force the process down instead of waiting on a gated quit.
+  await launched.app
+    .evaluate(({ app }) => {
+      app.exit(0)
+    })
+    .catch(() => undefined)
+  await launched.app.close().catch(() => undefined)
+  await rm(launched.userDataDir, { recursive: true, force: true }).catch(() => undefined)
 }
 
 /**
@@ -52,13 +79,13 @@ export async function resizeWindow(launched: LaunchedApp, width: number, height:
 
 export async function getScrollableOffset(page: Page): Promise<number> {
   return page.evaluate(
-    () => (window as ChatScrollableWindow).__findChatScrollable()?.scrollTop ?? -1,
+    () => (window as unknown as ChatScrollableWindow).__findChatScrollable()?.scrollTop ?? -1,
   )
 }
 
 export async function scrollListTo(page: Page, offset: number): Promise<void> {
   await page.evaluate((offsetValue) => {
-    const scrollable = (window as ChatScrollableWindow).__findChatScrollable()
+    const scrollable = (window as unknown as ChatScrollableWindow).__findChatScrollable()
     if (!scrollable) return
     scrollable.scrollTop = offsetValue
     scrollable.dispatchEvent(new Event('scroll', { bubbles: true }))
@@ -67,7 +94,7 @@ export async function scrollListTo(page: Page, offset: number): Promise<void> {
 
 export async function getScrollHeight(page: Page): Promise<number> {
   return page.evaluate(
-    () => (window as ChatScrollableWindow).__findChatScrollable()?.scrollHeight ?? 0,
+    () => (window as unknown as ChatScrollableWindow).__findChatScrollable()?.scrollHeight ?? 0,
   )
 }
 
@@ -81,7 +108,7 @@ export async function getScrollHeight(page: Page): Promise<number> {
  */
 export async function measureScrollStall(page: Page): Promise<number> {
   return page.evaluate(async () => {
-    const scrollable = (window as ChatScrollableWindow).__findChatScrollable()
+    const scrollable = (window as unknown as ChatScrollableWindow).__findChatScrollable()
     if (!scrollable) return 0
     const frame = () => new Promise<void>((resolve) => requestAnimationFrame(() => resolve()))
     let worst = 0

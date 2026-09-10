@@ -6,7 +6,8 @@
   "scripts": {
     "build": "electron-vite build",
     "dev": "electron-vite dev",
-    "preview": "electron-vite preview"
+    "preview": "electron-vite preview",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "dependencies": {
     "app-20-llmchat": "^1.0.0",
