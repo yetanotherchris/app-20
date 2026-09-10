@@ -3,11 +3,13 @@ import { tmpdir } from 'node:os'
 import { basename, join } from 'node:path'
 import { test, expect, type ElectronApplication, type Page } from '@playwright/test'
 import {
+  clickMenuItem,
   closeShell,
   electronExecutable,
   forceExitShell,
   launchShell,
   listConversationFiles,
+  listConversationJsonFiles,
   readConversationJson,
   readExternalOpens,
   readFolderReveals,
@@ -32,14 +34,14 @@ const BRIDGE_METHODS = [
   'getSecretsStatus',
   'importProviderKey',
   'importS3Credentials',
-  'listConversationFiles',
+  'listConversations',
   'onCloseRequested',
   'onMenuCommand',
   'openExternal',
-  'readConversationFile',
+  'readConversation',
   'reportCloseDecision',
   'revealConversationFolder',
-  'writeConversationFile',
+  'saveConversation',
 ]
 
 async function makeDirty(page: Page, text = 'unsaved draft'): Promise<void> {
@@ -53,16 +55,6 @@ async function triggerClose(app: ElectronApplication): Promise<void> {
   await app.evaluate(({ BrowserWindow }) => {
     BrowserWindow.getAllWindows()[0]?.close()
   })
-}
-
-async function clickMenuItem(app: ElectronApplication, label: string): Promise<void> {
-  await app.evaluate(({ Menu }, target) => {
-    type Item = { label?: string; submenu?: { items: Item[] } | null; click?: () => void }
-    const flatten = (items: Item[]): Item[] =>
-      items.flatMap((item) => [item, ...(item.submenu ? flatten(item.submenu.items) : [])])
-    const items = flatten((Menu.getApplicationMenu()?.items ?? []) as unknown as Item[])
-    items.find((item) => item.label === target)?.click?.()
-  }, label)
 }
 
 test.describe('US1 - launch, isolation, links, single instance', () => {
@@ -177,9 +169,7 @@ test.describe('US3 - app-managed conversation folder', () => {
     await shell.page.getByTestId('shell.save').click()
     await expect(shell.page.getByTestId('shell.dirty')).toHaveText('Saved')
 
-    const names = (await listConversationFiles(shell.conversationDir)).filter((name) =>
-      name.endsWith('.json'),
-    )
+    const names = await listConversationJsonFiles(shell.conversationDir)
     expect(names.length).toBe(1)
     const stored = await readConversationJson<StoredConversationFile>(
       shell.conversationDir,
@@ -401,9 +391,7 @@ test.describe('US2 - Save before close', () => {
     await shell.page.getByTestId('shell.close-save').click()
     await expect.poll(() => shell.app.windows().length).toBe(0)
 
-    const names = (await listConversationFiles(shell.conversationDir)).filter((name) =>
-      name.endsWith('.json'),
-    )
+    const names = await listConversationJsonFiles(shell.conversationDir)
     expect(names.length).toBe(1)
     const stored = await readConversationJson<StoredConversationFile>(
       shell.conversationDir,
@@ -468,9 +456,7 @@ test.describe('US4 - menu bar and imports', () => {
     await expect(shell.page.getByTestId('chat.composer.input')).toHaveValue('')
     await expect(shell.page.getByText('Local echo: menu new')).toHaveCount(0)
 
-    const names = (await listConversationFiles(shell.conversationDir)).filter((name) =>
-      name.endsWith('.json'),
-    )
+    const names = await listConversationJsonFiles(shell.conversationDir)
     const saved = await Promise.all(
       names.map((name) =>
         readConversationJson<StoredConversationFile>(shell.conversationDir, name),

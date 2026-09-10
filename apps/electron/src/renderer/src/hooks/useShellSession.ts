@@ -1,17 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { ChatStatus, Message } from 'app-20-llmchat'
+import type { Conversation } from '@app-20/conversation-storage'
 import type { AppErrorCode } from '../../../shared/error-codes'
-import {
-  createId,
-  createMessage,
-  fromStored,
-  parseStoredConversationSafe,
-  toStored,
-  withStatus,
-} from '../conversation/storedConversation'
+import { fromConversation, toConversation } from '../conversation/conversationAdapter'
+import { createId, createMessage, withStatus } from '../conversation/chatMessages'
 import { messageForCode } from '../errorMessages'
 
 const ECHO_DELAY_MS = 120
+// Spec 102 owns the requested model; until it supplies one the manifest records
+// an empty string (spec 101 Clarifications).
+const CONVERSATION_MODEL = ''
 
 export interface ShellSession {
   messages: readonly Message[]
@@ -29,9 +27,10 @@ export interface ShellSession {
 
 /**
  * Provisional shell session: the AI provider (spec 102) and the full session
- * flow (spec 105) are not implemented yet, so submit appends a local echo. The
- * saved envelope and its validation live in `conversation/storedConversation.ts`
- * and are owned by spec 101 to finalise (see research R10).
+ * flow (spec 105) are not implemented yet, so submit appends a local echo.
+ * Persistence goes through the spec 101 conversation store, which owns the
+ * schema and the manifest; this hook maps live messages onto it and keeps the
+ * loaded conversation as the merge base so unrepresented data is not dropped.
  */
 export function useShellSession(
   folderKey: string | null,
@@ -46,6 +45,8 @@ export function useShellSession(
 
   const echoDelayMs = streamDelayMs && streamDelayMs > 0 ? streamDelayMs : ECHO_DELAY_MS
   const conversationIdRef = useRef(createId('conversation'))
+  const conversationCreatedAtRef = useRef(new Date().toISOString())
+  const baseConversationRef = useRef<Conversation | null>(null)
   const messagesRef = useRef<readonly Message[]>(messages)
   messagesRef.current = messages
   const draftRef = useRef(draft)
@@ -69,10 +70,19 @@ export function useShellSession(
 
     setSaving(true)
     try {
-      const id = conversationIdRef.current
-      const content = JSON.stringify(toStored(id, messagesRef.current, draftRef.current), null, 2)
-      const result = await window.appBridge.writeConversationFile(`${id}.json`, content)
+      const conversation = toConversation(
+        {
+          id: conversationIdRef.current,
+          createdAt: conversationCreatedAtRef.current,
+          model: CONVERSATION_MODEL,
+          messages: messagesRef.current,
+          draft: draftRef.current,
+        },
+        baseConversationRef.current,
+      )
+      const result = await window.appBridge.saveConversation(conversation)
       if (result.ok) {
+        baseConversationRef.current = conversation
         setDirty(false)
         return null
       }
@@ -137,6 +147,8 @@ export function useShellSession(
   const newConversation = useCallback(() => {
     clearReplyTimer()
     conversationIdRef.current = createId('conversation')
+    conversationCreatedAtRef.current = new Date().toISOString()
+    baseConversationRef.current = null
     setMessages([])
     setDraftState('')
     setStatus('idle')
@@ -150,40 +162,43 @@ export function useShellSession(
     setStatus('idle')
     setDirty(false)
     conversationIdRef.current = createId('conversation')
+    conversationCreatedAtRef.current = new Date().toISOString()
+    baseConversationRef.current = null
     if (!folderKey) return
 
     let cancelled = false
     void (async () => {
-      const listed = await window.appBridge.listConversationFiles()
+      const listed = await window.appBridge.listConversations()
       if (cancelled) return
       if (!listed.ok) {
         reportError(messageForCode(listed.code))
         return
       }
 
-      const names = listed.value.names
-        .filter((name) => name.startsWith('conversation-') && name.endsWith('.json'))
-        .sort()
-      const latest = names[names.length - 1]
-      if (!latest) return
-
-      const read = await window.appBridge.readConversationFile(latest)
-      if (cancelled) return
-      if (!read.ok) {
-        reportError(messageForCode(read.code))
-        return
+      let reportedCorrupt = false
+      if (listed.value.report.corrupt > 0) {
+        reportedCorrupt = true
+        reportError(messageForCode('conversation-corrupt'))
       }
 
-      const conversation = parseStoredConversationSafe(read.value.content)
-      if (!conversation) {
-        reportError('A saved conversation could not be read and was skipped.')
-        return
+      for (const entry of listed.value.entries) {
+        const read = await window.appBridge.readConversation(entry.id)
+        if (cancelled) return
+        if (read.ok) {
+          const conversation = read.value.conversation
+          baseConversationRef.current = conversation
+          setMessages(fromConversation(conversation))
+          setDraftState(conversation.draft ?? '')
+          conversationIdRef.current = conversation.id
+          conversationCreatedAtRef.current = conversation.createdAt
+          setDirty(false)
+          return
+        }
+        if (read.code === 'conversation-corrupt' && !reportedCorrupt) {
+          reportedCorrupt = true
+          reportError(messageForCode('conversation-corrupt'))
+        }
       }
-
-      setMessages(fromStored(conversation))
-      setDraftState(conversation.draft)
-      conversationIdRef.current = conversation.id
-      setDirty(false)
     })()
 
     return () => {

@@ -1,6 +1,7 @@
 import { app } from 'electron'
 import { isCloseAuthorised, requestClose, resetCloseAuthorisation } from './closeGate'
-import { loadConversationFolder } from './conversationFolder'
+import { hasConversationFolder, loadConversationFolder } from './conversationFolder'
+import { reconcileConversations } from './conversationStore'
 import { registerIpcHandlers } from './ipc'
 import { buildApplicationMenu } from './menu'
 import { createMainWindow, getMainWindow } from './window'
@@ -40,6 +41,12 @@ if (!hasSingleInstanceLock) {
     registerIpcHandlers()
     buildApplicationMenu()
     await loadConversationFolder()
+    if (hasConversationFolder()) {
+      // Best-effort repair so the history is consistent before the window reads
+      // it. A failure here must not stop the app from opening; the renderer
+      // reconciles again on load and surfaces any folder error.
+      await reconcileConversations().catch(() => undefined)
+    }
     openWindow()
 
     app.on('activate', () => {

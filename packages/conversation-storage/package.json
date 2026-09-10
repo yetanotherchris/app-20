@@ -1,0 +1,11 @@
+{
+  "name": "@app-20/conversation-storage",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Platform-neutral conversation schema, manifest, and file-backed store for app-20",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  }
+}

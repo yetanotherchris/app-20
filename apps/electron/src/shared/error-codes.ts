@@ -7,6 +7,9 @@ export const APP_ERROR_CODES = [
   'chooser-cancelled',
   'invalid-secret',
   'secret-store-unavailable',
+  'conversation-not-found',
+  'conversation-corrupt',
+  'invalid-conversation',
   'not-permitted',
   'unknown',
 ] as const
@@ -35,6 +38,9 @@ export const ERROR_MESSAGES: Record<AppErrorCode, string> = {
   'chooser-cancelled': 'No folder was chosen.',
   'invalid-secret': 'That file is not a valid credential file.',
   'secret-store-unavailable': 'Secure storage is not available on this device.',
+  'conversation-not-found': 'That conversation could not be found.',
+  'conversation-corrupt': 'That conversation file could not be read.',
+  'invalid-conversation': 'That conversation could not be saved.',
   'not-permitted': 'That link cannot be opened.',
   unknown: 'Something went wrong.',
 }

@@ -1,3 +1,4 @@
+import type { Conversation, ConversationListResult } from '@app-20/conversation-storage'
 import type { Result } from './error-codes'
 
 export interface AppVersion {
@@ -40,11 +41,14 @@ type Empty = Record<string, never>
 export interface IpcContract {
   'app:get-version': { request: void; response: Result<AppVersion> }
   'folder:get': { request: void; response: Result<ConversationFolderInfo> }
-  'folder:list': { request: void; response: Result<{ names: string[] }> }
   'folder:reveal': { request: void; response: Result<Empty> }
-  'file:read': { request: { name: string }; response: Result<{ content: string }> }
-  'file:write': {
-    request: { name: string; content: string }
+  'conversations:list': { request: void; response: Result<ConversationListResult> }
+  'conversations:read': {
+    request: { id: string }
+    response: Result<{ conversation: Conversation }>
+  }
+  'conversations:save': {
+    request: { conversation: Conversation }
     response: Result<{ savedAt: string }>
   }
   'secrets:import-provider-key': { request: void; response: Result<{ kind: SecretKind }> }
@@ -70,10 +74,10 @@ export type IpcEventPayload<C extends IpcEventChannel> = IpcEvents[C]
 export const IPC_CHANNELS = [
   'app:get-version',
   'folder:get',
-  'folder:list',
   'folder:reveal',
-  'file:read',
-  'file:write',
+  'conversations:list',
+  'conversations:read',
+  'conversations:save',
   'secrets:import-provider-key',
   'secrets:import-s3',
   'secrets:status',
@@ -103,10 +107,10 @@ export type AllEventChannelsListed = {
 export interface AppBridge {
   getAppVersion: () => Promise<Result<AppVersion>>
   getConversationFolder: () => Promise<Result<ConversationFolderInfo>>
-  listConversationFiles: () => Promise<Result<{ names: string[] }>>
   revealConversationFolder: () => Promise<Result<Empty>>
-  readConversationFile: (name: string) => Promise<Result<{ content: string }>>
-  writeConversationFile: (name: string, content: string) => Promise<Result<{ savedAt: string }>>
+  listConversations: () => Promise<Result<ConversationListResult>>
+  readConversation: (id: string) => Promise<Result<{ conversation: Conversation }>>
+  saveConversation: (conversation: Conversation) => Promise<Result<{ savedAt: string }>>
   importProviderKey: () => Promise<Result<{ kind: SecretKind }>>
   importS3Credentials: () => Promise<Result<{ kind: SecretKind }>>
   getSecretsStatus: () => Promise<Result<SecretsStatus>>
