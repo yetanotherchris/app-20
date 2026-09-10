@@ -48,6 +48,21 @@ export async function getSecretsStatus(): Promise<SecretsStatus> {
   return { providerKey: Boolean(stored.providerKey), s3: Boolean(stored.s3) }
 }
 
+/**
+ * Decrypts the stored provider key for the main-process provider only. The
+ * plaintext never leaves this process and is never logged or returned to the
+ * renderer (spec 103 FR-005). An absent or unreadable secret returns null.
+ */
+export async function getProviderKey(): Promise<string | null> {
+  const stored = await readStored()
+  if (!stored.providerKey) return null
+  try {
+    return safeStorage.decryptString(Buffer.from(stored.providerKey, 'base64'))
+  } catch {
+    return null
+  }
+}
+
 async function pickFile(title: string): Promise<string | null> {
   const result = await dialog.showOpenDialog({ title, properties: ['openFile'] })
   const chosen = result.filePaths[0]

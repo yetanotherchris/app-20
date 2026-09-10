@@ -2,6 +2,7 @@ import { app, ipcMain, type IpcMainInvokeEvent } from 'electron'
 import { parseConversation } from '@app-20/conversation-storage'
 import type { Result } from '../shared/error-codes'
 import type { IpcChannel, IpcRequest } from '../shared/ipc-contract'
+import { startChat, stopChat } from './chatStream'
 import { resolveClose } from './closeGate'
 import { getConversationFolderInfo, revealConversationFolder } from './conversationFolder'
 import { getConversationStore } from './conversationStore'
@@ -63,6 +64,11 @@ export function registerIpcHandlers(): void {
     if (!conversation) throw new AppError('invalid-conversation')
     await getConversationStore().save(conversation)
     return ok({ savedAt: conversation.updatedAt })
+  })
+  handle('chat:start', (request) => startChat(request))
+  handle('chat:stop', (request) => {
+    stopChat(request.requestId)
+    return ok({})
   })
   handle('secrets:import-provider-key', () => importProviderKey())
   handle('secrets:import-s3', () => importS3Credentials())

@@ -20,6 +20,21 @@ import {
   writeKeyFile,
   type LaunchedShell,
 } from './launch-shell'
+import { startFakeOpenRouter, type FakeOpenRouter } from './fake-openrouter'
+
+let fake: FakeOpenRouter
+
+test.beforeAll(async () => {
+  fake = await startFakeOpenRouter()
+  process.env['APP20_OPENROUTER_ENDPOINT'] = fake.endpoint
+  process.env['APP20_TEST_PROVIDER_KEY'] = 'sk-or-test-key'
+})
+
+test.afterAll(async () => {
+  await fake.close()
+  delete process.env['APP20_OPENROUTER_ENDPOINT']
+  delete process.env['APP20_TEST_PROVIDER_KEY']
+})
 
 interface StoredConversationFile {
   id: string
@@ -35,6 +50,8 @@ const BRIDGE_METHODS = [
   'importProviderKey',
   'importS3Credentials',
   'listConversations',
+  'onChatChunk',
+  'onChatComplete',
   'onCloseRequested',
   'onMenuCommand',
   'openExternal',
@@ -42,12 +59,14 @@ const BRIDGE_METHODS = [
   'reportCloseDecision',
   'revealConversationFolder',
   'saveConversation',
+  'startChat',
+  'stopChat',
 ]
 
 async function makeDirty(page: Page, text = 'unsaved draft'): Promise<void> {
   await page.getByTestId('chat.composer.input').fill(text)
   await page.getByTestId('chat.composer.send').click()
-  await expect(page.getByText(`Local echo: ${text}`)).toBeVisible()
+  await expect(page.getByText(`Echo: ${text}`)).toBeVisible()
   await expect(page.getByTestId('shell.dirty')).toHaveText('Unsaved changes')
 }
 
@@ -178,7 +197,7 @@ test.describe('US3 - app-managed conversation folder', () => {
     expect(stored.messages.some((message) => message.content === 'save me')).toBe(true)
 
     await shell.page.reload()
-    await expect(shell.page.getByText('Local echo: save me')).toBeVisible()
+    await expect(shell.page.getByText('Echo: save me')).toBeVisible()
     await expect(shell.page.getByTestId('shell.dirty')).toHaveText('Saved')
   })
 
@@ -217,7 +236,7 @@ test.describe('US3 - content survives a real restart', () => {
     await expect(second.page.getByTestId('shell.workspace-name')).toContainText(
       basename(first.conversationDir),
     )
-    await expect(second.page.getByText('Local echo: survives restart')).toBeVisible()
+    await expect(second.page.getByText('Echo: survives restart')).toBeVisible()
   })
 })
 
@@ -327,11 +346,13 @@ test.describe('US2 - quit while streaming stops the response', () => {
   let shell: LaunchedShell
 
   test.beforeAll(async () => {
-    shell = await launchShell({ streamDelayMs: 5000 })
+    fake.setReply({ chunks: ['streaming partial'], hold: true })
+    shell = await launchShell()
     await expect(shell.page.getByTestId('shell.topbar')).toBeVisible()
   })
 
   test.afterAll(async () => {
+    fake.reset()
     await closeShell(shell)
   })
 
@@ -454,7 +475,7 @@ test.describe('US4 - menu bar and imports', () => {
     await makeDirty(shell.page, 'menu new')
     await clickMenuItem(shell.app, 'New Conversation')
     await expect(shell.page.getByTestId('chat.composer.input')).toHaveValue('')
-    await expect(shell.page.getByText('Local echo: menu new')).toHaveCount(0)
+    await expect(shell.page.getByText('Echo: menu new')).toHaveCount(0)
 
     const names = await listConversationJsonFiles(shell.conversationDir)
     const saved = await Promise.all(

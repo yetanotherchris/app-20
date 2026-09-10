@@ -33,6 +33,8 @@ const appBridge: AppBridge = {
   listConversations: () => invoke('conversations:list'),
   readConversation: (id) => invoke('conversations:read', { id }),
   saveConversation: (conversation) => invoke('conversations:save', { conversation }),
+  startChat: (request) => invoke('chat:start', request),
+  stopChat: (requestId) => invoke('chat:stop', { requestId }),
   importProviderKey: () => invoke('secrets:import-provider-key'),
   importS3Credentials: () => invoke('secrets:import-s3'),
   getSecretsStatus: () => invoke('secrets:status'),
@@ -40,6 +42,8 @@ const appBridge: AppBridge = {
   reportCloseDecision: (decision) => invoke('app:close-decision', { decision }),
   onCloseRequested: (handler) => subscribe('app:close-requested', handler),
   onMenuCommand: (handler) => subscribe('menu:command', handler),
+  onChatChunk: (handler) => subscribe('chat:chunk', handler),
+  onChatComplete: (handler) => subscribe('chat:complete', handler),
 }
 
 contextBridge.exposeInMainWorld('appBridge', appBridge)

@@ -1,5 +1,6 @@
 import type { Conversation, ConversationListResult } from '@app-20/conversation-storage'
-import type { Result } from './error-codes'
+import type { ProviderMessage } from '@app-20/ai-provider'
+import type { AppErrorCode, Result } from './error-codes'
 
 export interface AppVersion {
   version: string
@@ -36,6 +37,15 @@ export interface MenuCommandEvent {
   command: MenuCommand
 }
 
+export interface ChatStartRequest {
+  requestId: string
+  messages: ProviderMessage[]
+  model?: string
+}
+
+export type ChatCompletionResult =
+  { kind: 'complete' } | { kind: 'stopped' } | { kind: 'error'; code: AppErrorCode }
+
 type Empty = Record<string, never>
 
 export interface IpcContract {
@@ -51,6 +61,8 @@ export interface IpcContract {
     request: { conversation: Conversation }
     response: Result<{ savedAt: string }>
   }
+  'chat:start': { request: ChatStartRequest; response: Result<{ model: string }> }
+  'chat:stop': { request: { requestId: string }; response: Result<Empty> }
   'secrets:import-provider-key': { request: void; response: Result<{ kind: SecretKind }> }
   'secrets:import-s3': { request: void; response: Result<{ kind: SecretKind }> }
   'secrets:status': { request: void; response: Result<SecretsStatus> }
@@ -61,6 +73,8 @@ export interface IpcContract {
 export interface IpcEvents {
   'app:close-requested': CloseRequestedEvent
   'menu:command': MenuCommandEvent
+  'chat:chunk': { requestId: string; text: string }
+  'chat:complete': { requestId: string; result: ChatCompletionResult }
 }
 
 export type IpcChannel = keyof IpcContract
@@ -78,6 +92,8 @@ export const IPC_CHANNELS = [
   'conversations:list',
   'conversations:read',
   'conversations:save',
+  'chat:start',
+  'chat:stop',
   'secrets:import-provider-key',
   'secrets:import-s3',
   'secrets:status',
@@ -89,6 +105,8 @@ export const IPC_CHANNELS = [
 export const IPC_EVENT_CHANNELS = [
   'app:close-requested',
   'menu:command',
+  'chat:chunk',
+  'chat:complete',
 ] as const satisfies readonly IpcEventChannel[]
 
 type ChannelIsListed<C extends IpcChannel> = C extends (typeof IPC_CHANNELS)[number] ? true : never
@@ -111,6 +129,8 @@ export interface AppBridge {
   listConversations: () => Promise<Result<ConversationListResult>>
   readConversation: (id: string) => Promise<Result<{ conversation: Conversation }>>
   saveConversation: (conversation: Conversation) => Promise<Result<{ savedAt: string }>>
+  startChat: (request: ChatStartRequest) => Promise<Result<{ model: string }>>
+  stopChat: (requestId: string) => Promise<Result<Empty>>
   importProviderKey: () => Promise<Result<{ kind: SecretKind }>>
   importS3Credentials: () => Promise<Result<{ kind: SecretKind }>>
   getSecretsStatus: () => Promise<Result<SecretsStatus>>
@@ -118,4 +138,8 @@ export interface AppBridge {
   reportCloseDecision: (decision: CloseDecision) => Promise<void>
   onCloseRequested: (handler: (event: CloseRequestedEvent) => void) => () => void
   onMenuCommand: (handler: (event: MenuCommandEvent) => void) => () => void
+  onChatChunk: (handler: (event: { requestId: string; text: string }) => void) => () => void
+  onChatComplete: (
+    handler: (event: { requestId: string; result: ChatCompletionResult }) => void,
+  ) => () => void
 }

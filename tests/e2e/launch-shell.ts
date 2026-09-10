@@ -14,7 +14,9 @@ export interface LaunchedShell {
 export interface LaunchShellOptions {
   userDataDir?: string
   conversationDir?: string
-  streamDelayMs?: number
+  openRouterEndpoint?: string
+  /** Import this provider key before the first prompt; tests that send need one. */
+  providerKey?: string
 }
 
 export function electronMainPath(): string {
@@ -34,8 +36,8 @@ export async function launchShell(options: LaunchShellOptions = {}): Promise<Lau
   const conversationDir =
     options.conversationDir ?? (await mkdtemp(join(tmpdir(), 'app20-conversations-')))
   const extra: Record<string, string> = { APP20_CONVERSATION_DIR: conversationDir }
-  if (options.streamDelayMs && options.streamDelayMs > 0) {
-    extra['APP20_STREAM_DELAY_MS'] = String(options.streamDelayMs)
+  if (options.openRouterEndpoint) {
+    extra['APP20_OPENROUTER_ENDPOINT'] = options.openRouterEndpoint
   }
 
   const app = await _electron.launch({
@@ -44,6 +46,18 @@ export async function launchShell(options: LaunchShellOptions = {}): Promise<Lau
   })
   const page = await app.firstWindow()
   await page.waitForLoadState('domcontentloaded')
+
+  const providerKey = options.providerKey ?? process.env['APP20_TEST_PROVIDER_KEY']
+  if (providerKey) {
+    const keyFile = await writeKeyFile(userDataDir, 'provider-key.txt', providerKey)
+    await stubOpenDialog(app, [keyFile])
+    await clickMenuItem(app, 'Import Provider API Key...')
+    await page.waitForFunction(async () => {
+      const status = await window.appBridge.getSecretsStatus()
+      return status.ok && status.value.providerKey
+    })
+  }
+
   return { app, page, userDataDir, conversationDir }
 }
 
