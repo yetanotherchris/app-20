@@ -215,28 +215,28 @@ test.describe('US3 - content survives a real restart', () => {
   let first: LaunchedShell
   let second: LaunchedShell
 
-  test.afterAll(async () => {
-    await closeShell(second)
-    await closeShell(first)
-  })
-
   test('restores the last conversation after relaunch', async () => {
     first = await launchShell()
-    await makeDirty(first.page, 'survives restart')
-    await first.page.getByTestId('shell.save').click()
-    await expect(first.page.getByTestId('shell.dirty')).toHaveText('Saved')
+    try {
+      await makeDirty(first.page, 'survives restart')
+      await first.page.getByTestId('shell.save').click()
+      await expect(first.page.getByTestId('shell.dirty')).toHaveText('Saved')
 
-    await forceExitShell(first.app)
+      await forceExitShell(first.app)
 
-    second = await launchShell({
-      userDataDir: first.userDataDir,
-      conversationDir: first.conversationDir,
-    })
-    await expect(second.page.getByTestId('shell.folder-error')).toHaveCount(0)
-    await expect(second.page.getByTestId('shell.workspace-name')).toContainText(
-      basename(first.conversationDir),
-    )
-    await expect(second.page.getByText('Echo: survives restart')).toBeVisible()
+      second = await launchShell({
+        userDataDir: first.userDataDir,
+        conversationDir: first.conversationDir,
+      })
+      await expect(second.page.getByTestId('shell.folder-error')).toHaveCount(0)
+      await expect(second.page.getByTestId('shell.workspace-name')).toContainText(
+        basename(first.conversationDir),
+      )
+      await expect(second.page.getByText('Echo: survives restart')).toBeVisible()
+    } finally {
+      await closeShell(second)
+      await closeShell(first)
+    }
   })
 })
 

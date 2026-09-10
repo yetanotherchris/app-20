@@ -9,7 +9,9 @@ export interface ByteStream {
 }
 
 const DATA_PREFIX = 'data:'
-const DONE = '[DONE]'
+const MAX_LINE_BYTES = 1024 * 1024
+
+type LineResult = { kind: 'delta'; text: string } | { kind: 'done' } | { kind: 'skip' }
 
 function extractDelta(payload: string): string | null {
   let parsed: unknown
@@ -29,6 +31,16 @@ function extractDelta(payload: string): string | null {
   if (delta === null || typeof delta !== 'object') return null
   const content = (delta as { content?: unknown }).content
   return typeof content === 'string' && content.length > 0 ? content : null
+}
+
+function consumeLine(line: string): LineResult {
+  if (!line.startsWith(DATA_PREFIX)) return { kind: 'skip' }
+  const payload = line.slice(DATA_PREFIX.length).trim()
+  if (payload.length === 0) return { kind: 'skip' }
+  if (payload === '[DONE]') return { kind: 'done' }
+
+  const text = extractDelta(payload)
+  return text === null ? { kind: 'skip' } : { kind: 'delta', text }
 }
 
 /**
@@ -53,6 +65,7 @@ export async function* parseOpenRouterStream(body: ByteStream): AsyncIterable<st
     if (result.done) break
 
     buffer += decoder.decode(result.value ?? new Uint8Array(), { stream: true })
+    if (buffer.length > MAX_LINE_BYTES) throw new ProviderError('network')
 
     let newline = buffer.indexOf('\n')
     while (newline !== -1) {
@@ -60,23 +73,15 @@ export async function* parseOpenRouterStream(body: ByteStream): AsyncIterable<st
       buffer = buffer.slice(newline + 1)
 
       const outcome = consumeLine(line)
-      if (outcome === DONE) {
+      if (outcome.kind === 'done') {
         finished = true
         break
       }
-      if (typeof outcome === 'string') yield outcome
+      if (outcome.kind === 'delta') yield outcome.text
 
       newline = buffer.indexOf('\n')
     }
   }
 
   if (!finished) throw new ProviderError('network')
-}
-
-function consumeLine(line: string): string | typeof DONE | null {
-  if (!line.startsWith(DATA_PREFIX)) return null
-  const payload = line.slice(DATA_PREFIX.length).trim()
-  if (payload.length === 0) return null
-  if (payload === DONE) return DONE
-  return extractDelta(payload)
 }

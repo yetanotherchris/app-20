@@ -100,6 +100,11 @@ export function useShellSession(
     if (requestId) void window.appBridge.stopChat(requestId)
   }, [])
 
+  const hasUserActivity = useCallback(
+    () => messagesRef.current.length > 0 || draftRef.current.length > 0,
+    [],
+  )
+
   useEffect(() => {
     const unsubscribeChunk = window.appBridge.onChatChunk(({ requestId, text }) => {
       if (requestId !== activeRequestRef.current) return
@@ -187,13 +192,15 @@ export function useShellSession(
   useEffect(() => {
     stopChatOperation()
     abortActiveRequest()
-    replaceMessages([])
-    setDraftState('')
-    setDirty(false)
     conversationIdRef.current = createId('conversation')
     conversationCreatedAtRef.current = new Date().toISOString()
     baseConversationRef.current = null
-    if (!folderKey) return
+    if (!folderKey) {
+      replaceMessages([])
+      setDraftState('')
+      setDirty(false)
+      return
+    }
 
     let cancelled = false
     void (async () => {
@@ -204,6 +211,10 @@ export function useShellSession(
         return
       }
 
+      // A user can start a turn while the list loads. Their session wins over
+      // the restore, so a prompt or draft is never clobbered (constitution III).
+      if (hasUserActivity()) return
+
       let reportedCorrupt = false
       if (listed.value.report.corrupt > 0) {
         reportedCorrupt = true
@@ -213,6 +224,7 @@ export function useShellSession(
       for (const entry of listed.value.entries) {
         const read = await window.appBridge.readConversation(entry.id)
         if (cancelled) return
+        if (hasUserActivity()) return
         if (read.ok) {
           const conversation = read.value.conversation
           baseConversationRef.current = conversation
@@ -233,7 +245,14 @@ export function useShellSession(
     return () => {
       cancelled = true
     }
-  }, [folderKey, stopChatOperation, abortActiveRequest, replaceMessages, reportError])
+  }, [
+    folderKey,
+    stopChatOperation,
+    abortActiveRequest,
+    replaceMessages,
+    reportError,
+    hasUserActivity,
+  ])
 
   return {
     messages: chatMessages,

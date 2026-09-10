@@ -1,11 +1,7 @@
-import type { Message } from 'app-20-llmchat'
+import type { ChatOperation, Message } from 'app-20-llmchat'
 import type { ProviderMessage } from '@app-20/ai-provider'
 
-export interface ProviderTurn {
-  kind: 'submit' | 'retry' | 'regenerate'
-  prompt: string
-  messageId: string
-}
+export type ProviderTurn = Pick<ChatOperation, 'kind' | 'prompt' | 'messageId'>
 
 function messageText(message: Message): string {
   return message.contentParts.map((part) => part.text).join('')

@@ -129,6 +129,8 @@ export async function startFakeOpenRouter(): Promise<FakeOpenRouter> {
     server.once('error', reject)
     server.listen(0, '127.0.0.1', () => resolve())
   })
+  server.keepAliveTimeout = 1000
+  server.headersTimeout = 2000
   const address = server.address() as AddressInfo
 
   return {
@@ -142,7 +144,12 @@ export async function startFakeOpenRouter(): Promise<FakeOpenRouter> {
       reply = null
     },
     close() {
-      return new Promise((resolve) => server.close(() => resolve()))
+      return new Promise((resolve) => {
+        // Destroy keep-alive sockets first; otherwise close() waits on them and
+        // a hung app would stall worker teardown.
+        server.closeAllConnections()
+        server.close(() => resolve())
+      })
     },
   }
 }

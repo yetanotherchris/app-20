@@ -1,7 +1,9 @@
+import { app } from 'electron'
 import {
   AUTOMATIC_MODEL,
   createOpenRouterProvider,
-  OPENROUTER_ENDPOINT,
+  createProviderRegistry,
+  OPENROUTER_PROVIDER_ID,
   ProviderError,
   type ChatProvider,
   type ChatRequest,
@@ -14,12 +16,32 @@ import { codeForProviderError } from './providerErrors'
 import { getProviderKey } from './secrets'
 import { sendToRenderer } from './window'
 
+const MAX_MESSAGE_COUNT = 1000
+const MAX_MESSAGE_CHARS = 1_000_000
+const MAX_MODEL_CHARS = 256
+
 const activeStreams = new Map<string, AbortController>()
 
-/** Tests and advanced runs point the provider at a local server. */
-function endpointOverride(): string {
+/**
+ * Tests and development runs may point the provider at a local server. A
+ * packaged build ignores the override so the decrypted key cannot be redirected
+ * by an environment variable.
+ */
+function endpointOverride(): string | undefined {
+  if (app.isPackaged) return undefined
   const override = process.env['APP20_OPENROUTER_ENDPOINT']
-  return override && override.length > 0 ? override : OPENROUTER_ENDPOINT
+  return override && override.length > 0 ? override : undefined
+}
+
+const providerRegistry = createProviderRegistry()
+providerRegistry.register(
+  createOpenRouterProvider({ apiKey: getProviderKey, endpoint: endpointOverride() }),
+)
+
+function selectProvider(): ChatProvider {
+  const provider = providerRegistry.get(OPENROUTER_PROVIDER_ID)
+  if (!provider) throw new AppError('provider-error')
+  return provider
 }
 
 function isNonEmptyString(value: unknown): value is string {
@@ -29,13 +51,17 @@ function isNonEmptyString(value: unknown): value is string {
 function isProviderMessage(value: unknown): value is ProviderMessage {
   if (value === null || typeof value !== 'object') return false
   const { role, content } = value as { role?: unknown; content?: unknown }
-  return (
-    (role === 'system' || role === 'user' || role === 'assistant') && typeof content === 'string'
-  )
+  if (role !== 'system' && role !== 'user' && role !== 'assistant') return false
+  return typeof content === 'string' && content.length <= MAX_MESSAGE_CHARS
 }
 
 function isProviderMessages(value: unknown): value is ProviderMessage[] {
-  return Array.isArray(value) && value.length > 0 && value.every(isProviderMessage)
+  return (
+    Array.isArray(value) &&
+    value.length > 0 &&
+    value.length <= MAX_MESSAGE_COUNT &&
+    value.every(isProviderMessage)
+  )
 }
 
 function finish(requestId: string, result: ChatCompletionResult): void {
@@ -77,17 +103,30 @@ export async function startChat(request: ChatStartRequest): Promise<Result<{ mod
   if (!isNonEmptyString(request.requestId) || !isProviderMessages(request.messages)) {
     throw new AppError('invalid-chat-request')
   }
+  if (request.model !== undefined && !isValidModel(request.model)) {
+    throw new AppError('invalid-chat-request')
+  }
   if (activeStreams.has(request.requestId)) throw new AppError('provider-error')
 
   const model = isNonEmptyString(request.model) ? request.model : AUTOMATIC_MODEL
   const apiKey = await getProviderKey()
   if (!apiKey) return err('missing-key')
+  // The key read is async, so a same-id start can arrive while it is in flight.
+  if (activeStreams.has(request.requestId)) throw new AppError('provider-error')
 
-  const provider = createOpenRouterProvider({ apiKey, endpoint: endpointOverride() })
   const controller = new AbortController()
   activeStreams.set(request.requestId, controller)
-  void runStream(request.requestId, { messages: request.messages, model }, provider, controller)
+  void runStream(
+    request.requestId,
+    { messages: request.messages, model },
+    selectProvider(),
+    controller,
+  )
   return ok({ model })
+}
+
+function isValidModel(value: unknown): boolean {
+  return typeof value === 'string' && value.length <= MAX_MODEL_CHARS
 }
 
 export function stopChat(requestId: string): void {

@@ -35,7 +35,10 @@ export async function launchShell(options: LaunchShellOptions = {}): Promise<Lau
   const userDataDir = options.userDataDir ?? (await mkdtemp(join(tmpdir(), 'app20-user-')))
   const conversationDir =
     options.conversationDir ?? (await mkdtemp(join(tmpdir(), 'app20-conversations-')))
-  const extra: Record<string, string> = { APP20_CONVERSATION_DIR: conversationDir }
+  const extra: Record<string, string> = {
+    APP20_CONVERSATION_DIR: conversationDir,
+    APP20_DATA_DIR: userDataDir,
+  }
   if (options.openRouterEndpoint) {
     extra['APP20_OPENROUTER_ENDPOINT'] = options.openRouterEndpoint
   }
@@ -62,7 +65,8 @@ export async function launchShell(options: LaunchShellOptions = {}): Promise<Lau
 }
 
 /** Force the main process down without going through the gated quit. */
-export async function forceExitShell(app: ElectronApplication): Promise<void> {
+export async function forceExitShell(app: ElectronApplication | undefined): Promise<void> {
+  if (!app) return
   await app
     .evaluate(({ app: electronApp }) => {
       electronApp.exit(0)
@@ -71,7 +75,8 @@ export async function forceExitShell(app: ElectronApplication): Promise<void> {
   await app.close().catch(() => undefined)
 }
 
-export async function closeShell(launched: LaunchedShell): Promise<void> {
+export async function closeShell(launched: LaunchedShell | undefined): Promise<void> {
+  if (!launched) return
   await forceExitShell(launched.app)
   await rm(launched.conversationDir, { recursive: true, force: true }).catch(() => undefined)
 }
@@ -158,7 +163,7 @@ export async function spawnSecondInstance(
   conversationDir: string,
 ): Promise<number | null> {
   const child = spawn(executable, [electronMainPath(), `--user-data-dir=${userDataDir}`], {
-    env: cleanEnv({ APP20_CONVERSATION_DIR: conversationDir }),
+    env: cleanEnv({ APP20_CONVERSATION_DIR: conversationDir, APP20_DATA_DIR: userDataDir }),
     stdio: 'ignore',
   })
   return new Promise((resolve) => {

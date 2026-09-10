@@ -6,6 +6,7 @@ export {
   OPENROUTER_ENDPOINT,
   OPENROUTER_PROVIDER_ID,
   createOpenRouterProvider,
+  type ApiKeySource,
   type HttpFetch,
   type HttpFetchInit,
   type HttpFetchResponse,

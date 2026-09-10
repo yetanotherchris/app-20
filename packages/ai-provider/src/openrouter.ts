@@ -21,8 +21,10 @@ export interface HttpFetchResponse {
 
 export type HttpFetch = (url: string, init: HttpFetchInit) => Promise<HttpFetchResponse>
 
+export type ApiKeySource = string | (() => Promise<string | null>)
+
 export interface OpenRouterOptions {
-  apiKey: string
+  apiKey: ApiKeySource
   endpoint?: string
   fetch?: HttpFetch
 }
@@ -36,12 +38,15 @@ export function createOpenRouterProvider(options: OpenRouterOptions): ChatProvid
   const fetchImpl: HttpFetch = options.fetch ?? ((url, init) => fetch(url, init))
 
   async function* streamChat(request: ChatRequest, signal: AbortSignal): AsyncIterable<string> {
+    const apiKey = typeof options.apiKey === 'function' ? await options.apiKey() : options.apiKey
+    if (!apiKey) throw new ProviderError('invalid-key')
+
     let response: HttpFetchResponse
     try {
       response = await fetchImpl(endpoint, {
         method: 'POST',
         headers: {
-          Authorization: `Bearer ${options.apiKey}`,
+          Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
         body: requestBody(request.model, request.messages),
