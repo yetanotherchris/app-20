@@ -1,7 +1,6 @@
 {
   "files": [],
   "references": [
-    { "path": "./packages/chat" },
     { "path": "./apps/web" },
     { "path": "./apps/electron" },
     { "path": "./tests/e2e" }

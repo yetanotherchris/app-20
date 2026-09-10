@@ -21,6 +21,8 @@
     "docs:build": "npm run build --workspace @app-20/component-docs",
     "docs:preview": "npm run preview --workspace @app-20/component-docs",
     "docs:test:e2e": "npm run docs:build && npx playwright test --config playwright.docs.config.ts",
+    "dev:smoke": "node scripts/dev-smoke.mjs",
+    "verify": "npm run lint && npm run typecheck && npm run test && npm run build:electron && npm run dev:smoke && npm run test:e2e",
     "test:e2e": "npm run build:electron && playwright test"
   },
   "devDependencies": {

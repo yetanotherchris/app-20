@@ -4,9 +4,15 @@
 
 **Created**: 2026-09-07
 
-**Status**: Draft
+**Status**: Archived
 
-**Input**: User description: "The Windows desktop application shell: a window that opens to the chat screen, folder-based workspaces, menus, and quit and close flows that never discard unsaved work."
+**Input**: User description: "The Windows desktop application shell: a window that opens to the chat screen, an app-managed conversation folder, menus, and quit and close flows that never discard unsaved work."
+
+## Clarifications
+
+### Session 2026-09-10
+
+- The first-run create/choose workspace prompt is removed. The app now creates and uses an app-managed conversation folder on first run, under the app config directory (Electron `userData`). Updated: Input, US3, FR-002, FR-006, FR-008, FR-009, the Workspace entity (now Conversation Folder), the startup edge case, and Assumptions. The menu item "Open Workspace Folder" becomes "Show Conversations Folder".
 
 ## User Scenarios & Testing
 
@@ -39,36 +45,36 @@ The user quits or closes the window with unsaved changes; the app asks before di
 3. **Given** the user confirms save at close, **When** the save fails, **Then** the window stays open, the failure is reported, and nothing is discarded.
 4. **Given** a response is streaming, **When** the user quits, **Then** the in-flight operation is stopped, the partial content follows the unsaved-changes rule, and exit waits for that to resolve.
 
-### User Story 3 - Work from a folder (Priority: P2)
+### User Story 3 - Conversations live in an app-managed folder (Priority: P2)
 
-The app operates on a workspace folder that holds the conversations, chosen or created on first run.
+The app stores conversations in a fixed folder it owns, created on first run. The user is not asked to choose a folder.
 
-**Why this priority**: Folder-based local storage is the beta storage model and gives the user direct access to their files.
+**Why this priority**: JSON files on disk are the beta storage model, and the folder is discoverable without a first-run decision.
 
-**Independent Test**: Open a folder, create a conversation, confirm it is written as a file in the folder.
+**Independent Test**: Launch the app, create a conversation, and confirm a JSON file is written to the app's conversation folder.
 
 **Acceptance Scenarios**:
 
-1. **Given** a workspace folder, **When** the user opens it, **Then** the app reads its conversations.
-2. **Given** a conversation is saved, **When** it is written, **Then** a JSON file appears in the workspace folder.
-3. **Given** a first run with no workspace, **When** the app starts, **Then** the user is offered to create or choose a workspace folder and the choice is remembered.
+1. **Given** the app is installed, **When** it first starts, **Then** it creates its conversation folder without asking the user.
+2. **Given** a conversation is saved, **When** it is written, **Then** a JSON file appears in the conversation folder.
+3. **Given** the app restarts, **When** it starts, **Then** it reads conversations from the same folder.
 
 ### User Story 4 - Use the menu bar (Priority: P3)
 
 The user reaches key actions from the menu bar.
 
-**Why this priority**: Menus are the discoverable entry points for import and workspace actions.
+**Why this priority**: Menus are the discoverable entry points for import and folder actions.
 
 **Independent Test**: Open each menu entry and confirm it performs its action.
 
 **Acceptance Scenarios**:
 
-1. **Given** the app is running, **When** the user opens the menu bar, **Then** entries exist to open the workspace folder, import the provider API key, import S3 credentials, and quit.
+1. **Given** the app is running, **When** the user opens the menu bar, **Then** entries exist to reveal the conversation folder, import the provider API key, import S3 credentials, and quit.
 
 ### Edge Cases
 
 - Closing with a failed save must leave the document dirty, never silently discard it.
-- A missing or unreadable workspace must be reported clearly, without an absolute path.
+- A missing or unreadable conversation folder must be created or reported clearly, without an absolute path.
 - Renderer-visible errors must not leak absolute file paths.
 
 ## Requirements
@@ -76,20 +82,20 @@ The user reaches key actions from the menu bar.
 ### Functional Requirements
 
 - **FR-001**: The app MUST launch to a usable chat screen.
-- **FR-002**: The app MUST operate against a workspace folder that is the root for all conversation file access. Secrets live outside it (see spec 103).
+- **FR-002**: The app MUST operate against an app-managed conversation folder that is the root for all conversation file access. Secrets live outside it (see spec 103).
 - **FR-003**: Closing or quitting with unsaved changes MUST prompt before discarding anything.
 - **FR-004**: Saves MUST be atomic; a failed save MUST leave the document dirty.
 - **FR-005**: The renderer MUST NOT have direct access to the filesystem; all file access MUST go through a fixed set of named operations.
-- **FR-006**: All paths MUST be validated against the resolved real path of the workspace root.
+- **FR-006**: All paths MUST be validated against the resolved real path of the conversation folder.
 - **FR-007**: Renderer-visible error messages MUST NOT contain absolute paths.
-- **FR-008**: The app MUST provide a menu bar with entries to open the workspace folder, import the provider API key, import S3 credentials, and quit, with standard accelerators.
-- **FR-009**: On first run the app MUST offer to create or choose a workspace folder and persist that choice.
+- **FR-008**: The app MUST provide a menu bar with entries to reveal the conversation folder, import the provider API key, import S3 credentials, and quit, with standard accelerators.
+- **FR-009**: On first run the app MUST create and use its app-managed conversation folder, without asking the user to choose a folder.
 - **FR-010**: The renderer MUST NOT depend on Node APIs, MUST run in an isolated context, and MUST operate under a restrictive content security policy.
 - **FR-011**: Links activated in chat content MUST open in the system browser, never in the app window.
 
 ### Key Entities
 
-- **Workspace**: The root folder that contains the user's conversations.
+- **Conversation Folder**: The app-owned root folder that contains the conversation files.
 - **Document**: A single conversation opened in the app, tracked as clean or dirty.
 - **Preload API**: The fixed, typed set of operations the renderer may call.
 
@@ -105,9 +111,14 @@ The user reaches key actions from the menu bar.
 
 ## Assumptions
 
-- The app is single-user and local-first; conversations live in a folder on the device.
+- The app is single-user and local-first; conversations live in an app-managed folder on the device.
+- The folder defaults to a `conversations` subfolder of the app config directory (Electron `userData`), so it is `~/.config/app-20/conversations` on Linux and `%APPDATA%\app-20\conversations` on Windows. It is overridable for tests.
+- Beta has no folder picker and no user-configurable location; choosing a storage location is future work.
 - Windows desktop is the beta platform for the shell; the shared chat component also runs on iOS.
 - The Windows build and distribution are independent of the iOS build.
 - Unreadable or corrupt files are reported rather than silently skipped.
 - Launching a second instance focuses the existing window.
 - 100 owns the close and quit confirmation; spec 105 references it rather than restating it.
+- 100 is the shell only. Conversation schema and manifest are owned by 101, the provider by 102, secret storage rules by 103, and the session flow by 105. The shell exposes the operations those specs will call.
+- To make its own US3 file scenario testable before 101 lands, the shell persists the active document as a provisional JSON envelope in the conversation folder. Spec 101 owns the final schema; the shell will delegate to it when it exists.
+- The shell's menu import actions implement a working file chooser plus a `safeStorage`-encrypted store outside the conversation folder. Spec 103 owns richer validation, rotation, and removal.

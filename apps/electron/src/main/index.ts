@@ -1,34 +1,52 @@
-import { app, BrowserWindow } from 'electron'
-import { join } from 'node:path'
-import './ipc'
+import { app } from 'electron'
+import { isCloseAuthorised, requestClose, resetCloseAuthorisation } from './closeGate'
+import { loadConversationFolder } from './conversationFolder'
+import { registerIpcHandlers } from './ipc'
+import { buildApplicationMenu } from './menu'
+import { createMainWindow, getMainWindow } from './window'
 
-function createWindow(): void {
-  const window = new BrowserWindow({
-    width: 1280,
-    height: 800,
-    webPreferences: {
-      preload: join(__dirname, '../preload/index.js'),
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-    },
+function openWindow(): void {
+  const window = createMainWindow()
+  window.on('close', (event) => {
+    if (isCloseAuthorised()) return
+    event.preventDefault()
+    requestClose('close')
   })
-
-  if (process.env['ELECTRON_RENDERER_URL']) {
-    void window.loadURL(process.env['ELECTRON_RENDERER_URL'])
-  } else {
-    void window.loadFile(join(__dirname, '../renderer/index.html'))
-  }
 }
 
-app.whenReady().then(() => {
-  createWindow()
+const hasSingleInstanceLock = app.requestSingleInstanceLock()
 
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow()
+if (!hasSingleInstanceLock) {
+  app.quit()
+} else {
+  app.on('second-instance', () => {
+    const window = getMainWindow()
+    if (!window) return
+    if (window.isMinimized()) window.restore()
+    window.focus()
   })
-})
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit()
-})
+  app.on('before-quit', (event) => {
+    if (isCloseAuthorised() || getMainWindow() === null) return
+    event.preventDefault()
+    requestClose('quit')
+  })
+
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') app.quit()
+  })
+
+  void app.whenReady().then(async () => {
+    registerIpcHandlers()
+    buildApplicationMenu()
+    await loadConversationFolder()
+    openWindow()
+
+    app.on('activate', () => {
+      if (getMainWindow() === null) {
+        resetCloseAuthorisation()
+        openWindow()
+      }
+    })
+  })
+}
