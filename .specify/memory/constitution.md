@@ -1,10 +1,11 @@
 <!--
-Sync Impact Report (2026-09-06)
-- Version change: unversioned template -> 1.0.0
-- Modified principles: none (first fill-in of the template; no prior principles to rename)
-- Added: five principles (I. Process Isolation, II. Path Trust, III. No Data Loss, IV. Fixed and Typed Preload API, V. Non-Negotiable Test Coverage), Technology & Security Constraints, Development Workflow & Quality Gates, Governance
-- Removed: template placeholder tokens and example comments
-- Follow-up TODOs: none; RATIFICATION_DATE set to today as the initial adoption date
+Sync Impact Report (2026-09-10)
+- Version change: 1.0.0 -> 2.0.0 (MAJOR)
+- Modified principles: III. No Data Loss (redefined: autosave and retry replace the dirty-document confirmation guarantee); V. Non-Negotiable Test Coverage (the dirty/close/quit confirmation test class is replaced by autosave tests)
+- Added: none
+- Removed: none
+- Rationale: the confirmation guarantee and the dirty-document wording were inherited from a markdown editor and do not match a chat client; conversations persist automatically and close or quit without a prompt. See specs/107-chat-autosave.
+- Follow-up TODOs: AGENTS.md invariants and spec 105 updated to match in the same change.
 -->
 
 # app-20 Constitution
@@ -21,7 +22,7 @@ Every path is validated in the main process against the resolved real path of th
 
 ### III. No Data Loss
 
-Saves are atomic: write a temporary file in the same directory, then rename it over the target. A failed save leaves the document dirty and the prior content intact. Unsaved changes are never discarded without explicit confirmation.
+Saves are atomic: write a temporary file in the same directory, then rename it over the target. A failed save leaves the prior content intact and keeps the in-session content available; it is reported and retried, never silently dropped. Conversations persist automatically, so a close or quit shows no save prompt and there is no dirty-document state.
 
 ### IV. Fixed and Typed Preload API
 
@@ -29,7 +30,7 @@ The preload API is a fixed list of named operations with explicit request and re
 
 ### V. Non-Negotiable Test Coverage
 
-Tests for path containment, atomic writes and save failure, dirty/close/quit confirmation, and IPC contract shape must exist and pass. They are never skipped, deleted, or weakened to make the suite green. These tests encode Principles I through IV.
+Tests for path containment, atomic writes and save failure, autosave on a terminal exchange and on an idle draft, failed-save reporting and retry, close and quit with no prompt, and IPC contract shape must exist and pass. They are never skipped, deleted, or weakened to make the suite green. These tests encode Principles I through IV.
 
 ## Technology & Security Constraints
 
@@ -61,4 +62,4 @@ Every PR that touches security boundaries, path handling, or save behavior must 
 
 `AGENTS.md` provides the day-to-day working practice and authority order. Use it for runtime development guidance.
 
-**Version**: 1.0.0 | **Ratified**: 2026-09-06 | **Last Amended**: 2026-09-06
+**Version**: 2.0.0 | **Ratified**: 2026-09-06 | **Last Amended**: 2026-09-10

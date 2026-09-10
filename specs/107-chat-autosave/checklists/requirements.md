@@ -31,6 +31,6 @@
 
 ## Notes
 
+- The constitution amendment this spec depends on is included in this PR (MAJOR, 1.0.0 to 2.0.0): Principles III and V now require autosave and autosave tests instead of the dirty-document confirmation guarantee.
 - No save prompt is shown under any circumstance, including a failed save at quit; the accepted trade-off is recorded in the spec's Assumptions.
-- This spec corrects editor-derived requirements in archived spec 100 and draft spec 105; the correction is recorded in its Assumptions.
-- Ready for `/speckit.plan`. The draft is stored in the conversation file (one file per conversation, plus the manifest); the plan settles the typing debounce interval and how a fresh draft-only conversation is handled.
+- Ready for `/speckit.plan`. The plan records the storage layout decision and the autosave timing; neither belongs in the spec.
