@@ -14,8 +14,8 @@ Only you see that command's output — the user's terminal shows at most a few l
 
 First privately list what you need next; then request every item that doesn't depend on another's result in this one response.
 
-
 ## What this project is
+
 See @docs/overview.md
 
 ## Authority order
@@ -30,7 +30,7 @@ When guidance conflicts, higher wins:
 6. **`docs/codingstandards.md`** (@codingstandards.md): how the code should look
 7. Existing code: precedent, not authority
 
-Code that contradicts the spec is a bug in the code *or* a bug in the spec.
+Code that contradicts the spec is a bug in the code _or_ a bug in the spec.
 Decide which. Never assume the code is right because it exists.
 
 ## The workflow
@@ -48,15 +48,15 @@ They are defined as markdown files under `.opencode/commands/` and were
 installed when Spec Kit was initialized. If a command is missing, ensure the
 repo has been cloned and `.opencode/commands/` is present.
 
-| Command | Produces | Purpose |
-|---------|----------|---------|
-| `/speckit.constitution` | `.specify/memory/constitution.md` | Project principles. Rarely changes. |
-| `/speckit.specify` | `specs/<n>-<name>/spec.md` | WHAT and WHY. No technology. |
-| `/speckit.clarify` | `## Clarifications` in spec.md | Closes ambiguity by asking, before it becomes a guess. |
-| `/speckit.plan` | `plan.md`, `research.md`, `data-model.md`, `contracts/`, `quickstart.md` | HOW. Technology lives here. |
-| `/speckit.tasks` | `tasks.md` | Ordered, independently verifiable work items. |
-| `/speckit.analyze` | report | Cross-artifact consistency check. Optional but cheap. |
-| `/speckit.implement` | code | Execute tasks. |
+| Command                 | Produces                                                                 | Purpose                                                |
+| ----------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------ |
+| `/speckit.constitution` | `.specify/memory/constitution.md`                                        | Project principles. Rarely changes.                    |
+| `/speckit.specify`      | `specs/<n>-<name>/spec.md`                                               | WHAT and WHY. No technology.                           |
+| `/speckit.clarify`      | `## Clarifications` in spec.md                                           | Closes ambiguity by asking, before it becomes a guess. |
+| `/speckit.plan`         | `plan.md`, `research.md`, `data-model.md`, `contracts/`, `quickstart.md` | HOW. Technology lives here.                            |
+| `/speckit.tasks`        | `tasks.md`                                                               | Ordered, independently verifiable work items.          |
+| `/speckit.analyze`      | report                                                                   | Cross-artifact consistency check. Optional but cheap.  |
+| `/speckit.implement`    | code                                                                     | Execute tasks.                                         |
 
 Rules:
 
@@ -78,19 +78,19 @@ exists to prevent it.
 
 Do not start fixing until you know which artifact is actually wrong.
 
-| Symptom | Layer at fault | Fix there |
-|---------|----------------|-----------|
-| Spec is silent on a case you hit | spec (gap) | Add the detail to `spec.md` |
-| Spec sentence admits two readings | spec (ambiguity) | Clarify, then reword `spec.md` |
-| Two requirements contradict | spec (conflict) | Resolve in `spec.md` |
-| Spec violates the constitution | spec | Constitution wins; amend `spec.md` |
-| Requirement is fine, chosen approach fails | plan | Fix `plan.md`/`research.md` |
-| Library cannot do what the plan assumed | plan (and maybe spec) | Evidence, then re-decide |
-| Work item too large or badly ordered | tasks | Fix `tasks.md` |
-| Artifacts fine, code wrong | code | Just fix the code |
+| Symptom                                    | Layer at fault        | Fix there                          |
+| ------------------------------------------ | --------------------- | ---------------------------------- |
+| Spec is silent on a case you hit           | spec (gap)            | Add the detail to `spec.md`        |
+| Spec sentence admits two readings          | spec (ambiguity)      | Clarify, then reword `spec.md`     |
+| Two requirements contradict                | spec (conflict)       | Resolve in `spec.md`               |
+| Spec violates the constitution             | spec                  | Constitution wins; amend `spec.md` |
+| Requirement is fine, chosen approach fails | plan                  | Fix `plan.md`/`research.md`        |
+| Library cannot do what the plan assumed    | plan (and maybe spec) | Evidence, then re-decide           |
+| Work item too large or badly ordered       | tasks                 | Fix `tasks.md`                     |
+| Artifacts fine, code wrong                 | code                  | Just fix the code                  |
 
 The most common case by far is a **spec gap**: the spec is not wrong, it is
-incomplete. The correct response is to *add the missing detail to the spec*,
+incomplete. The correct response is to _add the missing detail to the spec_,
 not to encode the decision only in code where the next reader cannot find it.
 
 ### Step 2: Decide whether to ask or to proceed
@@ -156,7 +156,7 @@ method, so content can only be set at construction. That broke the assumed
 
 The right handling, and the pattern to follow:
 
-1. **Diagnose the layer**: the *plan* was wrong. The spec's requirement (tabs
+1. **Diagnose the layer**: the _plan_ was wrong. The spec's requirement (tabs
    preserve undo history) was still correct and desirable.
 2. **Get evidence**: read the published type definitions rather than guess.
 3. **Re-decide with cost stated**: one instance per tab, which costs memory,
@@ -164,7 +164,7 @@ The right handling, and the pattern to follow:
 4. **Record it**: `research.md` R1/R2, with the rejected alternative and why.
 5. **Leave the spec alone**: no user-visible behaviour changed.
 
-Note what did *not* happen: the requirement was not quietly downgraded to "tabs
+Note what did _not_ happen: the requirement was not quietly downgraded to "tabs
 may lose undo history" to fit the easier implementation. When implementation
 difficulty pushes back on a requirement, that is a decision for the user, not
 for the agent.
@@ -180,8 +180,8 @@ Restated from the constitution because these are the ones most easily lost:
 - Every path is validated in the **main process** against the resolved real
   path of the workspace root. Renderer-side checks are never trusted.
 - Saves are **atomic**: temp file in the same directory, then rename.
-- A failed save leaves the document **dirty**.
-- Unsaved changes are never discarded without explicit confirmation.
+- A failed save leaves the prior content intact and the in-session content available; it is reported and retried, never silently dropped.
+- Conversations persist automatically; close and quit show no save prompt.
 
 ## Repository layout
 
@@ -208,8 +208,8 @@ AGENTS.md                         This file
   - **Structural changes**: rearranging code without changing behavior
     (renaming, extracting methods, moving code).
   - **Behavioral changes**: adding or modifying actual functionality.
-  This separation makes code reviews easier, reduces bugs, and creates clearer
-  git history.
+    This separation makes code reviews easier, reduces bugs, and creates clearer
+    git history.
 - Report honestly. If something is stubbed, partly done, or unverified, say so plainly. A confident wrong summary is worse than an uncertain accurate one.
 - Comments explain a local, non-obvious behavior, constraint, or safety reason. Delete comments that only restate the code, requirement IDs, or project history.
 - Do not write AI filler. Avoid slogans, performative certainty, self-grandiosity, ceremonial all-caps emphasis, and attempts to sound like an expert.
