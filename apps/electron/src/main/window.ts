@@ -44,10 +44,8 @@ export function createMainWindow(): BrowserWindow {
 
 function loadRenderer(window: BrowserWindow): void {
   const rendererUrl = process.env['ELECTRON_RENDERER_URL']
-  const surface = process.env['APP20_RENDERER_SURFACE']
   const streamDelay = process.env['APP20_STREAM_DELAY_MS']
   const query: Record<string, string> = {}
-  if (surface) query['surface'] = surface
   if (streamDelay) query['streamDelay'] = streamDelay
 
   if (rendererUrl) {

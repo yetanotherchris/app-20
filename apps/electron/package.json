@@ -11,7 +11,6 @@
   },
   "dependencies": {
     "app-20-llmchat": "^1.0.0",
-    "@app-20/chat-demo": "0.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-native-web": "^0.21.0"

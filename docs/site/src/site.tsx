@@ -111,17 +111,16 @@ export function DocumentationSite(): ReactElement {
 
           <Section id="examples" title="Live examples">
             <p>
-              This is the released component demo, not a screenshot. Use its deterministic controls
-              to load long conversations and Markdown, start a stream, append chunks, stop with
-              partial content retained, fail and retry, regenerate, load earlier messages, return to
-              latest, switch themes, and replace renderers and controls.
+              This is the released component running live, not a screenshot. Type a prompt and send
+              it to see the controlled composer and the streamed response. Long conversations,
+              Markdown, themes, and custom renderers are covered by the component's own test suite.
             </p>
             <div className="live-example" data-testid="docs.live-example">
               <ChatDemo />
             </div>
             <p className="caption">
-              The example has no network backend. Its transport is deterministic so each state can
-              be inspected and tested locally.
+              The example has no network backend; the transport echoes locally so the composer and
+              streaming states can be exercised without a provider.
             </p>
           </Section>
 
@@ -173,8 +172,8 @@ export function DocumentationSite(): ReactElement {
           <Section id="reference" title="Reference">
             <p>
               Search this table by identifier, behavior, category, or host contract. Every entry
-              targets v{version}. Consumer imports come from <code>app-20-llmchat</code>, not internal
-              paths.
+              targets v{version}. Consumer imports come from <code>app-20-llmchat</code>, not
+              internal paths.
             </p>
             <div className="table-wrap">
               <table>

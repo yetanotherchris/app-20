@@ -35,19 +35,11 @@ test.describe('Documentation site', () => {
     }
   })
 
-  test('live example renders ChatDemo', async ({ page }) => {
+  test('live example renders the chat component', async ({ page }) => {
     await page.goto(baseUrl)
     const example = page.locator('[data-testid="docs.live-example"]')
     await expect(example).toBeVisible()
     await expect(example.locator('[data-testid="chat.root"]')).toBeVisible()
-  })
-
-  test('live demo supports streaming control', async ({ page }) => {
-    await page.goto(baseUrl)
-    await page.click('[data-testid="demo.simulate-streaming"]')
-    await expect(page.locator('[data-testid="chat.message-status.streaming"]')).toBeVisible()
-    await page.click('[data-testid="demo.complete-stream"]')
-    await expect(page.locator('[data-testid="chat.composer.send"]')).toBeVisible()
   })
 
   test('reference table has required columns', async ({ page }) => {
