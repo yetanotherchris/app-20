@@ -39,12 +39,25 @@ async function launchWithKey(): Promise<{ shell: LaunchedShell; fake: FakeOpenRo
   return { shell, fake }
 }
 
+async function launchWithoutKey(): Promise<{ shell: LaunchedShell; fake: FakeOpenRouter }> {
+  const fake = await startFakeOpenRouter()
+  const userDataDir = await mkdtemp(join(tmpdir(), 'app20-user-'))
+  const shell = await launchShell({ openRouterEndpoint: fake.endpoint, userDataDir })
+  await expect(shell.page.getByTestId('shell.topbar')).toBeVisible()
+  return { shell, fake }
+}
+
 async function storedConversation(shell: LaunchedShell): Promise<StoredConversation> {
   await shell.page.getByTestId('shell.save').click()
   await expect(shell.page.getByTestId('shell.dirty')).toHaveText('Saved')
   const names = await listConversationJsonFiles(shell.conversationDir)
   return readConversationJson<StoredConversation>(shell.conversationDir, names[0] as string)
 }
+
+test.beforeAll(() => {
+  // This suite imports keys explicitly; never inherit another file's test key.
+  delete process.env['APP20_TEST_PROVIDER_KEY']
+})
 
 test.describe('US1 - send a message and get a response', () => {
   test('streams a reply with the stored key and records the requested model', async () => {
@@ -85,6 +98,22 @@ test.describe('US1 - send a message and get a response', () => {
       await fake.close()
     }
   })
+
+  test('reports a missing key without calling the provider and keeps the prompt', async () => {
+    const { shell, fake } = await launchWithoutKey()
+    try {
+      await sendPrompt(shell.page, 'no key here')
+
+      await expect(shell.page.getByTestId('shell.notification.error').last()).toContainText(
+        'No provider API key is stored. Import one to continue.',
+      )
+      await expect(shell.page.getByText('no key here')).toBeVisible()
+      expect(fake.requests).toHaveLength(0)
+    } finally {
+      await closeShell(shell)
+      await fake.close()
+    }
+  })
 })
 
 test.describe('US2 - see the response stream', () => {
@@ -112,6 +141,10 @@ test.describe('US2 - see the response stream', () => {
       await shell.page.getByTestId('chat.composer.stop').click()
       await expect(shell.page.getByTestId('chat.composer.stop')).toHaveCount(0)
       await expect(shell.page.getByText('Partial answer')).toBeVisible()
+
+      const stored = await storedConversation(shell)
+      expect(stored.messages.at(-1)?.content).toBe('Partial answer')
+      expect(stored.messages.at(-1)?.status).toBe('stopped')
     } finally {
       await closeShell(shell)
       await fake.close()

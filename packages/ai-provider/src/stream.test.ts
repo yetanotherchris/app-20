@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { ProviderError } from './errors'
 import { parseOpenRouterStream } from './stream'
 import { streamFromStrings } from './testing'
 
@@ -27,16 +26,20 @@ describe('parseOpenRouterStream', () => {
     expect(await collect(parseOpenRouterStream(streamFromStrings(chunks)))).toEqual(['Hi'])
   })
 
-  it('skips blank lines, comments, and unparseable payloads', async () => {
+  it('skips blank lines, comments, and unparseable payloads between deltas', async () => {
     const chunks = [
       '\n',
       ': comment\n',
+      delta('first'),
       'data: {not json}\n\n',
       'data: {"choices":[]}\n\n',
-      delta('kept'),
+      delta('second'),
       'data: [DONE]\n\n',
     ]
-    expect(await collect(parseOpenRouterStream(streamFromStrings(chunks)))).toEqual(['kept'])
+    expect(await collect(parseOpenRouterStream(streamFromStrings(chunks)))).toEqual([
+      'first',
+      'second',
+    ])
   })
 
   it('ignores an empty content delta', async () => {
@@ -47,6 +50,6 @@ describe('parseOpenRouterStream', () => {
   it('throws a network error when the stream ends before [DONE]', async () => {
     await expect(
       collect(parseOpenRouterStream(streamFromStrings([delta('partial')]))),
-    ).rejects.toThrow(ProviderError)
+    ).rejects.toMatchObject({ errorClass: 'network' })
   })
 })

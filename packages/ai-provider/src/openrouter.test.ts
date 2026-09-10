@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest'
-import { ProviderError } from './errors'
 import {
   AUTOMATIC_MODEL,
   createOpenRouterProvider,
@@ -95,6 +94,16 @@ describe('createOpenRouterProvider', () => {
     const provider = createOpenRouterProvider({ apiKey: 'k', fetch: fetchImpl })
     await expect(
       collect(provider.streamChat(REQUEST, new AbortController().signal)),
-    ).rejects.toBeInstanceOf(ProviderError)
+    ).rejects.toMatchObject({ errorClass: 'network' })
+  })
+
+  it('reports a network error when the response has no body', async () => {
+    const provider = createOpenRouterProvider({
+      apiKey: 'k',
+      fetch: fetchReturning({ body: null }),
+    })
+    await expect(
+      collect(provider.streamChat(REQUEST, new AbortController().signal)),
+    ).rejects.toMatchObject({ errorClass: 'network' })
   })
 })
