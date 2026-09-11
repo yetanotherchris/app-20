@@ -24,6 +24,12 @@ describe('atomicWriteFile', () => {
     expect(await readFile(target, 'utf8')).toBe('{"hello":true}')
   })
 
+  it('passes the requested mode when opening the temp file', async () => {
+    const openSpy = vi.spyOn(fs, 'open')
+    await atomicWriteFile(target, 'value', 0o600)
+    expect(openSpy).toHaveBeenCalledWith(expect.any(String), 'wx', 0o600)
+  })
+
   it('overwrites an existing file', async () => {
     await writeFile(target, 'old')
     await atomicWriteFile(target, 'new')

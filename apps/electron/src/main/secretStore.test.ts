@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { chmod, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { promises as fs } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -50,12 +50,28 @@ describe('secret store', () => {
     expect(await readFile(filePath, 'utf8')).toBe('{"providerKey":"enc:sk-or-key"}')
   })
 
-  it('writes the secret file owner-only on POSIX', async () => {
-    await makeStore().write('provider-key', 'sk-or-key')
-    if (process.platform !== 'win32') {
-      expect((await stat(filePath)).mode & 0o777).toBe(0o600)
-      expect((await stat(root)).mode & 0o777).toBe(0o700)
+  it('narrows the directory and file permissions on POSIX', async () => {
+    if (process.platform === 'win32') return
+    // A permissive fixture and umask 0 prove the store applies its own modes
+    // rather than inheriting a restrictive environment.
+    await chmod(root, 0o755)
+    const previousUmask = process.umask(0)
+    try {
+      await makeStore().write('provider-key', 'sk-or-key')
+    } finally {
+      process.umask(previousUmask)
     }
+    expect((await stat(filePath)).mode & 0o777).toBe(0o600)
+    expect((await stat(root)).mode & 0o777).toBe(0o700)
+  })
+
+  it('reports a directory preparation failure as write-failed', async () => {
+    vi.spyOn(fs, 'mkdir').mockRejectedValueOnce(
+      Object.assign(new Error('denied'), { code: 'EACCES' }),
+    )
+    await expect(makeStore().write('provider-key', 'sk-or-key')).rejects.toMatchObject({
+      code: 'write-failed',
+    })
   })
 
   it('writes one kind without disturbing another', async () => {

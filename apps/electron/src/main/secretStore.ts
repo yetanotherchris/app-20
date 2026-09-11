@@ -25,12 +25,17 @@ const SECRET_DIR_MODE = 0o700
 /**
  * Creates the store directory if needed and narrows it to the owner. The chmod
  * also fixes a directory an earlier build created at the default umask. The
- * chmod is POSIX-only; Windows does not apply these bits.
+ * chmod is POSIX-only; Windows does not apply these bits. A failure to prepare
+ * the directory is reported as a write failure so the caller does not believe
+ * the secret was stored.
  */
 async function ensurePrivateDirectory(directory: string): Promise<void> {
-  await fs.mkdir(directory, { recursive: true, mode: SECRET_DIR_MODE })
-  if (process.platform === 'win32') return
-  await fs.chmod(directory, SECRET_DIR_MODE).catch(() => undefined)
+  try {
+    await fs.mkdir(directory, { recursive: true, mode: SECRET_DIR_MODE })
+    if (process.platform !== 'win32') await fs.chmod(directory, SECRET_DIR_MODE)
+  } catch {
+    throw new AppError('write-failed')
+  }
 }
 
 /**
@@ -101,8 +106,8 @@ export function createSecretStore(options: {
       secrets[storageKey] = stored
     }
 
-    // The file is owner read/write only and its directory owner only, so a
-    // multi-user machine cannot read the stored secrets (spec 103 FR-008).
+    // The file is owner read/write only and its directory owner only on POSIX,
+    // so another local user cannot read the stored secrets (research.md R1).
     await ensurePrivateDirectory(dirname(filePath))
     await atomicWriteFile(filePath, JSON.stringify(secrets), SECRET_FILE_MODE)
   }

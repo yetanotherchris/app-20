@@ -8,7 +8,8 @@ let tempCounter = 0
  * Writes a temp file in the target directory, flushes it, then renames it over
  * the target. A failure removes the temp file and rethrows, so the previous
  * target stays intact and the caller keeps the document dirty (constitution III).
- * `mode` sets the permission bits of the new file; a secret file passes 0o600.
+ * `mode` sets the permission bits of the new file, subject to the process umask
+ * on POSIX and ignored on Windows; a secret file passes 0o600.
  */
 export async function atomicWriteFile(
   filePath: string,
