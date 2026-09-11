@@ -62,10 +62,16 @@ test.describe('US1 - import the AI provider key', () => {
       )
       expect((await secretStatus(shell)).providerKey).toBe(true)
 
-      // The secret file lives outside the conversation workspace and is not
-      // plaintext, and the key never reaches the rendered document (FR-002, FR-005).
+      // The payload lives outside the conversation workspace, is an age file,
+      // and is never plaintext; the key never reaches the rendered document
+      // (spec 103 FR-002/FR-005, spec 108 SC-002).
       const rawSecrets = await readFile(join(shell.userDataDir, 'secrets.json.age'), 'utf8')
+      expect(rawSecrets.startsWith('-----BEGIN AGE ENCRYPTED FILE-----')).toBe(true)
       expect(rawSecrets).not.toContain('sk-or-key-one')
+      expect(await readFile(join(shell.userDataDir, 'secrets.key'), 'utf8')).not.toContain(
+        'sk-or-key-one',
+      )
+      expect(existsSync(join(shell.userDataDir, 'secrets.json'))).toBe(false)
       expect(existsSync(join(shell.conversationDir, 'secrets.json.age'))).toBe(false)
       expect(existsSync(join(shell.conversationDir, 'secrets.key'))).toBe(false)
       expect(await shell.page.content()).not.toContain('sk-or-key-one')
