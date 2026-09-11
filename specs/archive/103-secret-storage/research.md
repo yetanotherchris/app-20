@@ -4,11 +4,13 @@ Spec 102 already shipped a working import path in `apps/electron/src/main/secret
 
 ## R1. At-rest protection: Electron `safeStorage`
 
-**Decision**: Encrypt each secret with `safeStorage.encryptString` and store the ciphertext base64-encoded in `secrets.json`. Treat unavailable encryption as a hard failure (`secret-store-unavailable`); never fall back to plaintext.
+**Decision**: Encrypt each secret with `safeStorage.encryptString` and store the ciphertext base64-encoded in `secrets.json`. Treat unavailable encryption (`isEncryptionAvailable()` false) as a hard failure (`secret-store-unavailable`); never fall back to writing plaintext.
 
-**Rationale**: `safeStorage` is backed by the OS credential service (DPAPI on Windows, Keychain on macOS, libsecret on Linux). It needs no new dependency and the plaintext is produced and consumed only in main, which keeps it out of renderer memory and renderer crash dumps (constitution I).
+**Rationale**: `safeStorage` is backed by the OS credential service (DPAPI on Windows, Keychain on macOS, libsecret or KWallet on Linux). It needs no new dependency and the plaintext is produced and consumed only in main, which keeps it out of renderer memory and renderer crash dumps (constitution I). On POSIX the store creates `secrets.json` with mode `0600` and narrows its directory to `0700`, so the default umask cannot leave the ciphertext group- or world-readable.
 
-**Alternatives considered**: Plaintext JSON, rejected because FR-008 and the beta threat model forbid it. `keytar`, rejected because it adds a native module for the same OS service. An age passphrase store, deferred to a future release per `docs/overview.md`.
+On Linux where no keyring is selected, Electron uses the `basic_text` backend and encrypts with a hardcoded key. That value is obfuscated rather than protected, but it is still kept out of the conversation workspace, is never uploaded, and is never rendered (FR-002, FR-005, FR-008). Beta targets Windows and iOS, so the decision is to accept the `basic_text` fallback rather than refuse to store on Linux; refusing would make the app unusable there for a protection the spec does not require.
+
+**Alternatives considered**: Plaintext JSON, rejected because FR-008 and the beta threat model forbid it. `keytar`, rejected because it adds a native module for the same OS service. An age passphrase store, deferred to a future release per `docs/overview.md`. Refusing to store on the Linux `basic_text` backend, rejected because it removes Linux support for a case the spec leaves to the plan.
 
 ## R2. Store layout and extensibility: one file, one entry per kind
 

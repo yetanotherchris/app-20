@@ -27,6 +27,7 @@ The on-disk JSON object at `<appData>/secrets.json`.
 - Every value is a string. A non-string or unreadable entry is ignored on read.
 - Unknown keys are preserved on write so a build with extra kinds does not lose them when an older-kind write happens.
 - The file is written atomically (temp file in the same directory, then rename).
+- On POSIX the file is created `0600` and its directory `0700`, so only the owner can read it. The directory is narrowed on each write, which also fixes a directory an earlier build created at the default umask.
 - A missing file reads as an empty object. A corrupt or unparseable file reads as empty rather than aborting startup; the next import replaces it.
 
 ### SecretStore

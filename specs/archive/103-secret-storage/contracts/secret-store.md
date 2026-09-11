@@ -26,6 +26,7 @@ export function createSecretStore(options: {
 ```
 
 - `write` and `remove` are atomic and preserve entries for other kinds.
+- `write` creates the file `0600` and its directory `0700` on POSIX, so only the owner can read the stored secrets.
 - `remove` on an absent kind resolves without an error.
 - `read` returns null on absence or decrypt failure; it never throws secret material into an error.
 

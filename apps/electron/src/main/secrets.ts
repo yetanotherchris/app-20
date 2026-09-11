@@ -12,12 +12,6 @@ const MAX_SECRET_BYTES = 64 * 1024
 const cipher = {
   encrypt(plaintext: string): string {
     if (!safeStorage.isEncryptionAvailable()) throw new AppError('secret-store-unavailable')
-    // On Linux without a real secret service, safeStorage falls back to a
-    // hardcoded key (basic_text). That is not protection, so refuse to store
-    // rather than write a secret that is only obfuscated.
-    if (process.platform === 'linux' && safeStorage.getSelectedStorageBackend() === 'basic_text') {
-      throw new AppError('secret-store-unavailable')
-    }
     return safeStorage.encryptString(plaintext).toString('base64')
   },
   decrypt(stored: string): string | null {

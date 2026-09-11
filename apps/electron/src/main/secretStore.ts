@@ -1,4 +1,5 @@
 import { promises as fs } from 'node:fs'
+import { dirname } from 'node:path'
 import type { SecretKind, SecretsStatus } from '../shared/ipc-contract'
 import { atomicWriteFile } from './atomicWrite'
 import { AppError } from './errors'
@@ -17,6 +18,20 @@ export interface SecretStore {
 }
 
 type StoredSecrets = Record<string, unknown>
+
+const SECRET_FILE_MODE = 0o600
+const SECRET_DIR_MODE = 0o700
+
+/**
+ * Creates the store directory if needed and narrows it to the owner. The chmod
+ * also fixes a directory an earlier build created at the default umask. The
+ * chmod is POSIX-only; Windows does not apply these bits.
+ */
+async function ensurePrivateDirectory(directory: string): Promise<void> {
+  await fs.mkdir(directory, { recursive: true, mode: SECRET_DIR_MODE })
+  if (process.platform === 'win32') return
+  await fs.chmod(directory, SECRET_DIR_MODE).catch(() => undefined)
+}
 
 /**
  * Reads the on-disk object. Absence is an empty store; a corrupt or
@@ -86,7 +101,10 @@ export function createSecretStore(options: {
       secrets[storageKey] = stored
     }
 
-    await atomicWriteFile(filePath, JSON.stringify(secrets))
+    // The file is owner read/write only and its directory owner only, so a
+    // multi-user machine cannot read the stored secrets (spec 103 FR-008).
+    await ensurePrivateDirectory(dirname(filePath))
+    await atomicWriteFile(filePath, JSON.stringify(secrets), SECRET_FILE_MODE)
   }
 
   return {

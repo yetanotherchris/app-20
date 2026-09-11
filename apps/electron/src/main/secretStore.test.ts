@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { promises as fs } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -48,6 +48,14 @@ describe('secret store', () => {
   it('encrypts the stored value', async () => {
     await makeStore().write('provider-key', 'sk-or-key')
     expect(await readFile(filePath, 'utf8')).toBe('{"providerKey":"enc:sk-or-key"}')
+  })
+
+  it('writes the secret file owner-only on POSIX', async () => {
+    await makeStore().write('provider-key', 'sk-or-key')
+    if (process.platform !== 'win32') {
+      expect((await stat(filePath)).mode & 0o777).toBe(0o600)
+      expect((await stat(root)).mode & 0o777).toBe(0o700)
+    }
   })
 
   it('writes one kind without disturbing another', async () => {
