@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-11
 
-**Status**: Draft
+**Status**: Archived
 
 **Input**: User description: "The provider-key gate: when no OpenRouter API key is stored, the app presents the key import flow (spec 103) before or at the user's first send, so the first prompt is not sent into a missing-key error. Extracted from the former spec 105 chat-session-flow."
 
@@ -73,3 +73,7 @@ A user with a key never sees the gate.
 - Whether the retained prompt auto-sends after a successful import or waits for the user to send again is a plan decision; the spec requires only that the prompt is not lost.
 - The gate shares one flow across desktop and iOS through the shared component (spec 106), using the platform file chooser on desktop and the platform document picker on iOS.
 - This extracts the first-send key requirement formerly in spec 105 FR-008.
+
+## Clarifications
+
+- 2026-09-11: This spec implements the desktop host. The iOS document-picker host is implemented with spec 106, whose FR-008 requires it to reuse this gate behavior. No iOS application source exists in this repository while spec 106 is planned.

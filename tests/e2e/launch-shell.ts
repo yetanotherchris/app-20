@@ -103,11 +103,28 @@ export async function clickMenuItem(app: ElectronApplication, label: string): Pr
 
 export async function stubOpenDialog(app: ElectronApplication, filePaths: string[]): Promise<void> {
   await app.evaluate(({ dialog }, paths) => {
+    const scope = globalThis as { __openDialogCalls?: number }
+    scope.__openDialogCalls = 0
     dialog.showOpenDialog = (async () => ({
       canceled: false,
       filePaths: paths,
     })) as typeof dialog.showOpenDialog
   }, filePaths)
+}
+
+export async function stubCancelledOpenDialog(app: ElectronApplication): Promise<void> {
+  await app.evaluate(({ dialog }) => {
+    const scope = globalThis as { __openDialogCalls?: number }
+    scope.__openDialogCalls = 0
+    dialog.showOpenDialog = (async () => {
+      scope.__openDialogCalls = (scope.__openDialogCalls ?? 0) + 1
+      return { canceled: true, filePaths: [] }
+    }) as typeof dialog.showOpenDialog
+  })
+}
+
+export async function readOpenDialogCalls(app: ElectronApplication): Promise<number> {
+  return app.evaluate(() => (globalThis as { __openDialogCalls?: number }).__openDialogCalls ?? 0)
 }
 
 export async function recordExternalOpens(app: ElectronApplication): Promise<void> {

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { startTransition, useCallback, useEffect, useRef, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { LLMChat } from 'app-20-llmchat'
 import type { AppErrorCode } from '../../shared/error-codes'
@@ -21,7 +21,10 @@ export function App() {
   const sync = useSyncStatus()
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [chatRootKey, setChatRootKey] = useState(0)
+  const [isProviderKeyGatePending, setProviderKeyGatePending] = useState(false)
   const notificationIdRef = useRef(0)
+  const providerKeyGatePendingRef = useRef(false)
 
   const pushNotification = useCallback((level: NotificationLevel, message: string) => {
     notificationIdRef.current += 1
@@ -91,7 +94,7 @@ export function App() {
   }, [drawerOpen])
 
   const runImport = useCallback(
-    async (kind: SecretKind) => {
+    async (kind: SecretKind): Promise<boolean> => {
       const result =
         kind === 'provider-key'
           ? await window.appBridge.importProviderKey()
@@ -101,12 +104,41 @@ export function App() {
           'info',
           kind === 'provider-key' ? 'Provider API key imported.' : 'S3 credentials imported.',
         )
+        return true
       } else if (result.code !== 'chooser-cancelled') {
         pushNotification('error', messageForCode(result.code))
       }
+      return false
     },
     [pushNotification],
   )
+
+  const submitPrompt = useCallback(async () => {
+    if (providerKeyGatePendingRef.current) return
+    providerKeyGatePendingRef.current = true
+    setProviderKeyGatePending(true)
+    try {
+      const status = await window.appBridge.getSecretsStatus()
+      if (!status.ok) {
+        reportCode(status.code)
+        return
+      }
+      if (!status.value.providerKey) {
+        if (!(await runImport('provider-key'))) {
+          // The shared chat root consumes submit events, so remount it after a
+          // rejected gate while retaining the session-owned draft.
+          startTransition(() => setChatRootKey((previous) => previous + 1))
+          return
+        }
+      }
+      session.submit()
+    } catch {
+      reportError(messageForCode('unknown'))
+    } finally {
+      providerKeyGatePendingRef.current = false
+      setProviderKeyGatePending(false)
+    }
+  }, [session, runImport, reportCode, reportError])
 
   const runRemove = useCallback(
     async (kind: SecretKind) => {
@@ -162,11 +194,11 @@ export function App() {
 
   return (
     <View style={styles.app}>
-        <ShellTopBar
-          workspaceName={folder.info?.displayName ?? null}
-          sync={sync}
-          onOpenHistory={openHistory}
-          onNewConversation={createNewConversation}
+      <ShellTopBar
+        workspaceName={folder.info?.displayName ?? null}
+        sync={sync}
+        onOpenHistory={openHistory}
+        onNewConversation={createNewConversation}
       />
       {folder.error ? (
         <View style={styles.folderError} testID="shell.folder-error">
@@ -175,14 +207,15 @@ export function App() {
       ) : null}
       <View style={styles.chat}>
         <LLMChat.Root
+          key={chatRootKey}
           messages={session.messages}
           draft={session.draft}
           status={session.status}
           hasEarlierMessages={false}
           isLoadingEarlier={false}
-          disabled={!folderReady}
+          disabled={!folderReady || isProviderKeyGatePending}
           onChangeDraft={session.setDraft}
-          onSubmit={session.submit}
+          onSubmit={submitPrompt}
           onStop={session.stop}
           onLoadEarlier={() => undefined}
           messageActions={session.messageActions}
