@@ -16,7 +16,7 @@ Intercept a submit in the renderer before `useShellSession.submit`. The gate rea
 
 **Storage**: No new storage. Provider keys remain in the spec 103 encrypted secret store, with `OPENROUTER_API_KEY` taking precedence.
 
-**Testing**: Playwright against the built Electron app, with the native file chooser stubbed in the main process. The suite verifies gating, cancellation, retained draft, import followed by the original send, and environment-key bypass.
+**Testing**: Playwright against the built Electron app, with the native file chooser stubbed in the main process. The suite verifies gating, cancellation and failed-import draft retention, retry after cancellation, import followed by the original send, environment-key bypass, and the retained main-process missing-key fallback.
 
 **Target Platform**: Windows desktop. The renderer flow remains independent of the desktop chooser implementation so the shared UI can use the iOS picker under spec 106.
 
@@ -24,7 +24,7 @@ Intercept a submit in the renderer before `useShellSession.submit`. The gate rea
 
 **Performance Goals**: One on-demand status IPC call per submit. No startup secret read or plaintext exposure.
 
-**Constraints**: The renderer receives only the existing key-availability boolean and typed result codes. A prompt must not reach `chat:start` while the gate is active. The existing provider missing-key handling remains for keys removed after the status check.
+**Constraints**: The renderer receives only the existing key-availability boolean and typed result codes. A prompt must not reach `chat:start` while the gate is active. A pending gate blocks duplicate import dialogs. The existing provider missing-key handling remains for keys removed after the status check.
 
 **Scale/Scope**: Single user, one provider key, one active composer.
 

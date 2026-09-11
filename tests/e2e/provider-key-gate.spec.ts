@@ -67,6 +67,32 @@ test.describe('US1 - import the key at first send', () => {
       await expect.poll(() => readOpenDialogCalls(shell.app)).toBe(1)
       await expect(shell.page.getByTestId('chat.composer.input')).toHaveValue('keep this draft')
       expect(fake.requests).toHaveLength(0)
+
+      const keyFile = await writeKeyFile(shell.userDataDir, 'provider-key.txt', 'sk-or-retry')
+      await stubOpenDialog(shell.app, [keyFile])
+      await shell.page.getByTestId('chat.composer.send').click()
+      await expect(shell.page.getByText('Echo: keep this draft')).toBeVisible()
+      expect(fake.requests.at(-1)?.authorization).toBe('Bearer sk-or-retry')
+    } finally {
+      await closeShell(shell)
+    }
+  })
+
+  test('retains the draft after a failed import', async () => {
+    const shell = await launch()
+    try {
+      const invalidKeyFile = await writeKeyFile(shell.userDataDir, 'invalid-key.txt', 'not\nkey')
+      await stubOpenDialog(shell.app, [invalidKeyFile])
+
+      fake.reset()
+      await sendPrompt(shell, 'keep failed import draft')
+      await expect(shell.page.getByTestId('shell.notification.error').last()).toContainText(
+        'not a valid credential file',
+      )
+      await expect(shell.page.getByTestId('chat.composer.input')).toHaveValue(
+        'keep failed import draft',
+      )
+      expect(fake.requests).toHaveLength(0)
     } finally {
       await closeShell(shell)
     }
@@ -102,6 +128,26 @@ test.describe('US2 - available keys skip the gate', () => {
       await expect(shell.page.getByText('Echo: environment key')).toBeVisible()
       expect(await readOpenDialogCalls(shell.app)).toBe(0)
       expect(fake.requests.at(-1)?.authorization).toBe('Bearer sk-or-environment')
+    } finally {
+      await closeShell(shell)
+    }
+  })
+})
+
+test.describe('Edge cases', () => {
+  test('retains the main-process missing-key fallback', async () => {
+    const shell = await launch()
+    try {
+      fake.reset()
+      const result = await shell.page.evaluate(() =>
+        window.appBridge.startChat({
+          requestId: 'missing-key-fallback',
+          messages: [{ role: 'user', content: 'provider key disappeared' }],
+        }),
+      )
+
+      expect(result).toMatchObject({ ok: false, code: 'missing-key' })
+      expect(fake.requests).toHaveLength(0)
     } finally {
       await closeShell(shell)
     }

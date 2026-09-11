@@ -26,3 +26,9 @@
 **Decision**: Do not remove `chat:start` missing-key handling.
 
 **Rationale**: A key can be removed after the pre-submit status check. The existing stream-start error path reports `missing-key` and keeps the chat component's retryable prompt, meeting FR-005.
+
+## R4: Reset the shared chat root after an unsuccessful gate
+
+**Decision**: Remount `LLMChat.Root` after a cancelled or failed import while retaining the draft in `useShellSession`.
+
+**Rationale**: The shared component consumes the submit event before the host callback returns and does not provide a rejected-submit reset operation. Remounting only the presentational root restores its Send control without losing session-owned messages or draft text.

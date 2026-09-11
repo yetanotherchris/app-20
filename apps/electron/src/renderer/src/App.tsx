@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { startTransition, useCallback, useEffect, useRef, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { LLMChat } from 'app-20-llmchat'
 import type { AppErrorCode } from '../../shared/error-codes'
@@ -21,7 +21,10 @@ export function App() {
   const sync = useSyncStatus()
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [chatRootKey, setChatRootKey] = useState(0)
+  const [isProviderKeyGatePending, setProviderKeyGatePending] = useState(false)
   const notificationIdRef = useRef(0)
+  const providerKeyGatePendingRef = useRef(false)
 
   const pushNotification = useCallback((level: NotificationLevel, message: string) => {
     notificationIdRef.current += 1
@@ -111,6 +114,9 @@ export function App() {
   )
 
   const submitPrompt = useCallback(async () => {
+    if (providerKeyGatePendingRef.current) return
+    providerKeyGatePendingRef.current = true
+    setProviderKeyGatePending(true)
     try {
       const status = await window.appBridge.getSecretsStatus()
       if (!status.ok) {
@@ -118,11 +124,19 @@ export function App() {
         return
       }
       if (!status.value.providerKey) {
-        if (!(await runImport('provider-key'))) return
+        if (!(await runImport('provider-key'))) {
+          // The shared chat root consumes submit events, so remount it after a
+          // rejected gate while retaining the session-owned draft.
+          startTransition(() => setChatRootKey((previous) => previous + 1))
+          return
+        }
       }
       session.submit()
     } catch {
       reportError(messageForCode('unknown'))
+    } finally {
+      providerKeyGatePendingRef.current = false
+      setProviderKeyGatePending(false)
     }
   }, [session, runImport, reportCode, reportError])
 
@@ -193,12 +207,13 @@ export function App() {
       ) : null}
       <View style={styles.chat}>
         <LLMChat.Root
+          key={chatRootKey}
           messages={session.messages}
           draft={session.draft}
           status={session.status}
           hasEarlierMessages={false}
           isLoadingEarlier={false}
-          disabled={!folderReady}
+          disabled={!folderReady || isProviderKeyGatePending}
           onChangeDraft={session.setDraft}
           onSubmit={submitPrompt}
           onStop={session.stop}
