@@ -1,3 +1,6 @@
+import { existsSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { test, expect, type Page } from '@playwright/test'
 import {
   clickMenuItem,
@@ -59,6 +62,13 @@ test.describe('US1 - import the AI provider key', () => {
       )
       expect((await secretStatus(shell)).providerKey).toBe(true)
 
+      // The secret file lives outside the conversation workspace and is not
+      // plaintext, and the key never reaches the rendered document (FR-002, FR-005).
+      const rawSecrets = await readFile(join(shell.userDataDir, 'secrets.json'), 'utf8')
+      expect(rawSecrets).not.toContain('sk-or-key-one')
+      expect(existsSync(join(shell.conversationDir, 'secrets.json'))).toBe(false)
+      expect(await shell.page.content()).not.toContain('sk-or-key-one')
+
       fake.reset()
       await sendPrompt(shell.page, 'use the imported key')
       await expect(shell.page.getByText('Echo: use the imported key')).toBeVisible()
@@ -72,13 +82,9 @@ test.describe('US1 - import the AI provider key', () => {
     const shell = await launch()
     try {
       await importFile(shell, 'Import Provider API Key...', 'provider-key.txt', 'sk-or-key-one')
-      await expect(shell.page.getByTestId('shell.notification.info').last()).toContainText(
-        'Provider API key imported',
-      )
+      await expect(shell.page.getByTestId('shell.notification.info')).toHaveCount(1)
       await importFile(shell, 'Import Provider API Key...', 'provider-key.txt', 'sk-or-key-two')
-      await expect(shell.page.getByTestId('shell.notification.info').last()).toContainText(
-        'Provider API key imported',
-      )
+      await expect(shell.page.getByTestId('shell.notification.info')).toHaveCount(2)
 
       fake.reset()
       await sendPrompt(shell.page, 'use the new key')
@@ -165,16 +171,31 @@ test.describe('US2 - import S3 credentials', () => {
       await expect(shell.page.getByTestId('shell.notification.info').last()).toContainText(
         'S3 credentials imported',
       )
+      const first = await readFile(join(shell.userDataDir, 'secrets.json'), 'utf8')
+
       await importFile(
         shell,
         'Import S3 Credentials...',
         's3.json',
         JSON.stringify({ accessKeyId: 'AKIATWO', secretAccessKey: 'secret-two' }),
       )
-      await expect(shell.page.getByTestId('shell.notification.info').last()).toContainText(
-        'S3 credentials imported',
-      )
+      await expect(shell.page.getByTestId('shell.notification.info')).toHaveCount(2)
+      const second = await readFile(join(shell.userDataDir, 'secrets.json'), 'utf8')
+      expect(second).not.toBe(first)
       expect((await secretStatus(shell)).s3).toBe(true)
+    } finally {
+      await closeShell(shell)
+    }
+  })
+
+  test('rejects a file larger than the size cap', async () => {
+    const shell = await launch()
+    try {
+      await importFile(shell, 'Import Provider API Key...', 'big-key.txt', 'x'.repeat(70 * 1024))
+      await expect(shell.page.getByTestId('shell.notification.error').last()).toContainText(
+        'not a valid credential file',
+      )
+      expect((await secretStatus(shell)).providerKey).toBe(false)
     } finally {
       await closeShell(shell)
     }
@@ -238,6 +259,22 @@ test.describe('US3 - remove a stored secret', () => {
         'Provider API key removed',
       )
       expect((await secretStatus(shell)).providerKey).toBe(false)
+
+      const result = await shell.page.evaluate(() => window.appBridge.removeSecret('provider-key'))
+      expect(result).toEqual({ ok: true, value: { kind: 'provider-key' } })
+    } finally {
+      await closeShell(shell)
+    }
+  })
+
+  test('refuses an unknown secret kind over IPC', async () => {
+    const shell = await launch()
+    try {
+      const result = await shell.page.evaluate(() =>
+        window.appBridge.removeSecret('token' as never),
+      )
+      expect(result.ok).toBe(false)
+      if (!result.ok) expect(result.code).toBe('invalid-secret')
     } finally {
       await closeShell(shell)
     }

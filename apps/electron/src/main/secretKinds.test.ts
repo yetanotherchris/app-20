@@ -14,6 +14,13 @@ describe('provider key validation', () => {
     })
   })
 
+  it('accepts a file with surrounding blank lines', () => {
+    expect(validateSecret('provider-key', '\n\n sk-or-v1-abc \n\n')).toEqual({
+      ok: true,
+      value: 'sk-or-v1-abc',
+    })
+  })
+
   it('rejects an empty file', () => {
     expect(validateSecret('provider-key', '   ').ok).toBe(false)
   })
@@ -38,6 +45,13 @@ describe('provider key validation', () => {
 
   it('rejects a JSON file as a provider key', () => {
     expect(validateSecret('provider-key', '{"apiKey":"sk-or"}')).toEqual({
+      ok: false,
+      code: 'invalid-secret',
+    })
+  })
+
+  it('rejects a JSON array as a provider key', () => {
+    expect(validateSecret('provider-key', '[{"accessKeyId":"a","secretAccessKey":"b"}]')).toEqual({
       ok: false,
       code: 'invalid-secret',
     })
