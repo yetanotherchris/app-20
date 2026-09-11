@@ -163,6 +163,19 @@ describe('secret store', () => {
     await expect(makeStore().status()).rejects.toMatchObject({ code: 'read-failed' })
   })
 
+  it('surfaces a cipher failure from a read', async () => {
+    await writeFile(filePath, await cipher.encrypt(JSON.stringify({ providerKey: 'x' })))
+    const failing: SecretCipher = {
+      encrypt: cipher.encrypt,
+      decrypt: async () => {
+        throw new AppError('read-failed')
+      },
+    }
+    await expect(
+      createSecretStore({ filePath, cipher: failing }).status(),
+    ).rejects.toMatchObject({ code: 'read-failed' })
+  })
+
   it('ignores a non-string stored entry', async () => {
     await writeFile(filePath, await encryptPayload({ providerKey: 5 }))
     const store = makeStore()

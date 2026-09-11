@@ -5,6 +5,7 @@ import { test, expect, type Page } from '@playwright/test'
 import {
   clickMenuItem,
   closeShell,
+  forceExitShell,
   launchShell,
   stubOpenDialog,
   writeKeyFile,
@@ -284,6 +285,38 @@ test.describe('US3 - remove a stored secret', () => {
       if (!result.ok) expect(result.code).toBe('invalid-secret')
     } finally {
       await closeShell(shell)
+    }
+  })
+})
+
+test.describe('US1 - the vault passphrase survives a restart', () => {
+  test('reuses the stored passphrase and still sends the key', async () => {
+    const first = await launch()
+    let second: LaunchedShell | undefined
+    try {
+      await importFile(first, 'Import Provider API Key...', 'provider-key.txt', 'sk-or-restart')
+      await expect(first.page.getByTestId('shell.notification.info').last()).toContainText(
+        'Provider API key imported',
+      )
+
+      // The passphrase file must be re-read and the payload decrypted, not
+      // regenerated (spec 108: the passphrase is stable across restarts).
+      await forceExitShell(first.app)
+      second = await launchShell({
+        userDataDir: first.userDataDir,
+        conversationDir: first.conversationDir,
+        openRouterEndpoint: fake.endpoint,
+      })
+      await expect(second.page.getByTestId('shell.topbar')).toBeVisible()
+      expect((await secretStatus(second)).providerKey).toBe(true)
+
+      fake.reset()
+      await sendPrompt(second.page, 'after restart')
+      await expect(second.page.getByText('Echo: after restart')).toBeVisible()
+      expect(fake.requests.at(-1)?.authorization).toBe('Bearer sk-or-restart')
+    } finally {
+      await closeShell(second)
+      await closeShell(first)
     }
   })
 })
