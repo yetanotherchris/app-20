@@ -8,6 +8,7 @@ import { parseS3Config, type S3Config } from './s3Config'
 import { decodeEncrypted, encodeEncrypted } from './secretEncoding'
 import { validateSecret } from './secretKinds'
 import { createSecretStore, type SecretStore } from './secretStore'
+import { resolveProviderKey } from './providerKey'
 
 const MAX_SECRET_BYTES = 64 * 1024
 
@@ -59,16 +60,24 @@ function secretStore(): SecretStore {
 }
 
 export async function getSecretsStatus(): Promise<SecretsStatus> {
-  return secretStore().status()
+  const status = await secretStore().status()
+  if (status.providerKey) return status
+  return { ...status, providerKey: resolveProviderKey(providerKeyEnv(), null) !== null }
 }
 
 /**
- * Decrypts the stored provider key for the main-process provider only. The
- * plaintext never leaves this process and is never logged or returned to the
- * renderer (spec 103 FR-005). An absent or unreadable secret returns null.
+ * Decrypts the stored provider key for the main-process provider only, after
+ * checking the OPENROUTER_API_KEY environment variable. The env value wins so a
+ * key can be supplied without an import. The plaintext never leaves this
+ * process and is never logged or returned to the renderer (spec 103 FR-005). An
+ * absent or unreadable secret returns null.
  */
 export async function getProviderKey(): Promise<string | null> {
-  return secretStore().read('provider-key')
+  return resolveProviderKey(providerKeyEnv(), await secretStore().read('provider-key'))
+}
+
+function providerKeyEnv(): string | undefined {
+  return process.env['OPENROUTER_API_KEY']
 }
 
 /**

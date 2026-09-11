@@ -85,9 +85,14 @@ The user removes a stored secret; the dependent feature fails clearly until a ne
 - **SC-004**: Secrets never appear in logs or user-visible errors.
 - **SC-005**: After removal, the dependent feature fails with the missing-credential error until re-import.
 
+## Clarifications
+
+### Session 2026-09-11
+
+- The provider API key resolves from two sources: the `OPENROUTER_API_KEY` environment variable first, then the stored secret. The environment value is trimmed and an empty value is ignored. This applies in every build, including packaged builds, and an environment key is never written to the store. The S3 credential is unaffected and remains store-only.
+
 ## Assumptions
 
-- The app is single-user; secrets belong to that user on that device.
-- Beta uses file-based import; OAuth flows arrive with future providers.
+- The app is single-user; secrets belong to that user on that device.- Beta uses file-based import; OAuth flows arrive with future providers.
 - Secrets are never committed to the repository.
 - The at-rest protection mechanism (such as a platform credential store) is decided in the plan; the spec requires only that secrets stay out of the workspace and the bucket.

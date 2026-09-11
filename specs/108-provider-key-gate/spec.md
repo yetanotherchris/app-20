@@ -69,7 +69,7 @@ A user with a key never sees the gate.
 
 ## Assumptions
 
-- The import mechanism, validation, and storage are owned by spec 103 (archived).
+- The import mechanism, validation, and storage are owned by spec 103 (archived). The provider key may also come from the `OPENROUTER_API_KEY` environment variable, which takes precedence over the stored key (spec 103 Clarifications). A key from the environment counts as available, so the gate does not appear.
 - Whether the retained prompt auto-sends after a successful import or waits for the user to send again is a plan decision; the spec requires only that the prompt is not lost.
 - The gate shares one flow across desktop and iOS through the shared component (spec 106), using the platform file chooser on desktop and the platform document picker on iOS.
 - This extracts the first-send key requirement formerly in spec 105 FR-008.
