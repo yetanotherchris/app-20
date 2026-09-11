@@ -11,40 +11,67 @@ export interface SecretKindDefinition {
 
 const MAX_PROVIDER_KEY_CHARS = 8192
 
+/**
+ * JSON field names that identify a kind. A file that carries another kind's
+ * fields is rejected so one import stores one secret (spec 103 edge cases).
+ */
+const JSON_MARKERS: Record<SecretKind, readonly string[]> = {
+  'provider-key': ['providerKey', 'apiKey'],
+  s3: ['accessKeyId', 'secretAccessKey'],
+}
+
 function invalid(): ValidationResult {
   return { ok: false, code: 'invalid-secret' }
 }
 
+function multiple(): ValidationResult {
+  return { ok: false, code: 'multiple-secrets' }
+}
+
+function parseJsonObject(raw: string): Record<string, unknown> | null {
+  const trimmed = raw.trim()
+  if (!trimmed.startsWith('{')) return null
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(trimmed)
+  } catch {
+    return null
+  }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return null
+  return parsed as Record<string, unknown>
+}
+
+function carriesAnotherKind(kind: SecretKind, value: Record<string, unknown>): boolean {
+  return Object.entries(JSON_MARKERS).some(
+    ([other, markers]) => other !== kind && markers.some((marker) => marker in value),
+  )
+}
+
 function validateProviderKey(raw: string): ValidationResult {
+  const json = parseJsonObject(raw)
+  if (json) return carriesAnotherKind('provider-key', json) ? multiple() : invalid()
+
   const value = raw.trim()
-  if (
-    value.length === 0 ||
-    value.length > MAX_PROVIDER_KEY_CHARS ||
-    value.includes('\n') ||
-    value.includes('\r')
-  ) {
+  if (value.length === 0 || value.length > MAX_PROVIDER_KEY_CHARS || /\s/.test(value)) {
     return invalid()
   }
   return { ok: true, value }
 }
 
 function validateS3Credentials(raw: string): ValidationResult {
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(raw)
-  } catch {
-    return invalid()
-  }
-  if (parsed === null || typeof parsed !== 'object') return invalid()
+  const json = parseJsonObject(raw)
+  if (!json) return invalid()
+  if (carriesAnotherKind('s3', json)) return multiple()
 
-  const value = parsed as { accessKeyId?: unknown; secretAccessKey?: unknown }
-  if (typeof value.accessKeyId !== 'string' || value.accessKeyId.trim().length === 0) {
-    return invalid()
+  const { accessKeyId, secretAccessKey } = json
+  if (typeof accessKeyId !== 'string' || accessKeyId.trim().length === 0) return invalid()
+  if (typeof secretAccessKey !== 'string' || secretAccessKey.trim().length === 0) return invalid()
+
+  const normalized = {
+    accessKeyId: accessKeyId.trim(),
+    secretAccessKey: secretAccessKey.trim(),
   }
-  if (typeof value.secretAccessKey !== 'string' || value.secretAccessKey.trim().length === 0) {
-    return invalid()
-  }
-  return { ok: true, value: raw }
+  return { ok: true, value: JSON.stringify(normalized) }
 }
 
 /**

@@ -25,6 +25,23 @@ describe('provider key validation', () => {
   it('rejects a second line', () => {
     expect(validateSecret('provider-key', 'first\nsecond').ok).toBe(false)
   })
+
+  it('rejects internal whitespace', () => {
+    expect(validateSecret('provider-key', 'sk-or key').ok).toBe(false)
+  })
+
+  it('rejects a JSON file as a provider key', () => {
+    expect(validateSecret('provider-key', '{"apiKey":"sk-or"}')).toEqual({
+      ok: false,
+      code: 'invalid-secret',
+    })
+  })
+
+  it('rejects an S3 file imported as a provider key with multiple-secrets', () => {
+    expect(
+      validateSecret('provider-key', JSON.stringify({ accessKeyId: 'a', secretAccessKey: 'b' })),
+    ).toEqual({ ok: false, code: 'multiple-secrets' })
+  })
 })
 
 describe('s3 credential validation', () => {
@@ -48,6 +65,26 @@ describe('s3 credential validation', () => {
     expect(
       validateSecret('s3', JSON.stringify({ accessKeyId: 'AKIA', secretAccessKey: ' ' })).ok,
     ).toBe(false)
+  })
+
+  it('trims and stores only the credential fields', () => {
+    const result = validateSecret(
+      's3',
+      JSON.stringify({ accessKeyId: ' AKIA ', secretAccessKey: ' secret ', region: 'eu' }),
+    )
+    expect(result).toEqual({
+      ok: true,
+      value: JSON.stringify({ accessKeyId: 'AKIA', secretAccessKey: 'secret' }),
+    })
+  })
+
+  it('rejects a file that also carries a provider key with multiple-secrets', () => {
+    expect(
+      validateSecret(
+        's3',
+        JSON.stringify({ accessKeyId: 'a', secretAccessKey: 'b', providerKey: 'sk' }),
+      ),
+    ).toEqual({ ok: false, code: 'multiple-secrets' })
   })
 })
 
