@@ -25,8 +25,8 @@ test.afterAll(async () => {
   await fake.close()
 })
 
-async function launch(): Promise<LaunchedShell> {
-  const shell = await launchShell({ openRouterEndpoint: fake.endpoint })
+async function launch(openRouterApiKey?: string): Promise<LaunchedShell> {
+  const shell = await launchShell({ openRouterEndpoint: fake.endpoint, openRouterApiKey })
   await expect(shell.page.getByTestId('shell.topbar')).toBeVisible()
   return shell
 }
@@ -310,6 +310,82 @@ test.describe('US1 - the stored secret survives a restart', () => {
     } finally {
       await closeShell(second)
       await closeShell(first)
+    }
+  })
+})
+
+test.describe('US4 - the provider key may come from the environment', () => {
+  test('uses OPENROUTER_API_KEY with no import and reports it present', async () => {
+    const shell = await launch('sk-or-from-env')
+    try {
+      expect((await secretStatus(shell)).providerKey).toBe(true)
+
+      fake.reset()
+      await sendPrompt(shell.page, 'env key')
+      await expect(shell.page.getByText('Echo: env key')).toBeVisible()
+      expect(fake.requests.at(-1)?.authorization).toBe('Bearer sk-or-from-env')
+    } finally {
+      await closeShell(shell)
+    }
+  })
+
+  test('prefers the environment value over a stored key', async () => {
+    const first = await launch()
+    let second: LaunchedShell | undefined
+    try {
+      await importFile(first, 'Import Provider API Key...', 'provider-key.txt', 'sk-or-stored')
+      await expect(first.page.getByTestId('shell.notification.info').last()).toContainText(
+        'Provider API key imported',
+      )
+      expect((await secretStatus(first)).providerKey).toBe(true)
+      await forceExitShell(first.app)
+
+      second = await launchShell({
+        userDataDir: first.userDataDir,
+        conversationDir: first.conversationDir,
+        openRouterEndpoint: fake.endpoint,
+        openRouterApiKey: 'sk-or-from-env',
+      })
+      await expect(second.page.getByTestId('shell.topbar')).toBeVisible()
+
+      fake.reset()
+      await sendPrompt(second.page, 'env wins')
+      await expect(second.page.getByText('Echo: env wins')).toBeVisible()
+      expect(fake.requests.at(-1)?.authorization).toBe('Bearer sk-or-from-env')
+    } finally {
+      await closeShell(second)
+      await closeShell(first)
+    }
+  })
+
+  test('does not persist an environment key', async () => {
+    const first = await launch('sk-or-from-env')
+    let second: LaunchedShell | undefined
+    try {
+      await sendPrompt(first.page, 'env not stored')
+      await expect(first.page.getByText('Echo: env not stored')).toBeVisible()
+      expect(existsSync(join(first.userDataDir, 'secrets.json'))).toBe(false)
+      await forceExitShell(first.app)
+
+      second = await launchShell({
+        userDataDir: first.userDataDir,
+        conversationDir: first.conversationDir,
+        openRouterEndpoint: fake.endpoint,
+      })
+      await expect(second.page.getByTestId('shell.topbar')).toBeVisible()
+      expect((await secretStatus(second)).providerKey).toBe(false)
+    } finally {
+      await closeShell(second)
+      await closeShell(first)
+    }
+  })
+
+  test('ignores a blank environment value', async () => {
+    const shell = await launch('   ')
+    try {
+      expect((await secretStatus(shell)).providerKey).toBe(false)
+    } finally {
+      await closeShell(shell)
     }
   })
 })
