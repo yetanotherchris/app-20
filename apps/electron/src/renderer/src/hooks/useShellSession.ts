@@ -26,6 +26,12 @@ export interface ShellSession {
   submit: () => void
   stop: () => void
   newConversation: () => void
+  /**
+   * Switch the active conversation to `id`. Selecting the active conversation
+   * returns null without a reload or draft change. Otherwise the current
+   * conversation is saved first and the switch aborts with the blocking code.
+   */
+  openConversation: (id: string) => Promise<AppErrorCode | null>
   onMessageAction: (action: MessageAction, message: Message) => void
   /** Returns null on success, or the error code that blocked the save. */
   save: () => Promise<AppErrorCode | null>
@@ -53,6 +59,8 @@ export function useShellSession(
   const messagesRef = useRef<readonly Message[]>([])
   const draftRef = useRef(draft)
   draftRef.current = draft
+  const dirtyRef = useRef(dirty)
+  dirtyRef.current = dirty
 
   const request = useCallback(
     (operation: ChatOperation, controls: ChatSessionControls) => {
@@ -178,6 +186,18 @@ export function useShellSession(
     abortActiveRequest()
   }, [stopChatOperation, abortActiveRequest])
 
+  const applyConversation = useCallback(
+    (conversation: Conversation) => {
+      baseConversationRef.current = conversation
+      replaceMessages(fromConversation(conversation))
+      setDraftState(conversation.draft ?? '')
+      conversationIdRef.current = conversation.id
+      conversationCreatedAtRef.current = conversation.createdAt
+      setDirty(false)
+    },
+    [replaceMessages],
+  )
+
   const newConversation = useCallback(() => {
     stopChatOperation()
     abortActiveRequest()
@@ -188,6 +208,31 @@ export function useShellSession(
     setDraftState('')
     setDirty(true)
   }, [stopChatOperation, abortActiveRequest, replaceMessages])
+
+  const openConversation = useCallback(
+    async (id: string): Promise<AppErrorCode | null> => {
+      if (id === conversationIdRef.current) return null
+
+      // No autosave yet (spec 107 owns it), so persist the current conversation
+      // before switching and abort if that fails (constitution III). An empty,
+      // untouched new conversation is not written.
+      if (dirtyRef.current && hasUserActivity()) {
+        const code = await save()
+        if (code !== null) return code
+      }
+
+      // Read before stopping, so a failed read leaves an in-flight response
+      // running on the conversation that stays active.
+      const read = await window.appBridge.readConversation(id)
+      if (!read.ok) return read.code
+
+      stopChatOperation()
+      abortActiveRequest()
+      applyConversation(read.value.conversation)
+      return null
+    },
+    [save, stopChatOperation, abortActiveRequest, hasUserActivity, applyConversation],
+  )
 
   useEffect(() => {
     stopChatOperation()
@@ -226,13 +271,7 @@ export function useShellSession(
         if (cancelled) return
         if (hasUserActivity()) return
         if (read.ok) {
-          const conversation = read.value.conversation
-          baseConversationRef.current = conversation
-          replaceMessages(fromConversation(conversation))
-          setDraftState(conversation.draft ?? '')
-          conversationIdRef.current = conversation.id
-          conversationCreatedAtRef.current = conversation.createdAt
-          setDirty(false)
+          applyConversation(read.value.conversation)
           return
         }
         if (read.code === 'conversation-corrupt' && !reportedCorrupt) {
@@ -250,6 +289,7 @@ export function useShellSession(
     stopChatOperation,
     abortActiveRequest,
     replaceMessages,
+    applyConversation,
     reportError,
     hasUserActivity,
   ])
@@ -265,6 +305,7 @@ export function useShellSession(
     submit,
     stop,
     newConversation,
+    openConversation,
     onMessageAction,
     save,
   }

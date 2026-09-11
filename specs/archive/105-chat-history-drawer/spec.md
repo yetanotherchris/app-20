@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-07
 
-**Status**: Draft
+**Status**: Archived
 
 **Input**: User description: "A history drawer on the left of the chat screen: a toggled overlay listing recent conversations with title, model, and date, resuming one on selection, and starting a new conversation from the top of the drawer. Restore on startup and autosave are owned by spec 107."
 
@@ -73,6 +73,13 @@ The drawer stays usable when there is nothing to show or an entry cannot be read
 - **FR-009**: The drawer MUST be usable on desktop and iOS through the shared chat component (spec 106).
 - **FR-010**: Beta MUST NOT include a search field in the drawer.
 - **FR-011**: Restore of the last session on startup and autosave are owned by spec 107. This spec covers listing, selecting, and starting a new conversation.
+
+## Clarifications
+
+### Session 2026-09-11
+
+- FR-009 "through the shared chat component": the drawer is chat-screen chrome, not message content. The published `app-20-llmchat` package exposes no left-overlay slot and is owned outside this repository. The drawer therefore ships as a platform-neutral component in the shell with no Node or Electron import, and spec 106 reuses that component and its behavior on iOS. The iOS app itself is out of scope for this spec.
+- FR-004 save behavior: until spec 107 autosave is implemented, switching conversation in the drawer persists the current conversation itself, without a user save action, and aborts the switch if that save fails. This satisfies "MUST NOT require a save action and MUST NOT lose the current conversation" without inventing a new user-facing prompt.
 
 ### Key Entities
 
