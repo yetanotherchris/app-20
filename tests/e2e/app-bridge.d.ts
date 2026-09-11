@@ -41,6 +41,9 @@ interface Window {
     importProviderKey: () => Promise<E2eResult<{ kind: 'provider-key' | 's3' }>>
     importS3Credentials: () => Promise<E2eResult<{ kind: 'provider-key' | 's3' }>>
     getSecretsStatus: () => Promise<E2eResult<{ providerKey: boolean; s3: boolean }>>
+    removeSecret: (
+      kind: 'provider-key' | 's3',
+    ) => Promise<E2eResult<{ kind: 'provider-key' | 's3' }>>
     openExternal: (url: string) => Promise<E2eResult<Record<string, never>>>
     reportCloseDecision: (decision: 'close' | 'cancel') => Promise<void>
     onCloseRequested: (handler: (event: { reason: 'close' | 'quit' }) => void) => () => void

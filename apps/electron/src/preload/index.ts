@@ -37,6 +37,7 @@ const appBridge: AppBridge = {
   stopChat: (requestId) => invoke('chat:stop', { requestId }),
   importProviderKey: () => invoke('secrets:import-provider-key'),
   importS3Credentials: () => invoke('secrets:import-s3'),
+  removeSecret: (kind) => invoke('secrets:remove', { kind }),
   getSecretsStatus: () => invoke('secrets:status'),
   openExternal: (url) => invoke('shell:open-external', { url }),
   reportCloseDecision: (decision) => invoke('app:close-decision', { decision }),

@@ -3,45 +3,62 @@ import { promises as fs } from 'node:fs'
 import type { Result } from '../shared/error-codes'
 import type { SecretKind, SecretsStatus } from '../shared/ipc-contract'
 import { secretsFilePath } from './appData'
-import { atomicWriteFile } from './atomicWrite'
 import { AppError, err, failure, ok } from './errors'
+import { decodeEncrypted, encodeEncrypted } from './secretEncoding'
+import { validateSecret } from './secretKinds'
+import { createSecretStore, type SecretStore } from './secretStore'
 
 const MAX_SECRET_BYTES = 64 * 1024
 
-interface StoredSecrets {
-  providerKey?: string
-  s3?: string
-}
+let storagePrepared = false
 
-async function readStored(): Promise<StoredSecrets> {
-  try {
-    const raw = await fs.readFile(secretsFilePath(), 'utf8')
-    const parsed: unknown = JSON.parse(raw)
-    if (parsed !== null && typeof parsed === 'object') {
-      const value = parsed as { providerKey?: unknown; s3?: unknown }
-      const stored: StoredSecrets = {}
-      if (typeof value.providerKey === 'string') stored.providerKey = value.providerKey
-      if (typeof value.s3 === 'string') stored.s3 = value.s3
-      return stored
-    }
-    return {}
-  } catch {
-    return {}
+/**
+ * Linux without a keyring selects the `basic_text` backend, where
+ * `isEncryptionAvailable()` stays false until the in-memory password fallback
+ * is enabled. `setUsePlainTextEncryption` is a no-op when a real password
+ * manager is present and on Windows and macOS. research.md R1 records that the
+ * fallback is accepted so secret import works on Linux.
+ */
+function prepareStorage(): void {
+  if (storagePrepared) return
+  storagePrepared = true
+  if (process.platform === 'linux' && !safeStorage.isEncryptionAvailable()) {
+    safeStorage.setUsePlainTextEncryption(true)
   }
 }
 
-async function writeStored(stored: StoredSecrets): Promise<void> {
-  await atomicWriteFile(secretsFilePath(), JSON.stringify(stored))
+const cipher = {
+  encrypt(plaintext: string): string {
+    prepareStorage()
+    if (!safeStorage.isEncryptionAvailable()) throw new AppError('secret-store-unavailable')
+    return encodeEncrypted(safeStorage.encryptString(plaintext))
+  },
+  decrypt(stored: string): string | null {
+    prepareStorage()
+    const buffer = decodeEncrypted(stored)
+    if (!buffer) return null
+    try {
+      return safeStorage.decryptString(buffer)
+    } catch {
+      return null
+    }
+  },
 }
 
-function encrypt(plaintext: string): string {
-  if (!safeStorage.isEncryptionAvailable()) throw new AppError('secret-store-unavailable')
-  return safeStorage.encryptString(plaintext).toString('base64')
+let store: SecretStore | null = null
+
+/**
+ * The store is bound to the app data path on first use so an environment
+ * override set before startup is honoured. The plaintext of a secret is
+ * produced and consumed here in main only (spec 103 FR-005).
+ */
+function secretStore(): SecretStore {
+  if (!store) store = createSecretStore({ filePath: secretsFilePath(), cipher })
+  return store
 }
 
 export async function getSecretsStatus(): Promise<SecretsStatus> {
-  const stored = await readStored()
-  return { providerKey: Boolean(stored.providerKey), s3: Boolean(stored.s3) }
+  return secretStore().status()
 }
 
 /**
@@ -50,13 +67,7 @@ export async function getSecretsStatus(): Promise<SecretsStatus> {
  * renderer (spec 103 FR-005). An absent or unreadable secret returns null.
  */
 export async function getProviderKey(): Promise<string | null> {
-  const stored = await readStored()
-  if (!stored.providerKey) return null
-  try {
-    return safeStorage.decryptString(Buffer.from(stored.providerKey, 'base64'))
-  } catch {
-    return null
-  }
+  return secretStore().read('provider-key')
 }
 
 async function pickFile(title: string): Promise<string | null> {
@@ -72,49 +83,49 @@ async function readCapped(filePath: string): Promise<string> {
   return fs.readFile(filePath, 'utf8')
 }
 
-async function store(kind: SecretKind, plaintext: string): Promise<Result<{ kind: SecretKind }>> {
-  const stored = await readStored()
-  if (kind === 'provider-key') stored.providerKey = encrypt(plaintext)
-  else stored.s3 = encrypt(plaintext)
-
-  await writeStored(stored)
+async function importSecret(
+  kind: SecretKind,
+  filePath: string,
+): Promise<Result<{ kind: SecretKind }>> {
+  const validation = validateSecret(kind, await readCapped(filePath))
+  if (!validation.ok) throw new AppError(validation.code)
+  await secretStore().write(kind, validation.value)
   return ok({ kind })
 }
 
-export async function importProviderKey(): Promise<Result<{ kind: SecretKind }>> {
-  const file = await pickFile('Import Provider API Key')
+async function importWithChooser(
+  kind: SecretKind,
+  title: string,
+): Promise<Result<{ kind: SecretKind }>> {
+  const file = await pickFile(title)
   if (!file) return err('chooser-cancelled')
 
   try {
-    const key = (await readCapped(file)).trim()
-    if (key.length === 0 || key.length > 8192 || key.includes('\n') || key.includes('\r')) {
-      throw new AppError('invalid-secret')
-    }
-    return await store('provider-key', key)
+    return await importSecret(kind, file)
   } catch (error) {
     return failure(error)
   }
 }
 
-export async function importS3Credentials(): Promise<Result<{ kind: SecretKind }>> {
-  const file = await pickFile('Import S3 Credentials')
-  if (!file) return err('chooser-cancelled')
+export function importProviderKey(): Promise<Result<{ kind: SecretKind }>> {
+  return importWithChooser('provider-key', 'Import Provider API Key')
+}
 
+export function importS3Credentials(): Promise<Result<{ kind: SecretKind }>> {
+  return importWithChooser('s3', 'Import S3 Credentials')
+}
+
+/**
+ * Removes a stored secret. Removing a kind that is not stored succeeds, so a
+ * repeated menu action is not an error (spec 103 research R4). An unknown kind
+ * is refused by the store. The dependent feature then fails through its
+ * missing-credential path until a new secret is imported.
+ */
+export async function removeSecret(kind: SecretKind): Promise<Result<{ kind: SecretKind }>> {
   try {
-    const raw = await readCapped(file)
-    const parsed: unknown = JSON.parse(raw)
-    if (parsed === null || typeof parsed !== 'object') throw new AppError('invalid-secret')
-
-    const value = parsed as { accessKeyId?: unknown; secretAccessKey?: unknown }
-    if (typeof value.accessKeyId !== 'string' || value.accessKeyId.trim().length === 0) {
-      throw new AppError('invalid-secret')
-    }
-    if (typeof value.secretAccessKey !== 'string' || value.secretAccessKey.trim().length === 0) {
-      throw new AppError('invalid-secret')
-    }
-    return await store('s3', raw)
+    await secretStore().remove(kind)
+    return ok({ kind })
   } catch (error) {
-    if (error instanceof SyntaxError) return failure(new AppError('invalid-secret'))
     return failure(error)
   }
 }

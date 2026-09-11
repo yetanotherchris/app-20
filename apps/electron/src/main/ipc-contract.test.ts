@@ -18,6 +18,7 @@ const EXPECTED_CHANNELS = [
   'chat:stop',
   'secrets:import-provider-key',
   'secrets:import-s3',
+  'secrets:remove',
   'secrets:status',
   'shell:open-external',
   'app:close-decision',

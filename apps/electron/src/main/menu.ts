@@ -23,6 +23,15 @@ export function buildApplicationMenu(): void {
         },
         { type: 'separator' },
         {
+          label: 'Remove Provider API Key',
+          click: () => dispatch('remove-provider-key'),
+        },
+        {
+          label: 'Remove S3 Credentials',
+          click: () => dispatch('remove-s3-credentials'),
+        },
+        { type: 'separator' },
+        {
           label: 'Save',
           accelerator: 'CmdOrCtrl+S',
           click: () => dispatch('save-document'),

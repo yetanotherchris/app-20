@@ -23,6 +23,8 @@ export type MenuCommand =
   | 'reveal-workspace'
   | 'import-provider-key'
   | 'import-s3-credentials'
+  | 'remove-provider-key'
+  | 'remove-s3-credentials'
   | 'new-conversation'
   | 'save-document'
 
@@ -65,6 +67,7 @@ export interface IpcContract {
   'chat:stop': { request: { requestId: string }; response: Result<Empty> }
   'secrets:import-provider-key': { request: void; response: Result<{ kind: SecretKind }> }
   'secrets:import-s3': { request: void; response: Result<{ kind: SecretKind }> }
+  'secrets:remove': { request: { kind: SecretKind }; response: Result<{ kind: SecretKind }> }
   'secrets:status': { request: void; response: Result<SecretsStatus> }
   'shell:open-external': { request: { url: string }; response: Result<Empty> }
   'app:close-decision': { request: { decision: CloseDecision }; response: void }
@@ -96,6 +99,7 @@ export const IPC_CHANNELS = [
   'chat:stop',
   'secrets:import-provider-key',
   'secrets:import-s3',
+  'secrets:remove',
   'secrets:status',
   'shell:open-external',
   'app:close-decision',
@@ -133,6 +137,7 @@ export interface AppBridge {
   stopChat: (requestId: string) => Promise<Result<Empty>>
   importProviderKey: () => Promise<Result<{ kind: SecretKind }>>
   importS3Credentials: () => Promise<Result<{ kind: SecretKind }>>
+  removeSecret: (kind: SecretKind) => Promise<Result<{ kind: SecretKind }>>
   getSecretsStatus: () => Promise<Result<SecretsStatus>>
   openExternal: (url: string) => Promise<Result<Empty>>
   reportCloseDecision: (decision: CloseDecision) => Promise<void>

@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-07
 
-**Status**: Draft
+**Status**: Archived
 
 **Input**: User description: "Secret storage for beta: import the AI provider key and S3 credentials from a file chooser and store them locally, behind a design that later OAuth-based providers can use."
 
