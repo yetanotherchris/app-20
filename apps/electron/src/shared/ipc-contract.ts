@@ -29,7 +29,6 @@ export type MenuCommand =
   | 'remove-provider-key'
   | 'remove-s3-credentials'
   | 'new-conversation'
-  | 'save-document'
 
 export type CloseReason = 'close' | 'quit'
 export type CloseDecision = 'close' | 'cancel'
@@ -78,6 +77,7 @@ export interface IpcContract {
 }
 
 export interface IpcEvents {
+  'app:backgrounded': Record<string, never>
   'app:close-requested': CloseRequestedEvent
   'menu:command': MenuCommandEvent
   'chat:chunk': { requestId: string; text: string }
@@ -113,6 +113,7 @@ export const IPC_CHANNELS = [
 
 /** Runtime list of main-to-renderer event channels. */
 export const IPC_EVENT_CHANNELS = [
+  'app:backgrounded',
   'app:close-requested',
   'menu:command',
   'chat:chunk',
@@ -149,6 +150,7 @@ export interface AppBridge {
   getSyncStatus: () => Promise<Result<SyncStatus>>
   openExternal: (url: string) => Promise<Result<Empty>>
   reportCloseDecision: (decision: CloseDecision) => Promise<void>
+  onAppBackgrounded: (handler: () => void) => () => void
   onCloseRequested: (handler: (event: CloseRequestedEvent) => void) => () => void
   onMenuCommand: (handler: (event: MenuCommandEvent) => void) => () => void
   onChatChunk: (handler: (event: { requestId: string; text: string }) => void) => () => void

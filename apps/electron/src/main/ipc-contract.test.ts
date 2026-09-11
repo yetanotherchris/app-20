@@ -26,6 +26,7 @@ const EXPECTED_CHANNELS = [
 ] as const
 
 const EXPECTED_EVENT_CHANNELS = [
+  'app:backgrounded',
   'app:close-requested',
   'menu:command',
   'chat:chunk',

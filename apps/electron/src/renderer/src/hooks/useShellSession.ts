@@ -10,6 +10,7 @@ import {
 import { AUTOMATIC_MODEL } from '@app-20/ai-provider'
 import type { Conversation } from '@app-20/conversation-storage'
 import type { AppErrorCode } from '../../../shared/error-codes'
+import { AutosaveQueue } from '../conversation/autosaveQueue'
 import { fromConversation, toConversation } from '../conversation/conversationAdapter'
 import { createId } from '../conversation/chatMessages'
 import { toProviderRequestMessages } from '../conversation/providerMessages'
@@ -19,13 +20,11 @@ export interface ShellSession {
   messages: readonly Message[]
   draft: string
   status: ChatStatus
-  dirty: boolean
-  saving: boolean
   messageActions: readonly MessageAction[]
   setDraft: (value: string) => void
   submit: () => void
   stop: () => void
-  newConversation: () => void
+  newConversation: () => Promise<AppErrorCode | null>
   /**
    * Switch the active conversation to `id`. Selecting the active conversation
    * returns null without a reload or draft change. Otherwise the current
@@ -33,8 +32,6 @@ export interface ShellSession {
    */
   openConversation: (id: string) => Promise<AppErrorCode | null>
   onMessageAction: (action: MessageAction, message: Message) => void
-  /** Returns null on success, or the error code that blocked the save. */
-  save: () => Promise<AppErrorCode | null>
 }
 
 /**
@@ -48,8 +45,6 @@ export function useShellSession(
   reportError: (message: string) => void,
 ): ShellSession {
   const [draft, setDraftState] = useState('')
-  const [dirty, setDirty] = useState(false)
-  const [saving, setSaving] = useState(false)
 
   const conversationIdRef = useRef(createId('conversation'))
   const conversationCreatedAtRef = useRef(new Date().toISOString())
@@ -59,15 +54,41 @@ export function useShellSession(
   const messagesRef = useRef<readonly Message[]>([])
   const draftRef = useRef(draft)
   draftRef.current = draft
-  const dirtyRef = useRef(dirty)
-  dirtyRef.current = dirty
+  const folderKeyRef = useRef(folderKey)
+  folderKeyRef.current = folderKey
+  const terminalSavePendingRef = useRef(false)
+  const autosaveRef = useRef<AutosaveQueue<Conversation> | null>(null)
+
+  if (autosaveRef.current === null) {
+    autosaveRef.current = new AutosaveQueue({
+      createSnapshot: () =>
+        toConversation(
+          {
+            id: conversationIdRef.current,
+            createdAt: conversationCreatedAtRef.current,
+            model: AUTOMATIC_MODEL,
+            messages: messagesRef.current,
+            draft: draftRef.current,
+          },
+          baseConversationRef.current,
+        ),
+      saveSnapshot: async (conversation) => {
+        if (!folderKeyRef.current) throw new Error('no-folder')
+        const result = await window.appBridge.saveConversation(conversation)
+        if (!result.ok) throw new Error(result.code)
+        baseConversationRef.current = conversation
+      },
+      onFailure: () => reportError(messageForCode('unknown')),
+    })
+  }
+
+  const autosave = autosaveRef.current
 
   const request = useCallback(
     (operation: ChatOperation, controls: ChatSessionControls) => {
       const requestId = createId('chat')
       activeRequestRef.current = requestId
       controlsRef.current = controls
-      setDirty(true)
 
       const messages = toProviderRequestMessages(messagesRef.current, operation)
       void window.appBridge
@@ -77,12 +98,14 @@ export function useShellSession(
           activeRequestRef.current = null
           controlsRef.current = null
           controls.fail()
+          terminalSavePendingRef.current = true
           reportError(messageForCode(result.code))
         })
         .catch(() => {
           activeRequestRef.current = null
           controlsRef.current = null
           controls.fail()
+          terminalSavePendingRef.current = true
           reportError(messageForCode('unknown'))
         })
     },
@@ -117,7 +140,6 @@ export function useShellSession(
     const unsubscribeChunk = window.appBridge.onChatChunk(({ requestId, text }) => {
       if (requestId !== activeRequestRef.current) return
       controlsRef.current?.appendChunk(text)
-      setDirty(true)
     })
     const unsubscribeComplete = window.appBridge.onChatComplete(({ requestId, result }) => {
       if (requestId !== activeRequestRef.current) return
@@ -130,7 +152,7 @@ export function useShellSession(
         controls?.fail()
         reportError(messageForCode(result.code))
       }
-      setDirty(true)
+      terminalSavePendingRef.current = true
     })
     return () => {
       unsubscribeChunk()
@@ -139,87 +161,68 @@ export function useShellSession(
   }, [reportError])
 
   const setDraft = useCallback((value: string) => {
+    draftRef.current = value
     setDraftState(value)
-    setDirty(true)
-  }, [])
-
-  const save = useCallback(async (): Promise<AppErrorCode | null> => {
-    if (!folderKey) return 'no-folder'
-
-    setSaving(true)
-    try {
-      const conversation = toConversation(
-        {
-          id: conversationIdRef.current,
-          createdAt: conversationCreatedAtRef.current,
-          model: AUTOMATIC_MODEL,
-          messages: messagesRef.current,
-          draft: draftRef.current,
-        },
-        baseConversationRef.current,
-      )
-      const result = await window.appBridge.saveConversation(conversation)
-      if (result.ok) {
-        baseConversationRef.current = conversation
-        setDirty(false)
-        return null
-      }
-      setDirty(true)
-      return result.code
-    } catch {
-      setDirty(true)
-      return 'unknown'
-    } finally {
-      setSaving(false)
-    }
-  }, [folderKey])
+    autosave.scheduleDraftSave()
+  }, [autosave])
 
   const submit = useCallback(() => {
     const prompt = draftRef.current.trim()
     if (!prompt || !folderKey) return
     submitChat(prompt)
+    autosave.cancelDraftTimer()
+    draftRef.current = ''
     setDraftState('')
-  }, [submitChat, folderKey])
+  }, [submitChat, folderKey, autosave])
 
   const stop = useCallback(() => {
     stopChatOperation()
     abortActiveRequest()
-  }, [stopChatOperation, abortActiveRequest])
+    terminalSavePendingRef.current = true
+    void new Promise<void>((resolve) => globalThis.setTimeout(resolve)).then(() => autosave.flush())
+  }, [stopChatOperation, abortActiveRequest, autosave])
+
+  const flush = useCallback(async (): Promise<boolean> => {
+    await new Promise<void>((resolve) => globalThis.setTimeout(resolve))
+    return autosave.flush()
+  }, [autosave])
+
+  useEffect(() => {
+    if (!terminalSavePendingRef.current) return
+    terminalSavePendingRef.current = false
+    void autosave.trigger()
+  }, [autosave, chatMessages, chatStatus])
 
   const applyConversation = useCallback(
     (conversation: Conversation) => {
       baseConversationRef.current = conversation
       replaceMessages(fromConversation(conversation))
+      draftRef.current = conversation.draft ?? ''
       setDraftState(conversation.draft ?? '')
       conversationIdRef.current = conversation.id
       conversationCreatedAtRef.current = conversation.createdAt
-      setDirty(false)
     },
     [replaceMessages],
   )
 
-  const newConversation = useCallback(() => {
+  const newConversation = useCallback(async (): Promise<AppErrorCode | null> => {
+    if (!(await flush())) return 'unknown'
     stopChatOperation()
     abortActiveRequest()
     conversationIdRef.current = createId('conversation')
     conversationCreatedAtRef.current = new Date().toISOString()
     baseConversationRef.current = null
     replaceMessages([])
+    draftRef.current = ''
     setDraftState('')
-    setDirty(true)
-  }, [stopChatOperation, abortActiveRequest, replaceMessages])
+    return null
+  }, [flush, stopChatOperation, abortActiveRequest, replaceMessages])
 
   const openConversation = useCallback(
     async (id: string): Promise<AppErrorCode | null> => {
       if (id === conversationIdRef.current) return null
 
-      // No autosave yet (spec 107 owns it), so persist the current conversation
-      // before switching and abort if that fails (constitution III). An empty,
-      // untouched new conversation is not written.
-      if (dirtyRef.current && hasUserActivity()) {
-        const code = await save()
-        if (code !== null) return code
-      }
+      if (hasUserActivity() && !(await flush())) return 'unknown'
 
       // Read before stopping, so a failed read leaves an in-flight response
       // running on the conversation that stays active.
@@ -231,7 +234,7 @@ export function useShellSession(
       applyConversation(read.value.conversation)
       return null
     },
-    [save, stopChatOperation, abortActiveRequest, hasUserActivity, applyConversation],
+    [flush, stopChatOperation, abortActiveRequest, hasUserActivity, applyConversation],
   )
 
   useEffect(() => {
@@ -242,8 +245,8 @@ export function useShellSession(
     baseConversationRef.current = null
     if (!folderKey) {
       replaceMessages([])
+      draftRef.current = ''
       setDraftState('')
-      setDirty(false)
       return
     }
 
@@ -294,12 +297,25 @@ export function useShellSession(
     hasUserActivity,
   ])
 
+  useEffect(() => {
+    const unsubscribeBackgrounded = window.appBridge.onAppBackgrounded(() => {
+      void flush()
+    })
+    const unsubscribeClose = window.appBridge.onCloseRequested(() => {
+      stop()
+      void flush().finally(() => window.appBridge.reportCloseDecision('close'))
+    })
+    return () => {
+      unsubscribeBackgrounded()
+      unsubscribeClose()
+      autosave.cancelDraftTimer()
+    }
+  }, [autosave, flush, stop])
+
   return {
     messages: chatMessages,
     draft,
     status: chatStatus,
-    dirty,
-    saving,
     messageActions,
     setDraft,
     submit,
@@ -307,6 +323,5 @@ export function useShellSession(
     newConversation,
     openConversation,
     onMessageAction,
-    save,
   }
 }

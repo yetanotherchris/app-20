@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-10
 
-**Status**: Draft
+**Status**: Archived
 
 **Input**: User description: "Chat conversations should persist automatically, like every chat client: no Save button, no unsaved-changes indicator, and no save/discard prompt when closing or quitting. Typing in the composer should also persist on a timer, without sending. This corrects the editor-derived save and close-confirmation behavior inherited from the markdown editor template used to seed specs 100 and 105."
 

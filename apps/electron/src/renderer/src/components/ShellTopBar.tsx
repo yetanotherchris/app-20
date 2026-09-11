@@ -3,12 +3,9 @@ import type { SyncStatus } from '../../../shared/ipc-contract'
 
 export interface ShellTopBarProps {
   workspaceName: string | null
-  dirty: boolean
-  saving: boolean
   sync: SyncStatus
   onOpenHistory: () => void
   onNewConversation: () => void
-  onSave: () => void
 }
 
 function syncLabel(state: SyncStatus['state']): string {
@@ -28,15 +25,10 @@ function syncLabel(state: SyncStatus['state']): string {
 
 export function ShellTopBar({
   workspaceName,
-  dirty,
-  saving,
   sync,
   onOpenHistory,
   onNewConversation,
-  onSave,
 }: ShellTopBarProps) {
-  const saveDisabled = saving || !workspaceName
-
   return (
     <View style={styles.bar} testID="shell.topbar">
       <Text style={styles.workspace} testID="shell.workspace-name">
@@ -45,9 +37,6 @@ export function ShellTopBar({
       <View style={styles.actions}>
         <Text style={styles.status} testID="shell.sync-status">
           {syncLabel(sync.state)}
-        </Text>
-        <Text style={styles.status} testID="shell.dirty">
-          {saving ? 'Saving...' : dirty ? 'Unsaved changes' : 'Saved'}
         </Text>
         <Pressable
           accessibilityRole="button"
@@ -66,15 +55,6 @@ export function ShellTopBar({
           testID="shell.new-conversation"
         >
           <Text style={styles.buttonLabel}>New conversation</Text>
-        </Pressable>
-        <Pressable
-          accessibilityRole="button"
-          disabled={saveDisabled}
-          onPress={onSave}
-          style={[styles.button, saveDisabled ? styles.buttonDisabled : null]}
-          testID="shell.save"
-        >
-          <Text style={styles.buttonLabel}>Save</Text>
         </Pressable>
       </View>
     </View>

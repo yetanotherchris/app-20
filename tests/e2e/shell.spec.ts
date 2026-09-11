@@ -8,7 +8,6 @@ import {
   electronExecutable,
   forceExitShell,
   launchShell,
-  listConversationFiles,
   listConversationJsonFiles,
   readConversationJson,
   readExternalOpens,
@@ -54,6 +53,7 @@ const BRIDGE_METHODS = [
   'listConversations',
   'onChatChunk',
   'onChatComplete',
+  'onAppBackgrounded',
   'onCloseRequested',
   'onMenuCommand',
   'onSyncStatus',
@@ -70,7 +70,6 @@ async function makeDirty(page: Page, text = 'unsaved draft'): Promise<void> {
   await page.getByTestId('chat.composer.input').fill(text)
   await page.getByTestId('chat.composer.send').click()
   await expect(page.getByText(`Echo: ${text}`)).toBeVisible()
-  await expect(page.getByTestId('shell.dirty')).toHaveText('Unsaved changes')
 }
 
 async function triggerClose(app: ElectronApplication): Promise<void> {
@@ -188,8 +187,7 @@ test.describe('US3 - app-managed conversation folder', () => {
 
   test('writes a JSON conversation file and restores it after a reload', async () => {
     await makeDirty(shell.page, 'save me')
-    await shell.page.getByTestId('shell.save').click()
-    await expect(shell.page.getByTestId('shell.dirty')).toHaveText('Saved')
+    await expect.poll(() => listConversationJsonFiles(shell.conversationDir).then((names) => names.length)).toBe(1)
 
     const names = await listConversationJsonFiles(shell.conversationDir)
     expect(names.length).toBe(1)
@@ -201,13 +199,11 @@ test.describe('US3 - app-managed conversation folder', () => {
 
     await shell.page.reload()
     await expect(shell.page.getByText('Echo: save me')).toBeVisible()
-    await expect(shell.page.getByTestId('shell.dirty')).toHaveText('Saved')
   })
 
   test('restores an unsent draft after a reload', async () => {
     await shell.page.getByTestId('chat.composer.input').fill('draft survives')
-    await shell.page.getByTestId('shell.save').click()
-    await expect(shell.page.getByTestId('shell.dirty')).toHaveText('Saved')
+    await shell.page.waitForTimeout(2_100)
 
     await shell.page.reload()
     await expect(shell.page.getByTestId('chat.composer.input')).toHaveValue('draft survives')
@@ -222,8 +218,7 @@ test.describe('US3 - content survives a real restart', () => {
     first = await launchShell()
     try {
       await makeDirty(first.page, 'survives restart')
-      await first.page.getByTestId('shell.save').click()
-      await expect(first.page.getByTestId('shell.dirty')).toHaveText('Saved')
+      await expect.poll(() => listConversationJsonFiles(first.conversationDir).then((names) => names.length)).toBe(1)
 
       await forceExitShell(first.app)
 
@@ -290,62 +285,7 @@ test.describe('US3 - an unreadable folder is reported', () => {
   })
 })
 
-test.describe('US2 - close and quit confirmation', () => {
-  test.describe.configure({ mode: 'serial' })
-  let shell: LaunchedShell
-
-  test.beforeAll(async () => {
-    shell = await launchShell()
-    await expect(shell.page.getByTestId('shell.topbar')).toBeVisible()
-  })
-
-  test.afterAll(async () => {
-    await closeShell(shell)
-  })
-
-  test('prompts on close and Cancel keeps the window open', async () => {
-    await makeDirty(shell.page, 'close me')
-    await triggerClose(shell.app)
-
-    await expect(shell.page.getByTestId('shell.close-dialog')).toBeVisible()
-    await shell.page.getByTestId('shell.close-cancel').click()
-    await expect(shell.page.getByTestId('shell.close-dialog')).toHaveCount(0)
-    expect(shell.app.windows().length).toBe(1)
-    await expect(shell.page.getByTestId('shell.dirty')).toHaveText('Unsaved changes')
-  })
-
-  test('a failed save keeps the window open and the document dirty', async () => {
-    await makeDirty(shell.page, 'fail save')
-    await rm(shell.conversationDir, { recursive: true, force: true })
-    await triggerClose(shell.app)
-
-    await shell.page.getByTestId('shell.close-save').click()
-    await expect(shell.page.getByTestId('shell.close-error')).toHaveText(
-      'The file could not be read.',
-    )
-    await expect(shell.page.getByTestId('shell.close-dialog')).toBeVisible()
-    expect(shell.app.windows().length).toBe(1)
-    await expect(shell.page.getByTestId('shell.dirty')).toHaveText('Unsaved changes')
-
-    await shell.page.getByTestId('shell.close-cancel').click()
-    await expect(shell.page.getByTestId('shell.close-dialog')).toHaveCount(0)
-  })
-
-  test('prompts on quit and Cancel keeps the app running', async () => {
-    await makeDirty(shell.page, 'quit me')
-    await shell.app.evaluate(({ app }) => {
-      app.quit()
-    })
-
-    await expect(shell.page.getByTestId('shell.close-dialog')).toBeVisible()
-    await expect(shell.page.getByTestId('shell.close-dialog')).toContainText('Quit')
-    await shell.page.getByTestId('shell.close-cancel').click()
-    await expect(shell.page.getByTestId('shell.close-dialog')).toHaveCount(0)
-    expect(shell.app.windows().length).toBe(1)
-  })
-})
-
-test.describe('US2 - quit while streaming stops the response', () => {
+test.describe('Chat autosave close behavior', () => {
   let shell: LaunchedShell
 
   test.beforeAll(async () => {
@@ -359,7 +299,7 @@ test.describe('US2 - quit while streaming stops the response', () => {
     await closeShell(shell)
   })
 
-  test('stops the in-flight response and keeps the unsaved document', async () => {
+  test('quits without a prompt and persists a partial response', async () => {
     await shell.page.getByTestId('chat.composer.input').fill('streaming quit')
     await shell.page.getByTestId('chat.composer.send').click()
     await expect(shell.page.getByTestId('chat.composer.stop')).toBeVisible()
@@ -368,60 +308,11 @@ test.describe('US2 - quit while streaming stops the response', () => {
       app.quit()
     })
 
-    await expect(shell.page.getByTestId('shell.close-dialog')).toBeVisible()
-    await shell.page.getByTestId('shell.close-cancel').click()
     await expect(shell.page.getByTestId('shell.close-dialog')).toHaveCount(0)
-    await expect(shell.page.getByTestId('chat.composer.stop')).toHaveCount(0)
-    await expect(shell.page.getByTestId('shell.dirty')).toHaveText('Unsaved changes')
-  })
-})
-
-test.describe('US2 - Discard closes without saving', () => {
-  let shell: LaunchedShell
-
-  test.beforeAll(async () => {
-    shell = await launchShell()
-    await expect(shell.page.getByTestId('shell.topbar')).toBeVisible()
-  })
-
-  test.afterAll(async () => {
-    await closeShell(shell)
-  })
-
-  test('discards changes and exits when Discard is chosen', async () => {
-    await makeDirty(shell.page, 'discard me')
-    await triggerClose(shell.app)
-    await shell.page.getByTestId('shell.close-discard').click()
     await expect.poll(() => shell.app.windows().length).toBe(0)
-    expect(await listConversationFiles(shell.conversationDir)).toEqual([])
-  })
-})
-
-test.describe('US2 - Save before close', () => {
-  let shell: LaunchedShell
-
-  test.beforeAll(async () => {
-    shell = await launchShell()
-    await expect(shell.page.getByTestId('shell.topbar')).toBeVisible()
-  })
-
-  test.afterAll(async () => {
-    await closeShell(shell)
-  })
-
-  test('saves the document then exits', async () => {
-    await makeDirty(shell.page, 'save on close')
-    await triggerClose(shell.app)
-    await shell.page.getByTestId('shell.close-save').click()
-    await expect.poll(() => shell.app.windows().length).toBe(0)
-
     const names = await listConversationJsonFiles(shell.conversationDir)
-    expect(names.length).toBe(1)
-    const stored = await readConversationJson<StoredConversationFile>(
-      shell.conversationDir,
-      names[0] as string,
-    )
-    expect(stored.messages.some((message) => message.content === 'save on close')).toBe(true)
+    const stored = await readConversationJson<StoredConversationFile>(shell.conversationDir, names[0] as string)
+    expect(stored.messages.some((message) => message.content.includes('streaming partial'))).toBe(true)
   })
 })
 
@@ -468,6 +359,8 @@ test.describe('US4 - menu bar and imports', () => {
     expect(fileEntries.has('Remove Provider API Key')).toBe(true)
     expect(fileEntries.has('Remove S3 Credentials')).toBe(true)
     expect(fileEntries.has('Quit')).toBe(true)
+    expect(fileEntries.has('Save')).toBe(false)
+    expect([...fileEntries.values()]).not.toContain('CmdOrCtrl+S')
     expect(folderEntries.has('Show Conversations Folder')).toBe(true)
     expect(folderEntries.has('New Conversation')).toBe(true)
 
@@ -476,12 +369,13 @@ test.describe('US4 - menu bar and imports', () => {
     expect(fileEntries.get('Quit')).toBe('CmdOrCtrl+Q')
   })
 
-  test('New Conversation saves the current document before starting fresh', async () => {
+  test('New Conversation persists the current conversation before starting fresh', async () => {
     await makeDirty(shell.page, 'menu new')
     await clickMenuItem(shell.app, 'New Conversation')
     await expect(shell.page.getByTestId('chat.composer.input')).toHaveValue('')
     await expect(shell.page.getByText('Echo: menu new')).toHaveCount(0)
 
+    await expect.poll(() => listConversationJsonFiles(shell.conversationDir).then((names) => names.length)).toBeGreaterThan(0)
     const names = await listConversationJsonFiles(shell.conversationDir)
     const saved = await Promise.all(
       names.map((name) =>
