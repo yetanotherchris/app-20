@@ -180,3 +180,66 @@ test.describe('US2 - import S3 credentials', () => {
     }
   })
 })
+
+test.describe('US3 - remove a stored secret', () => {
+  test('removing the provider key makes the next send fail with the missing-key error', async () => {
+    const shell = await launch()
+    try {
+      await importFile(shell, 'Import Provider API Key...', 'provider-key.txt', 'sk-or-key-one')
+      await expect(shell.page.getByTestId('shell.notification.info').last()).toContainText(
+        'Provider API key imported',
+      )
+
+      await clickMenuItem(shell.app, 'Remove Provider API Key')
+      await expect(shell.page.getByTestId('shell.notification.info').last()).toContainText(
+        'Provider API key removed',
+      )
+      expect((await secretStatus(shell)).providerKey).toBe(false)
+
+      fake.reset()
+      await sendPrompt(shell.page, 'after removal')
+      await expect(shell.page.getByTestId('shell.notification.error').last()).toContainText(
+        'No provider API key is stored',
+      )
+      expect(fake.requests).toHaveLength(0)
+    } finally {
+      await closeShell(shell)
+    }
+  })
+
+  test('removing S3 credentials clears the status', async () => {
+    const shell = await launch()
+    try {
+      await importFile(
+        shell,
+        'Import S3 Credentials...',
+        's3.json',
+        JSON.stringify({ accessKeyId: 'AKIA', secretAccessKey: 'secret' }),
+      )
+      await expect(shell.page.getByTestId('shell.notification.info').last()).toContainText(
+        'S3 credentials imported',
+      )
+
+      await clickMenuItem(shell.app, 'Remove S3 Credentials')
+      await expect(shell.page.getByTestId('shell.notification.info').last()).toContainText(
+        'S3 credentials removed',
+      )
+      expect((await secretStatus(shell)).s3).toBe(false)
+    } finally {
+      await closeShell(shell)
+    }
+  })
+
+  test('removing an absent secret succeeds', async () => {
+    const shell = await launch()
+    try {
+      await clickMenuItem(shell.app, 'Remove Provider API Key')
+      await expect(shell.page.getByTestId('shell.notification.info').last()).toContainText(
+        'Provider API key removed',
+      )
+      expect((await secretStatus(shell)).providerKey).toBe(false)
+    } finally {
+      await closeShell(shell)
+    }
+  })
+})

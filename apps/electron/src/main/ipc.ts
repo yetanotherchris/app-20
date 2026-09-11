@@ -7,7 +7,7 @@ import { resolveClose } from './closeGate'
 import { getConversationFolderInfo, revealConversationFolder } from './conversationFolder'
 import { getConversationStore } from './conversationStore'
 import { AppError, failure, ok } from './errors'
-import { getSecretsStatus, importProviderKey, importS3Credentials } from './secrets'
+import { getSecretsStatus, importProviderKey, importS3Credentials, removeSecret } from './secrets'
 import { openExternalUrl } from './security'
 import { getMainWindow } from './window'
 
@@ -72,6 +72,7 @@ export function registerIpcHandlers(): void {
   })
   handle('secrets:import-provider-key', () => importProviderKey())
   handle('secrets:import-s3', () => importS3Credentials())
+  handle('secrets:remove', (request) => removeSecret(request.kind))
   handle('secrets:status', async () => ok(await getSecretsStatus()))
   handle('shell:open-external', async (request) => {
     await openExternalUrl(request.url)

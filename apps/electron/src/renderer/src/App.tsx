@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { LLMChat } from 'app-20-llmchat'
-import type { MenuCommand } from '../../shared/ipc-contract'
+import type { MenuCommand, SecretKind } from '../../shared/ipc-contract'
 import { CloseConfirmDialog } from './components/CloseConfirmDialog'
 import {
   Notifications,
@@ -74,6 +74,21 @@ export function App() {
     [pushNotification],
   )
 
+  const runRemove = useCallback(
+    async (kind: SecretKind) => {
+      const result = await window.appBridge.removeSecret(kind)
+      if (result.ok) {
+        pushNotification(
+          'info',
+          kind === 'provider-key' ? 'Provider API key removed.' : 'S3 credentials removed.',
+        )
+      } else {
+        pushNotification('error', messageForCode(result.code))
+      }
+    },
+    [pushNotification],
+  )
+
   const handleMenuCommand = useCallback(
     async (command: MenuCommand) => {
       switch (command) {
@@ -86,6 +101,12 @@ export function App() {
         case 'import-s3-credentials':
           await runImport('s3')
           break
+        case 'remove-provider-key':
+          await runRemove('provider-key')
+          break
+        case 'remove-s3-credentials':
+          await runRemove('s3')
+          break
         case 'new-conversation':
           await createNewConversation()
           break
@@ -94,7 +115,7 @@ export function App() {
           break
       }
     },
-    [folder, runImport, createNewConversation, saveWithNotification],
+    [folder, runImport, runRemove, createNewConversation, saveWithNotification],
   )
 
   const menuCommandRef = useRef(handleMenuCommand)

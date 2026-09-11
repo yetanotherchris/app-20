@@ -4,7 +4,7 @@ import type { Result } from '../shared/error-codes'
 import type { SecretKind, SecretsStatus } from '../shared/ipc-contract'
 import { secretsFilePath } from './appData'
 import { AppError, err, failure, ok } from './errors'
-import { validateSecret } from './secretKinds'
+import { isSecretKind, validateSecret } from './secretKinds'
 import { createSecretStore, type SecretStore } from './secretStore'
 
 const MAX_SECRET_BYTES = 64 * 1024
@@ -91,4 +91,16 @@ export async function importS3Credentials(): Promise<Result<{ kind: SecretKind }
   } catch (error) {
     return failure(error)
   }
+}
+
+/**
+ * Removes a stored secret. An unknown kind is refused; removing a kind that is
+ * not stored succeeds, so a repeated menu action is not an error (spec 103
+ * research R4). The dependent feature then fails through its missing-credential
+ * path until a new secret is imported.
+ */
+export async function removeSecret(kind: SecretKind): Promise<Result<{ kind: SecretKind }>> {
+  if (!isSecretKind(kind)) throw new AppError('invalid-secret')
+  await secretStore().remove(kind)
+  return ok({ kind })
 }

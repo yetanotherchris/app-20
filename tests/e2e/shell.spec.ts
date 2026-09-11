@@ -49,6 +49,7 @@ const BRIDGE_METHODS = [
   'getSecretsStatus',
   'importProviderKey',
   'importS3Credentials',
+  'removeSecret',
   'listConversations',
   'onChatChunk',
   'onChatComplete',
@@ -462,6 +463,8 @@ test.describe('US4 - menu bar and imports', () => {
 
     expect(fileEntries.has('Import Provider API Key...')).toBe(true)
     expect(fileEntries.has('Import S3 Credentials...')).toBe(true)
+    expect(fileEntries.has('Remove Provider API Key')).toBe(true)
+    expect(fileEntries.has('Remove S3 Credentials')).toBe(true)
     expect(fileEntries.has('Quit')).toBe(true)
     expect(folderEntries.has('Show Conversations Folder')).toBe(true)
     expect(folderEntries.has('New Conversation')).toBe(true)
