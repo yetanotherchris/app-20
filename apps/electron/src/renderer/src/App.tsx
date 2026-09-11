@@ -3,7 +3,6 @@ import { StyleSheet, Text, View } from 'react-native'
 import { LLMChat } from 'app-20-llmchat'
 import type { AppErrorCode } from '../../shared/error-codes'
 import type { MenuCommand, SecretKind } from '../../shared/ipc-contract'
-import { CloseConfirmDialog } from './components/CloseConfirmDialog'
 import { HistoryDrawer } from './components/HistoryDrawer'
 import {
   Notifications,
@@ -12,7 +11,6 @@ import {
 } from './components/Notifications'
 import { ShellTopBar } from './components/ShellTopBar'
 import { messageForCode } from './errorMessages'
-import { useCloseGuard } from './hooks/useCloseGuard'
 import { useConversationFolder } from './hooks/useConversationFolder'
 import { useConversationHistory } from './hooks/useConversationHistory'
 import { useShellSession } from './hooks/useShellSession'
@@ -47,24 +45,12 @@ export function App() {
     refresh: refreshHistory,
   } = useConversationHistory(reportCode)
 
-  const saveWithNotification = useCallback(async () => {
-    const code = await session.save()
-    if (code === null) pushNotification('info', 'Conversation saved.')
-    else pushNotification('error', messageForCode(code))
-  }, [session, pushNotification])
-
-  // Starting a new conversation must never discard unsaved work, so save first
-  // and abort if the save fails (constitution III). Resolves true when the new
-  // conversation is active.
   const createNewConversation = useCallback(async (): Promise<boolean> => {
-    if (session.dirty) {
-      const code = await session.save()
-      if (code !== null) {
-        pushNotification('error', messageForCode(code))
-        return false
-      }
+    const code = await session.newConversation()
+    if (code !== null) {
+      pushNotification('error', messageForCode(code))
+      return false
     }
-    session.newConversation()
     return true
   }, [session, pushNotification])
 
@@ -103,12 +89,6 @@ export function App() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [drawerOpen])
-
-  const closeGuard = useCloseGuard({
-    dirty: session.dirty,
-    stop: session.stop,
-    save: session.save,
-  })
 
   const runImport = useCallback(
     async (kind: SecretKind) => {
@@ -164,12 +144,9 @@ export function App() {
         case 'new-conversation':
           await createNewConversation()
           break
-        case 'save-document':
-          await saveWithNotification()
-          break
       }
     },
-    [folder, runImport, runRemove, createNewConversation, saveWithNotification],
+    [folder, runImport, runRemove, createNewConversation],
   )
 
   const menuCommandRef = useRef(handleMenuCommand)
@@ -185,16 +162,11 @@ export function App() {
 
   return (
     <View style={styles.app}>
-      <ShellTopBar
-        workspaceName={folder.info?.displayName ?? null}
-        dirty={session.dirty}
-        saving={session.saving}
-        sync={sync}
-        onOpenHistory={openHistory}
-        onNewConversation={createNewConversation}
-        onSave={() => {
-          void saveWithNotification()
-        }}
+        <ShellTopBar
+          workspaceName={folder.info?.displayName ?? null}
+          sync={sync}
+          onOpenHistory={openHistory}
+          onNewConversation={createNewConversation}
       />
       {folder.error ? (
         <View style={styles.folderError} testID="shell.folder-error">
@@ -233,18 +205,6 @@ export function App() {
         }}
         onClose={closeHistory}
       />
-      {closeGuard.request ? (
-        <CloseConfirmDialog
-          reason={closeGuard.request}
-          phase={closeGuard.phase}
-          error={closeGuard.error}
-          onSave={() => {
-            void closeGuard.chooseSave()
-          }}
-          onDiscard={closeGuard.chooseDiscard}
-          onCancel={closeGuard.chooseCancel}
-        />
-      ) : null}
       <Notifications
         items={notifications}
         onDismiss={(id) =>

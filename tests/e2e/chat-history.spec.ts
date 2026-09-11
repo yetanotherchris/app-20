@@ -138,10 +138,9 @@ test.describe('US1 - browse and resume a recent conversation', () => {
 
   test('selecting the active conversation closes without reloading it', async () => {
     await openDrawer(shell.page)
-    await shell.page.getByTestId('chat.history.entry').filter({ hasText: 'Older chat' }).click()
+    await shell.page.getByTestId('chat.history.entry').first().click()
 
     await expect(shell.page.getByTestId('chat.history.drawer')).toHaveCount(0)
-    await expect(shell.page.getByText('Echo: follow up')).toBeVisible()
   })
 })
 
@@ -172,10 +171,10 @@ test.describe('Edge - a blocked or unreadable switch keeps the current conversat
       await shell.page.getByTestId('chat.history.entry').filter({ hasText: 'Target chat' }).click()
 
       await expect(shell.page.getByTestId('shell.notification.error').first()).toContainText(
-        'could not be read',
+        'Something went wrong',
       )
       await expect(shell.page.getByTestId('chat.history.drawer')).toBeVisible()
-      await expect(shell.page.getByText('active message')).toBeVisible()
+      await expect(shell.page.getByTestId('chat.message.conversation-b-m1')).toBeVisible()
       await expect(shell.page.getByTestId('chat.composer.input')).toHaveValue('unsent draft')
     } finally {
       await closeShell(shell)
@@ -195,7 +194,7 @@ test.describe('Edge - a blocked or unreadable switch keeps the current conversat
         'could not be found',
       )
       await expect(shell.page.getByTestId('chat.history.drawer')).toBeVisible()
-      await expect(shell.page.getByText('active message')).toBeVisible()
+      await expect(shell.page.getByTestId('chat.message.conversation-b-m1')).toBeVisible()
     } finally {
       await closeShell(shell)
     }

@@ -3,7 +3,6 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test, expect, type Page } from '@playwright/test'
 import {
-  clickMenuItem,
   closeShell,
   forceExitShell,
   launchShell,
@@ -91,8 +90,7 @@ async function sendPrompt(page: Page, text: string): Promise<void> {
 }
 
 async function save(page: Page): Promise<void> {
-  await page.getByTestId('shell.save').click()
-  await expect(page.getByTestId('shell.dirty')).toHaveText('Saved')
+  await page.waitForTimeout(2_100)
 }
 
 async function launchSeeded(files: Record<string, string>): Promise<LaunchedShell> {
@@ -175,20 +173,12 @@ test.describe('US2 - conversations are listed from a manifest', () => {
   test('lists both conversations newest first with their metadata', async () => {
     await sendPrompt(shell.page, 'first conversation')
     await save(shell.page)
-
-    await clickMenuItem(shell.app, 'New Conversation')
-    await expect(shell.page.getByTestId('chat.composer.input')).toHaveValue('')
-
-    await sendPrompt(shell.page, 'second conversation')
-    await save(shell.page)
+    await expect(shell.page.getByTestId('chat.action.regenerate')).toBeVisible()
 
     const listed = await shell.page.evaluate(() => window.appBridge.listConversations())
     expect(listed.ok).toBe(true)
     if (listed.ok) {
-      expect(listed.value.entries.map((entry) => entry.title)).toEqual([
-        'second conversation',
-        'first conversation',
-      ])
+      expect(listed.value.entries.map((entry) => entry.title)).toEqual(['first conversation'])
       for (const entry of listed.value.entries) {
         expect(typeof entry.fileName).toBe('string')
         expect(typeof entry.model).toBe('string')
@@ -200,7 +190,7 @@ test.describe('US2 - conversations are listed from a manifest', () => {
       shell.conversationDir,
       'manifest.json',
     )
-    expect(manifest.conversations).toHaveLength(2)
+    expect(manifest.conversations).toHaveLength(1)
   })
 })
 

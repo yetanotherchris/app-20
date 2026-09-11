@@ -42,6 +42,7 @@ const appBridge: AppBridge = {
   getSyncStatus: () => invoke('sync:get-status'),
   openExternal: (url) => invoke('shell:open-external', { url }),
   reportCloseDecision: (decision) => invoke('app:close-decision', { decision }),
+  onAppBackgrounded: (handler) => subscribe('app:backgrounded', handler),
   onCloseRequested: (handler) => subscribe('app:close-requested', handler),
   onMenuCommand: (handler) => subscribe('menu:command', handler),
   onChatChunk: (handler) => subscribe('chat:chunk', handler),

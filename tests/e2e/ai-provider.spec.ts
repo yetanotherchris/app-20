@@ -48,8 +48,7 @@ async function launchWithoutKey(): Promise<{ shell: LaunchedShell; fake: FakeOpe
 }
 
 async function storedConversation(shell: LaunchedShell): Promise<StoredConversation> {
-  await shell.page.getByTestId('shell.save').click()
-  await expect(shell.page.getByTestId('shell.dirty')).toHaveText('Saved')
+  await expect.poll(() => listConversationJsonFiles(shell.conversationDir).then((names) => names.length)).toBeGreaterThan(0)
   const names = await listConversationJsonFiles(shell.conversationDir)
   return readConversationJson<StoredConversation>(shell.conversationDir, names[0] as string)
 }

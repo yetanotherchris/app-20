@@ -32,12 +32,6 @@ export function buildApplicationMenu(): void {
         },
         { type: 'separator' },
         {
-          label: 'Save',
-          accelerator: 'CmdOrCtrl+S',
-          click: () => dispatch('save-document'),
-        },
-        { type: 'separator' },
-        {
           label: 'Quit',
           accelerator: 'CmdOrCtrl+Q',
           click: () => app.quit(),
