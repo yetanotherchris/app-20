@@ -5,7 +5,15 @@ import { hasConversationFolder, loadConversationFolder } from './conversationFol
 import { reconcileConversations } from './conversationStore'
 import { registerIpcHandlers } from './ipc'
 import { buildApplicationMenu } from './menu'
+import { runStartupSync } from './sync'
 import { createMainWindow, getMainWindow } from './window'
+
+/** A hanging network must not hold the window closed; the run continues after the cap. */
+const STARTUP_SYNC_TIMEOUT_MS = 10_000
+
+function withTimeout(promise: Promise<void>, ms: number): Promise<void> {
+  return Promise.race([promise, new Promise<void>((resolve) => setTimeout(resolve, ms))])
+}
 
 function openWindow(): void {
   const window = createMainWindow()
@@ -48,6 +56,12 @@ if (!hasSingleInstanceLock) {
       // it. A failure here must not stop the app from opening; the renderer
       // reconciles again on load and surfaces any folder error.
       await reconcileConversations().catch(() => undefined)
+      // Sync before the window opens so session restore (spec 105) starts from
+      // settled content; the cap keeps an unreachable network from blocking launch.
+      await withTimeout(
+        runStartupSync().catch(() => undefined),
+        STARTUP_SYNC_TIMEOUT_MS,
+      )
     }
     openWindow()
 

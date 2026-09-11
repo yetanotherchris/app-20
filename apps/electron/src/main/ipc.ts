@@ -9,6 +9,7 @@ import { getConversationStore } from './conversationStore'
 import { AppError, failure, ok } from './errors'
 import { getSecretsStatus, importProviderKey, importS3Credentials, removeSecret } from './secrets'
 import { openExternalUrl } from './security'
+import { getSyncStatus, scheduleSync } from './sync'
 import { getMainWindow } from './window'
 
 function isTrustedSender(event: IpcMainInvokeEvent): boolean {
@@ -63,6 +64,8 @@ export function registerIpcHandlers(): void {
     const conversation = parseConversation(request.conversation)
     if (!conversation) throw new AppError('invalid-conversation')
     await getConversationStore().save(conversation)
+    // Upload in the background; the save response never waits on the network.
+    scheduleSync()
     return ok({ savedAt: conversation.updatedAt })
   })
   handle('chat:start', (request) => startChat(request))
@@ -74,6 +77,7 @@ export function registerIpcHandlers(): void {
   handle('secrets:import-s3', () => importS3Credentials())
   handle('secrets:remove', (request) => removeSecret(request?.kind))
   handle('secrets:status', async () => ok(await getSecretsStatus()))
+  handle('sync:get-status', () => ok(getSyncStatus()))
   handle('shell:open-external', async (request) => {
     await openExternalUrl(request.url)
     return ok({})

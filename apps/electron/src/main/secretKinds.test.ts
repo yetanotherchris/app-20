@@ -87,15 +87,53 @@ describe('s3 credential validation', () => {
     ).toBe(false)
   })
 
-  it('trims and stores only the credential fields', () => {
+  it('trims the credential fields and preserves an optional bucket config', () => {
     const result = validateSecret(
       's3',
-      JSON.stringify({ accessKeyId: ' AKIA ', secretAccessKey: ' secret ', region: 'eu' }),
+      JSON.stringify({
+        accessKeyId: ' AKIA ',
+        secretAccessKey: ' secret ',
+        bucket: 'my-bucket',
+        region: 'eu-west-1',
+        endpoint: 'http://127.0.0.1:9000',
+      }),
+    )
+    expect(result).toEqual({
+      ok: true,
+      value: JSON.stringify({
+        accessKeyId: 'AKIA',
+        secretAccessKey: 'secret',
+        bucket: 'my-bucket',
+        region: 'eu-west-1',
+        endpoint: 'http://127.0.0.1:9000',
+      }),
+    })
+  })
+
+  it('stores a keys-only pair unchanged when no bucket config is present', () => {
+    const result = validateSecret(
+      's3',
+      JSON.stringify({ accessKeyId: 'AKIA', secretAccessKey: 'secret' }),
     )
     expect(result).toEqual({
       ok: true,
       value: JSON.stringify({ accessKeyId: 'AKIA', secretAccessKey: 'secret' }),
     })
+  })
+
+  it.each([
+    ['an invalid bucket name', { bucket: 'Bad Bucket' }],
+    ['a bucket that is too short', { bucket: 'ab' }],
+    ['an invalid region', { region: 'EU west' }],
+    ['a non-http endpoint', { endpoint: 'ftp://example.com' }],
+    ['a non-string endpoint', { endpoint: 42 }],
+    ['an empty bucket', { bucket: '' }],
+  ])('rejects %s when present', (_label, extra) => {
+    const result = validateSecret(
+      's3',
+      JSON.stringify({ accessKeyId: 'AKIA', secretAccessKey: 'secret', ...extra }),
+    )
+    expect(result).toEqual({ ok: false, code: 'invalid-secret' })
   })
 
   it('rejects a file that also carries a provider key with multiple-secrets', () => {

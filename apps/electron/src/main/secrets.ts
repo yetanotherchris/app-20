@@ -9,6 +9,20 @@ import { validateSecret } from './secretKinds'
 import { createSecretStore, type SecretStore } from './secretStore'
 
 const MAX_SECRET_BYTES = 64 * 1024
+const DEFAULT_S3_REGION = 'us-east-1'
+
+/**
+ * The parsed S3 credential plus the bucket coordinates the sync engine needs.
+ * It carries secret material, so it stays in main and never crosses the
+ * preload boundary (spec 103 FR-005).
+ */
+export interface S3Config {
+  accessKeyId: string
+  secretAccessKey: string
+  bucket: string
+  region: string
+  endpoint?: string
+}
 
 let storagePrepared = false
 
@@ -68,6 +82,42 @@ export async function getSecretsStatus(): Promise<SecretsStatus> {
  */
 export async function getProviderKey(): Promise<string | null> {
   return secretStore().read('provider-key')
+}
+
+/**
+ * Reads and parses the stored S3 credential. Returns null when nothing is
+ * stored, the JSON is unreadable, or no bucket is present, so sync reports
+ * `not configured` rather than attempting an unusable request (FR-001). A
+ * keys-only secret imported under spec 103 therefore reads as not configured
+ * until the user re-imports with a bucket.
+ */
+export async function getS3Config(): Promise<S3Config | null> {
+  const stored = await secretStore().read('s3')
+  if (!stored) return null
+
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(stored)
+  } catch {
+    return null
+  }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return null
+
+  const { accessKeyId, secretAccessKey, bucket, region, endpoint } = parsed as Record<
+    string,
+    unknown
+  >
+  if (typeof accessKeyId !== 'string' || typeof secretAccessKey !== 'string') return null
+  if (typeof bucket !== 'string' || bucket.length === 0) return null
+
+  const config: S3Config = {
+    accessKeyId,
+    secretAccessKey,
+    bucket,
+    region: typeof region === 'string' && region.length > 0 ? region : DEFAULT_S3_REGION,
+  }
+  if (typeof endpoint === 'string' && endpoint.length > 0) config.endpoint = endpoint
+  return config
 }
 
 async function pickFile(title: string): Promise<string | null> {
