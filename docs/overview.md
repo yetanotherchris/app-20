@@ -1,6 +1,6 @@
 # app-20 Overview
 
-Initial ideas for this application, a desktop and iOS LLM chat app (similar to the main frontier ones e.g. Claude, Gemini, ChatGPT, Grok). 
+Initial ideas for this application, a desktop and iOS LLM chat app (similar to the main frontier ones e.g. Claude, Gemini, ChatGPT, Grok).
 
 This app will work with OpenAI APIs such as Openrouter, and will store the chats/conversations on S3 both plain text and encrypted.
 
@@ -34,6 +34,7 @@ Below are thoughts for an initial beta phase, a proof of concept.
 - Display user prompts in right-aligned message bubbles.
 - Display assistant responses as left-aligned, unboxed text in a centered conversation column, following [spec 007](../specs/archive/007-chat-reference-presentation/spec.md).
 - Render assistant responses as Markdown.
+- Provide a history drawer on the left, toggled by a control on the chat screen and shown as an overlay, listing recent conversations per [spec 105](../specs/105-chat-history-drawer/spec.md).
 
 ## Beta 1 UI Exclusions
 
@@ -41,7 +42,7 @@ Below are thoughts for an initial beta phase, a proof of concept.
 - No vectorization.
 - No search UI. History is limited to the small recent-conversations list described under Conversation Storage.
 - No model selection control.
-- No left-side drawer menu.
+- No left-side drawer menu other than the history drawer.
 
 ## AI Provider
 
