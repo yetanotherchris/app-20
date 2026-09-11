@@ -4,7 +4,6 @@ import type { SecretKind } from '../shared/ipc-contract'
 export type ValidationResult = { ok: true; value: string } | { ok: false; code: AppErrorCode }
 
 export interface SecretKindDefinition {
-  kind: SecretKind
   storageKey: string
   validate(raw: string): ValidationResult
 }
@@ -14,6 +13,8 @@ const MAX_PROVIDER_KEY_CHARS = 8192
 /**
  * JSON field names that identify a kind. A file that carries another kind's
  * fields is rejected so one import stores one secret (spec 103 edge cases).
+ * The provider-key markers are only consulted when importing a different kind;
+ * `apiKey` is included because a JSON object can name a provider key that way.
  */
 const JSON_MARKERS: Record<SecretKind, readonly string[]> = {
   'provider-key': ['providerKey', 'apiKey'],
@@ -26,6 +27,11 @@ function invalid(): ValidationResult {
 
 function multiple(): ValidationResult {
   return { ok: false, code: 'multiple-secrets' }
+}
+
+function looksLikeJson(raw: string): boolean {
+  const trimmed = raw.trim()
+  return trimmed.startsWith('{') || trimmed.startsWith('[')
 }
 
 function parseJsonObject(raw: string): Record<string, unknown> | null {
@@ -41,15 +47,24 @@ function parseJsonObject(raw: string): Record<string, unknown> | null {
   return parsed as Record<string, unknown>
 }
 
+function hasMarker(value: Record<string, unknown>, marker: string): boolean {
+  return Object.prototype.hasOwnProperty.call(value, marker)
+}
+
 function carriesAnotherKind(kind: SecretKind, value: Record<string, unknown>): boolean {
   return Object.entries(JSON_MARKERS).some(
-    ([other, markers]) => other !== kind && markers.some((marker) => marker in value),
+    ([other, markers]) => other !== kind && markers.some((marker) => hasMarker(value, marker)),
   )
 }
 
 function validateProviderKey(raw: string): ValidationResult {
-  const json = parseJsonObject(raw)
-  if (json) return carriesAnotherKind('provider-key', json) ? multiple() : invalid()
+  // A JSON value is never a provider key. If it names another kind's fields it
+  // is a multi-secret file; otherwise it is simply the wrong shape. Either way
+  // it must not fall through and be stored verbatim.
+  if (looksLikeJson(raw)) {
+    const json = parseJsonObject(raw)
+    return json && carriesAnotherKind('provider-key', json) ? multiple() : invalid()
+  }
 
   const value = raw.trim()
   if (value.length === 0 || value.length > MAX_PROVIDER_KEY_CHARS || /\s/.test(value)) {
@@ -80,12 +95,8 @@ function validateS3Credentials(raw: string): ValidationResult {
  * never rewrites stored secrets or runs a migration (spec 103 FR-006).
  */
 export const SECRET_KINDS: Record<SecretKind, SecretKindDefinition> = {
-  'provider-key': {
-    kind: 'provider-key',
-    storageKey: 'providerKey',
-    validate: validateProviderKey,
-  },
-  s3: { kind: 's3', storageKey: 's3', validate: validateS3Credentials },
+  'provider-key': { storageKey: 'providerKey', validate: validateProviderKey },
+  s3: { storageKey: 's3', validate: validateS3Credentials },
 }
 
 export function isSecretKind(value: unknown): value is SecretKind {
@@ -93,5 +104,7 @@ export function isSecretKind(value: unknown): value is SecretKind {
 }
 
 export function validateSecret(kind: SecretKind, raw: string): ValidationResult {
-  return SECRET_KINDS[kind].validate(raw)
+  const definition = SECRET_KINDS[kind]
+  if (!definition) return invalid()
+  return definition.validate(raw)
 }

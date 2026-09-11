@@ -4,7 +4,7 @@ import type { Result } from '../shared/error-codes'
 import type { SecretKind, SecretsStatus } from '../shared/ipc-contract'
 import { secretsFilePath } from './appData'
 import { AppError, err, failure, ok } from './errors'
-import { isSecretKind, validateSecret } from './secretKinds'
+import { validateSecret } from './secretKinds'
 import { createSecretStore, type SecretStore } from './secretStore'
 
 const MAX_SECRET_BYTES = 64 * 1024
@@ -12,6 +12,12 @@ const MAX_SECRET_BYTES = 64 * 1024
 const cipher = {
   encrypt(plaintext: string): string {
     if (!safeStorage.isEncryptionAvailable()) throw new AppError('secret-store-unavailable')
+    // On Linux without a real secret service, safeStorage falls back to a
+    // hardcoded key (basic_text). That is not protection, so refuse to store
+    // rather than write a secret that is only obfuscated.
+    if (process.platform === 'linux' && safeStorage.getSelectedStorageBackend() === 'basic_text') {
+      throw new AppError('secret-store-unavailable')
+    }
     return safeStorage.encryptString(plaintext).toString('base64')
   },
   decrypt(stored: string): string | null {
@@ -71,36 +77,39 @@ async function importSecret(
   return ok({ kind })
 }
 
-export async function importProviderKey(): Promise<Result<{ kind: SecretKind }>> {
-  const file = await pickFile('Import Provider API Key')
+async function importWithChooser(
+  kind: SecretKind,
+  title: string,
+): Promise<Result<{ kind: SecretKind }>> {
+  const file = await pickFile(title)
   if (!file) return err('chooser-cancelled')
 
   try {
-    return await importSecret('provider-key', file)
+    return await importSecret(kind, file)
   } catch (error) {
     return failure(error)
   }
 }
 
-export async function importS3Credentials(): Promise<Result<{ kind: SecretKind }>> {
-  const file = await pickFile('Import S3 Credentials')
-  if (!file) return err('chooser-cancelled')
+export function importProviderKey(): Promise<Result<{ kind: SecretKind }>> {
+  return importWithChooser('provider-key', 'Import Provider API Key')
+}
 
-  try {
-    return await importSecret('s3', file)
-  } catch (error) {
-    return failure(error)
-  }
+export function importS3Credentials(): Promise<Result<{ kind: SecretKind }>> {
+  return importWithChooser('s3', 'Import S3 Credentials')
 }
 
 /**
- * Removes a stored secret. An unknown kind is refused; removing a kind that is
- * not stored succeeds, so a repeated menu action is not an error (spec 103
- * research R4). The dependent feature then fails through its missing-credential
- * path until a new secret is imported.
+ * Removes a stored secret. Removing a kind that is not stored succeeds, so a
+ * repeated menu action is not an error (spec 103 research R4). An unknown kind
+ * is refused by the store. The dependent feature then fails through its
+ * missing-credential path until a new secret is imported.
  */
 export async function removeSecret(kind: SecretKind): Promise<Result<{ kind: SecretKind }>> {
-  if (!isSecretKind(kind)) throw new AppError('invalid-secret')
-  await secretStore().remove(kind)
-  return ok({ kind })
+  try {
+    await secretStore().remove(kind)
+    return ok({ kind })
+  } catch (error) {
+    return failure(error)
+  }
 }

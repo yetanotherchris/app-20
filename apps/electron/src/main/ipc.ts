@@ -72,7 +72,7 @@ export function registerIpcHandlers(): void {
   })
   handle('secrets:import-provider-key', () => importProviderKey())
   handle('secrets:import-s3', () => importS3Credentials())
-  handle('secrets:remove', (request) => removeSecret(request.kind))
+  handle('secrets:remove', (request) => removeSecret(request?.kind))
   handle('secrets:status', async () => ok(await getSecretsStatus()))
   handle('shell:open-external', async (request) => {
     await openExternalUrl(request.url)

@@ -16,26 +16,39 @@ export interface SecretStore {
   remove(kind: SecretKind): Promise<void>
 }
 
-type StoredSecrets = Record<string, string>
+type StoredSecrets = Record<string, unknown>
 
 /**
- * Reads the on-disk object. A missing, unreadable, or non-object file reads as
- * empty and the next write replaces it. Only string values are kept, so a
- * malformed entry cannot smuggle a non-string into the cipher.
+ * Reads the on-disk object. Absence is an empty store; a corrupt or
+ * non-object file is also treated as empty and replaced by the next write. A
+ * read that fails for any other reason is not empty: treating a transient
+ * EACCES or EIO as an empty store would let the next write drop the other
+ * secrets (constitution III), so it surfaces as `read-failed`.
  */
 async function readStored(filePath: string): Promise<StoredSecrets> {
+  let raw: string
   try {
-    const raw = await fs.readFile(filePath, 'utf8')
+    raw = await fs.readFile(filePath, 'utf8')
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return {}
+    throw new AppError('read-failed')
+  }
+
+  try {
     const parsed: unknown = JSON.parse(raw)
     if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
-    const result: StoredSecrets = {}
-    for (const [key, value] of Object.entries(parsed)) {
-      if (typeof value === 'string') result[key] = value
-    }
-    return result
+    return parsed as StoredSecrets
   } catch {
     return {}
   }
+}
+
+function isStoredString(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0
+}
+
+function hasEntry(secrets: StoredSecrets, storageKey: string): boolean {
+  return isStoredString(secrets[storageKey])
 }
 
 export function createSecretStore(options: {
@@ -49,11 +62,30 @@ export function createSecretStore(options: {
     return SECRET_KINDS[kind]
   }
 
+  // Serializes each read-modify-write cycle so two overlapping imports or
+  // removals cannot read the same snapshot and clobber each other. A failed
+  // task does not stall the queue.
+  let queue: Promise<unknown> = Promise.resolve()
+  function serialize<T>(task: () => Promise<T>): Promise<T> {
+    const result = queue.then(task, task)
+    queue = result.then(
+      () => undefined,
+      () => undefined,
+    )
+    return result
+  }
+
   async function setEntry(kind: SecretKind, stored: string | null): Promise<void> {
     const { storageKey } = definitionFor(kind)
     const secrets = await readStored(filePath)
-    if (stored === null) delete secrets[storageKey]
-    else secrets[storageKey] = stored
+
+    if (stored === null) {
+      if (!Object.prototype.hasOwnProperty.call(secrets, storageKey)) return
+      delete secrets[storageKey]
+    } else {
+      secrets[storageKey] = stored
+    }
+
     await atomicWriteFile(filePath, JSON.stringify(secrets))
   }
 
@@ -61,24 +93,27 @@ export function createSecretStore(options: {
     async status() {
       const secrets = await readStored(filePath)
       return {
-        providerKey: SECRET_KINDS['provider-key'].storageKey in secrets,
-        s3: SECRET_KINDS.s3.storageKey in secrets,
+        providerKey: hasEntry(secrets, SECRET_KINDS['provider-key'].storageKey),
+        s3: hasEntry(secrets, SECRET_KINDS.s3.storageKey),
       }
     },
 
     async read(kind) {
       const { storageKey } = definitionFor(kind)
       const stored = (await readStored(filePath))[storageKey]
-      if (!stored) return null
+      if (!isStoredString(stored)) return null
       return cipher.decrypt(stored)
     },
 
     async write(kind, plaintext) {
-      await setEntry(kind, cipher.encrypt(plaintext))
+      definitionFor(kind)
+      const stored = cipher.encrypt(plaintext)
+      await serialize(() => setEntry(kind, stored))
     },
 
     async remove(kind) {
-      await setEntry(kind, null)
+      definitionFor(kind)
+      await serialize(() => setEntry(kind, null))
     },
   }
 }

@@ -57,7 +57,7 @@ export function App() {
   })
 
   const runImport = useCallback(
-    async (kind: 'provider-key' | 's3') => {
+    async (kind: SecretKind) => {
       const result =
         kind === 'provider-key'
           ? await window.appBridge.importProviderKey()
