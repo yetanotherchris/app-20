@@ -6,9 +6,9 @@ Spec 103 lives in the Electron main process and is reached from the renderer onl
 
 ```ts
 export interface SecretCipher {
-  /** Encrypt the whole payload (a JSON string) to armored text; throw when the vault is unavailable. */
+  /** Encrypt the whole payload (a JSON string) to a storable string; throw when the vault is unavailable. */
   encrypt(plaintext: string): Promise<string>
-  /** Decrypt an armored payload, or return null when it cannot be decrypted. */
+  /** Decrypt a stored payload, or return null when it cannot be decrypted. */
   decrypt(ciphertext: string): Promise<string | null>
 }
 

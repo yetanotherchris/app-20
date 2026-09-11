@@ -1,12 +1,12 @@
 # Feature Specification: Age Encryption for the Secret Store
 
-**Feature Branch**: `108-age-secret-encryption`
+**Feature Branch**: `spec-103-secret-storage` (addendum; no separate branch)
 
 **Created**: 2026-09-11
 
 **Status**: Archived
 
-**Parent**: [spec 103 Secret Storage](../archive/103-secret-storage/spec.md)
+**Parent**: [spec 103 Secret Storage](../103-secret-storage/spec.md)
 
 **Input**: Addendum to spec 103. Verify that the at-rest secrets payload is encrypted with age under a passphrase held in the OS credential store, and that the older per-value format is not used.
 
@@ -41,7 +41,7 @@ The user's imported credentials are held in an age file that cannot be read with
 ### Functional Requirements
 
 - **FR-001**: The at-rest secrets payload MUST be an age-encrypted file.
-- **FR-002**: The age passphrase MUST be random per install and held only in the OS credential store.
+- **FR-002**: The age passphrase MUST be random per install and held in the OS credential store. Where no credential store is available, the accepted fallback of `research.md` R1 applies, and the passphrase is protected by the platform's hardcoded-key fallback instead.
 - **FR-003**: The plaintext of any credential MUST NOT appear in the payload file or the passphrase file.
 - **FR-004**: The store MUST NOT read, convert, or recreate the older per-value secret file.
 - **FR-005**: A check MUST verify the on-disk payload is a valid age file that decrypts only with the passphrase.
@@ -63,3 +63,4 @@ The user's imported credentials are held in an age file that cannot be read with
 
 - Beta, single user. No migration from the older format, per the AGENTS.md beta rule.
 - The age format is intentional so the future conversation encryption and the iOS app reuse one primitive.
+- On Linux without a keyring, the passphrase is protected by Electron's `basic_text` fallback rather than a real credential store (research R1).
