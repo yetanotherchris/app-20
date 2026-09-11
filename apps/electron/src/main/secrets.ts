@@ -1,13 +1,19 @@
 import { dialog, safeStorage } from 'electron'
+import { randomBytes } from 'node:crypto'
 import { promises as fs } from 'node:fs'
+import { dirname } from 'node:path'
 import type { Result } from '../shared/error-codes'
 import type { SecretKind, SecretsStatus } from '../shared/ipc-contract'
-import { secretsFilePath } from './appData'
+import { decryptWithPassphrase, encryptWithPassphrase } from './ageCipher'
+import { atomicWriteFile } from './atomicWrite'
+import { passphraseFilePath, secretsFilePath } from './appData'
 import { AppError, err, failure, ok } from './errors'
+import { SECRET_FILE_MODE, ensurePrivateDirectory } from './privateFile'
 import { validateSecret } from './secretKinds'
 import { createSecretStore, type SecretStore } from './secretStore'
 
 const MAX_SECRET_BYTES = 64 * 1024
+const PASSPHRASE_BYTES = 32
 
 let storagePrepared = false
 
@@ -26,19 +32,56 @@ function prepareStorage(): void {
   }
 }
 
-const cipher = {
-  encrypt(plaintext: string): string {
-    prepareStorage()
-    if (!safeStorage.isEncryptionAvailable()) throw new AppError('secret-store-unavailable')
-    return safeStorage.encryptString(plaintext).toString('base64')
-  },
-  decrypt(stored: string): string | null {
-    prepareStorage()
+function requireStorage(): void {
+  prepareStorage()
+  if (!safeStorage.isEncryptionAvailable()) throw new AppError('secret-store-unavailable')
+}
+
+let passphrase: string | null = null
+
+/**
+ * Returns the age passphrase, creating and vault-protecting one on first use.
+ * The passphrase is random and stored via `safeStorage` (DPAPI, Keychain, or
+ * libsecret) in a sibling file. A vault that cannot decrypt an existing
+ * passphrase is a read failure, not a reason to generate a new one.
+ */
+async function getOrCreatePassphrase(): Promise<string> {
+  if (passphrase) return passphrase
+  requireStorage()
+
+  let stored: string | null = null
+  try {
+    stored = await fs.readFile(passphraseFilePath(), 'utf8')
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw new AppError('read-failed')
+  }
+
+  if (stored !== null) {
     try {
-      return safeStorage.decryptString(Buffer.from(stored, 'base64'))
+      passphrase = safeStorage.decryptString(Buffer.from(stored, 'base64'))
+      return passphrase
     } catch {
-      return null
+      throw new AppError('read-failed')
     }
+  }
+
+  const created = randomBytes(PASSPHRASE_BYTES).toString('base64url')
+  await ensurePrivateDirectory(dirname(passphraseFilePath()))
+  await atomicWriteFile(
+    passphraseFilePath(),
+    safeStorage.encryptString(created).toString('base64'),
+    SECRET_FILE_MODE,
+  )
+  passphrase = created
+  return created
+}
+
+const cipher = {
+  async encrypt(plaintext: string): Promise<string> {
+    return encryptWithPassphrase(await getOrCreatePassphrase(), plaintext)
+  },
+  async decrypt(ciphertext: string): Promise<string | null> {
+    return decryptWithPassphrase(await getOrCreatePassphrase(), ciphertext)
   },
 }
 

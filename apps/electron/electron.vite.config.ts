@@ -52,8 +52,11 @@ export default defineConfig({
       outDir: 'out/main',
       // The conversation storage and provider packages are source-only
       // TypeScript with no build step, so they must be bundled into main rather
-      // than required at runtime.
-      externalizeDeps: { exclude: ['@app-20/conversation-storage', '@app-20/ai-provider'] },
+      // than required at runtime. age-encryption is ESM-only and would fail a
+      // CommonJS require, so it is bundled too.
+      externalizeDeps: {
+        exclude: ['@app-20/conversation-storage', '@app-20/ai-provider', 'age-encryption'],
+      },
     },
   },
   preload: {

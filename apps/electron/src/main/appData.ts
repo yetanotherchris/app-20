@@ -1,12 +1,13 @@
 import { app } from 'electron'
 import { promises as fs } from 'node:fs'
 import { homedir } from 'node:os'
-import { dirname, join } from 'node:path'
+import { join } from 'node:path'
 
 const CONFIG_DIR = '.config'
 const APP_DIR = 'app-20'
 const CONVERSATIONS_DIR = 'conversations'
-const SECRETS_FILE = 'secrets.json'
+const SECRETS_FILE = 'secrets.json.age'
+const PASSPHRASE_FILE = 'secrets.key'
 
 /**
  * The app-owned data directory. It is `~/.config/app-20` on every platform so
@@ -27,14 +28,21 @@ export function conversationsDir(): string {
   return join(appDataDir(), CONVERSATIONS_DIR)
 }
 
+/** The age-encrypted secrets payload. */
 export function secretsFilePath(): string {
   return join(appDataDir(), SECRETS_FILE)
 }
 
+/** The vault-protected age passphrase. */
+export function passphraseFilePath(): string {
+  return join(appDataDir(), PASSPHRASE_FILE)
+}
+
 /**
- * Moves data written by older builds out of Electron's userData folder into the
- * app data directory. Best effort: a failure never blocks startup, and a file
- * already present at the new location is never overwritten.
+ * Moves the conversation folder written by older builds out of Electron's
+ * userData directory. Best effort: a failure never blocks startup, and a folder
+ * already present at the new location is never overwritten. Secrets are not
+ * migrated; beta stores a new format and the user imports again.
  */
 export async function migrateLegacyData(): Promise<void> {
   if (process.env['APP20_DATA_DIR'] || process.env['APP20_CONVERSATION_DIR']) return
@@ -43,8 +51,6 @@ export async function migrateLegacyData(): Promise<void> {
 
 export async function migrateData(legacyDir: string, targetDir: string): Promise<void> {
   if (legacyDir === targetDir) return
-
-  await moveIfMissing(join(legacyDir, SECRETS_FILE), join(targetDir, SECRETS_FILE))
 
   const legacyConversations = join(legacyDir, CONVERSATIONS_DIR)
   const targetConversations = join(targetDir, CONVERSATIONS_DIR)
@@ -61,12 +67,6 @@ async function pathExists(path: string): Promise<boolean> {
   } catch {
     return false
   }
-}
-
-async function moveIfMissing(source: string, target: string): Promise<void> {
-  if (!(await pathExists(source)) || (await pathExists(target))) return
-  await fs.mkdir(dirname(target), { recursive: true })
-  await renameOrCopy(source, target)
 }
 
 async function renameOrCopy(source: string, target: string): Promise<void> {

@@ -6,7 +6,7 @@
 
 ## Summary
 
-Finish the local secret store the app already uses. Spec 102 introduced the import path (file chooser, `safeStorage` encryption, atomic write to `<appData>/secrets.json`, a main-only `getProviderKey`). Spec 103 makes that store a first-class, extensible component and closes the requirements the import path does not cover: the user can remove a stored secret (FR-007), a file carrying more than one kind of secret is rejected with guidance, and the kind registry makes a new credential type (for example an OAuth token) a new entry with no change to existing secrets and no migration (FR-006). The plaintext stays in main and never crosses the preload boundary.
+Finish the local secret store the app already uses. Spec 102 introduced the import path (file chooser, `safeStorage`, atomic write, a main-only `getProviderKey`). Spec 103 completes it: the user can remove a stored secret (FR-007), a file carrying more than one kind of secret is rejected with guidance, and the store now encrypts its payload with age under a random passphrase held in the OS vault (the format the future conversation encryption will use). The kind registry makes a new credential type a new entry with no change to existing secrets and no migration (FR-006). The plaintext stays in main and never crosses the preload boundary.
 
 The work is split so the structural extraction lands first, with no behavior change, then removal and the new rejection rule as separate behavioral commits.
 
@@ -14,17 +14,17 @@ The work is split so the structural extraction lands first, with no behavior cha
 
 **Language/Version**: TypeScript 5.7 strict; Node (Electron main and preload); React 19 renderer via electron-vite
 
-**Primary Dependencies**: No new dependency. At-rest protection uses Electron `safeStorage`; the file chooser uses Electron `dialog`. The pure validators import nothing but the shared error contract. The store uses `node:fs` and the existing `atomicWriteFile`.
+**Primary Dependencies**: One new runtime dependency, `age-encryption` (FiloSottile typage, pure JS via `@noble/*`), bundled into main. At-rest protection is age passphrase mode; the passphrase is protected by Electron `safeStorage`, and the file chooser uses Electron `dialog`. The validators and the age primitives import no Electron, so they test without the OS.
 
-**Storage**: One JSON file at `<appData>/secrets.json` (`~/.config/app-20` on every platform, overridable with `APP20_DATA_DIR` for tests). Each entry is the base64 ciphertext of one secret, keyed by kind. Unknown keys are preserved on write.
+**Storage**: Two files under `<appData>` (`~/.config/app-20` on every platform, overridable with `APP20_DATA_DIR` for tests): `secrets.json.age`, the ASCII-armored age encryption of a JSON object keyed by kind, and `secrets.key`, the random 256-bit age passphrase encrypted with `safeStorage`. Unknown keys are preserved on write. No migration from the older keyed `secrets.json` (beta rule).
 
-**Testing**: Vitest for the pure validators and the store (fake cipher, temp file), the IPC contract test for the new channel, and Playwright (`_electron.launch`) against the built app with the existing fake OpenRouter server for import, overwrite, rejection, and removal.
+**Testing**: Vitest for the age passphrase round-trip (`ageCipher.test.ts`), the pure validators, and the store (fake async cipher, real temp file), the IPC contract test for the new channel, and Playwright (`_electron.launch`) against the built app with the existing fake OpenRouter server for import, overwrite, rejection, and removal.
 
-**Target Platform**: Windows desktop (beta). The validators and the store interface are free of Electron so the iOS app (spec 106) can supply its own picker and cipher.
+**Target Platform**: Windows desktop (beta). The age format and the store interface are free of Electron, so the iOS app (spec 106) and the future conversation encryption can share the primitive.
 
 **Project Type**: npm-workspaces monorepo; the existing Electron desktop app.
 
-**Performance Goals**: A secret import or removal completes in one file read and one atomic write. No measurable startup cost; the store is read on demand.
+**Performance Goals**: Add or remove does one decrypt, a one-key edit, one encrypt, and one atomic write. The passphrase is random, so scrypt uses work factor 12 (instead of the default 18 for human passphrases) to keep each read a few milliseconds.
 
 **Constraints**: Renderer receives no secret material, only booleans and typed error codes (FR-005). Secrets live outside the conversation folder and are never uploaded (FR-002). No generic IPC escape hatch (constitution IV). Adding a credential kind needs no migration (FR-006).
 
@@ -70,9 +70,14 @@ apps/electron/src/
 ├── main/
 │   ├── secretKinds.ts           # pure kind registry and validators
 │   ├── secretKinds.test.ts
-│   ├── secretStore.ts           # kind-keyed encrypted file store (injected cipher)
+│   ├── ageCipher.ts             # age passphrase encrypt/decrypt, ASCII-armored
+│   ├── ageCipher.test.ts
+│   ├── secretStore.ts           # age-envelope store over an injected async cipher
 │   ├── secretStore.test.ts
-│   ├── secrets.ts               # Electron adapter: safeStorage cipher, dialog, store wiring
+│   ├── privateFile.ts           # 0600 file / 0700 directory helper
+│   ├── appData.ts               # secrets.json.age and secrets.key paths
+│   ├── appData.test.ts
+│   ├── secrets.ts               # Electron adapter: safeStorage passphrase, dialog, store wiring
 │   ├── ipc.ts                   # register secrets:remove
 │   ├── ipc-contract.test.ts     # expected channel list
 │   └── menu.ts                  # add the two remove entries
@@ -87,8 +92,8 @@ tests/e2e/
 └── shell.spec.ts                # bridge method list and menu assertion
 ```
 
-**Structure Decision**: The store and validators are split by responsibility. Validators are pure and depend only on the shared error codes, so they test without Node or Electron. The store depends only on `node:fs` and an injected `SecretCipher`, so it tests with a fake cipher and a temp file. `secrets.ts` stays the Electron adapter and keeps the same exported names the IPC layer and `chatStream.ts` already use. This keeps the existing import behavior and adds removal without widening the renderer surface.
+**Structure Decision**: The pieces are split by responsibility. Validators are pure. The age primitives in `ageCipher.ts` are pure Node and tested directly. The store depends only on `node:fs` and an injected async `SecretCipher`, so it tests with a fake cipher and a temp file. The permission helper is shared by both files the adapter writes. `secrets.ts` stays the Electron adapter: it owns `safeStorage`, the dialog, and the passphrase file, and keeps the exported names the IPC layer and `chatStream.ts` use. The age format is chosen so the iOS app and the future conversation encryption reuse one primitive.
 
 ## Complexity Tracking
 
-No constitution violations. Decisions recorded in `research.md`: `safeStorage` for at-rest protection (R1); one file with a per-kind registry for extensibility (R2); structural validation with a cross-kind check (R3); idempotent removal (R4); menu-driven removal over one IPC op (R5); unit plus e2e coverage (R6); structural extraction before behavioral commits (R7).
+No constitution violations. Decisions recorded in `research.md`: age passphrase encryption with the passphrase held in the OS vault (R1); one age envelope with a per-kind registry for extensibility and no migration (R2); structural validation with a cross-kind check (R3); idempotent removal (R4); menu-driven removal over one IPC op (R5); unit plus e2e coverage (R6); pure crypto and store split from the Electron adapter (R7). The beta no-migration rule is recorded in `AGENTS.md`.

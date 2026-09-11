@@ -3,11 +3,14 @@ import { dirname } from 'node:path'
 import type { SecretKind, SecretsStatus } from '../shared/ipc-contract'
 import { atomicWriteFile } from './atomicWrite'
 import { AppError } from './errors'
+import { SECRET_FILE_MODE, ensurePrivateDirectory } from './privateFile'
 import { SECRET_KINDS, isSecretKind } from './secretKinds'
 
 export interface SecretCipher {
-  encrypt(plaintext: string): string
-  decrypt(stored: string): string | null
+  /** Encrypts the whole store payload, a JSON string, to armored text. */
+  encrypt(plaintext: string): Promise<string>
+  /** Decrypts an armored payload, or returns null when it cannot be read. */
+  decrypt(ciphertext: string): Promise<string | null>
 }
 
 export interface SecretStore {
@@ -19,33 +22,14 @@ export interface SecretStore {
 
 type StoredSecrets = Record<string, unknown>
 
-const SECRET_FILE_MODE = 0o600
-const SECRET_DIR_MODE = 0o700
-
 /**
- * Creates the store directory if needed and narrows it to the owner. The chmod
- * also fixes a directory an earlier build created at the default umask. The
- * chmod is POSIX-only; Windows does not apply these bits. A failure to prepare
- * the directory is reported as a write failure so the caller does not believe
- * the secret was stored.
+ * Reads and decrypts the on-disk payload. Absence is an empty store; a payload
+ * that cannot be decrypted or parsed is also treated as empty and replaced by
+ * the next write. A read that fails for any other reason is not empty: treating
+ * a transient EACCES or EIO as an empty store would let the next write drop the
+ * other secrets (constitution III), so it surfaces as `read-failed`.
  */
-async function ensurePrivateDirectory(directory: string): Promise<void> {
-  try {
-    await fs.mkdir(directory, { recursive: true, mode: SECRET_DIR_MODE })
-    if (process.platform !== 'win32') await fs.chmod(directory, SECRET_DIR_MODE)
-  } catch {
-    throw new AppError('write-failed')
-  }
-}
-
-/**
- * Reads the on-disk object. Absence is an empty store; a corrupt or
- * non-object file is also treated as empty and replaced by the next write. A
- * read that fails for any other reason is not empty: treating a transient
- * EACCES or EIO as an empty store would let the next write drop the other
- * secrets (constitution III), so it surfaces as `read-failed`.
- */
-async function readStored(filePath: string): Promise<StoredSecrets> {
+async function readStored(filePath: string, cipher: SecretCipher): Promise<StoredSecrets> {
   let raw: string
   try {
     raw = await fs.readFile(filePath, 'utf8')
@@ -54,8 +38,11 @@ async function readStored(filePath: string): Promise<StoredSecrets> {
     throw new AppError('read-failed')
   }
 
+  const plaintext = await cipher.decrypt(raw)
+  if (plaintext === null) return {}
+
   try {
-    const parsed: unknown = JSON.parse(raw)
+    const parsed: unknown = JSON.parse(plaintext)
     if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return {}
     return parsed as StoredSecrets
   } catch {
@@ -97,7 +84,7 @@ export function createSecretStore(options: {
 
   async function setEntry(kind: SecretKind, stored: string | null): Promise<void> {
     const { storageKey } = definitionFor(kind)
-    const secrets = await readStored(filePath)
+    const secrets = await readStored(filePath, cipher)
 
     if (stored === null) {
       if (!Object.prototype.hasOwnProperty.call(secrets, storageKey)) return
@@ -106,15 +93,16 @@ export function createSecretStore(options: {
       secrets[storageKey] = stored
     }
 
+    const ciphertext = await cipher.encrypt(JSON.stringify(secrets))
     // The file is owner read/write only and its directory owner only on POSIX,
     // so another local user cannot read the stored secrets (research.md R1).
     await ensurePrivateDirectory(dirname(filePath))
-    await atomicWriteFile(filePath, JSON.stringify(secrets), SECRET_FILE_MODE)
+    await atomicWriteFile(filePath, ciphertext, SECRET_FILE_MODE)
   }
 
   return {
     async status() {
-      const secrets = await readStored(filePath)
+      const secrets = await readStored(filePath, cipher)
       return {
         providerKey: hasEntry(secrets, SECRET_KINDS['provider-key'].storageKey),
         s3: hasEntry(secrets, SECRET_KINDS.s3.storageKey),
@@ -123,15 +111,14 @@ export function createSecretStore(options: {
 
     async read(kind) {
       const { storageKey } = definitionFor(kind)
-      const stored = (await readStored(filePath))[storageKey]
+      const stored = (await readStored(filePath, cipher))[storageKey]
       if (!isStoredString(stored)) return null
-      return cipher.decrypt(stored)
+      return stored
     },
 
     async write(kind, plaintext) {
       definitionFor(kind)
-      const stored = cipher.encrypt(plaintext)
-      await serialize(() => setEntry(kind, stored))
+      await serialize(() => setEntry(kind, plaintext))
     },
 
     async remove(kind) {

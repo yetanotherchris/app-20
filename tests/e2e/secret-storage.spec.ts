@@ -64,9 +64,10 @@ test.describe('US1 - import the AI provider key', () => {
 
       // The secret file lives outside the conversation workspace and is not
       // plaintext, and the key never reaches the rendered document (FR-002, FR-005).
-      const rawSecrets = await readFile(join(shell.userDataDir, 'secrets.json'), 'utf8')
+      const rawSecrets = await readFile(join(shell.userDataDir, 'secrets.json.age'), 'utf8')
       expect(rawSecrets).not.toContain('sk-or-key-one')
-      expect(existsSync(join(shell.conversationDir, 'secrets.json'))).toBe(false)
+      expect(existsSync(join(shell.conversationDir, 'secrets.json.age'))).toBe(false)
+      expect(existsSync(join(shell.conversationDir, 'secrets.key'))).toBe(false)
       expect(await shell.page.content()).not.toContain('sk-or-key-one')
 
       fake.reset()
@@ -171,7 +172,7 @@ test.describe('US2 - import S3 credentials', () => {
       await expect(shell.page.getByTestId('shell.notification.info').last()).toContainText(
         'S3 credentials imported',
       )
-      const first = await readFile(join(shell.userDataDir, 'secrets.json'), 'utf8')
+      const first = await readFile(join(shell.userDataDir, 'secrets.json.age'), 'utf8')
 
       await importFile(
         shell,
@@ -180,7 +181,7 @@ test.describe('US2 - import S3 credentials', () => {
         JSON.stringify({ accessKeyId: 'AKIATWO', secretAccessKey: 'secret-two' }),
       )
       await expect(shell.page.getByTestId('shell.notification.info')).toHaveCount(2)
-      const second = await readFile(join(shell.userDataDir, 'secrets.json'), 'utf8')
+      const second = await readFile(join(shell.userDataDir, 'secrets.json.age'), 'utf8')
       expect(second).not.toBe(first)
       expect((await secretStatus(shell)).s3).toBe(true)
     } finally {
