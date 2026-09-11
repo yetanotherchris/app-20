@@ -41,6 +41,12 @@ interface Window {
     importProviderKey: () => Promise<E2eResult<{ kind: 'provider-key' | 's3' }>>
     importS3Credentials: () => Promise<E2eResult<{ kind: 'provider-key' | 's3' }>>
     getSecretsStatus: () => Promise<E2eResult<{ providerKey: boolean; s3: boolean }>>
+    getSyncStatus: () => Promise<
+      E2eResult<{
+        state: 'disabled' | 'idle' | 'pending' | 'syncing' | 'error'
+        error: string | null
+      }>
+    >
     removeSecret: (
       kind: 'provider-key' | 's3',
     ) => Promise<E2eResult<{ kind: 'provider-key' | 's3' }>>
@@ -51,6 +57,12 @@ interface Window {
     onChatChunk: (handler: (event: { requestId: string; text: string }) => void) => () => void
     onChatComplete: (
       handler: (event: { requestId: string; result: E2eChatCompletionResult }) => void,
+    ) => () => void
+    onSyncStatus: (
+      handler: (status: {
+        state: 'disabled' | 'idle' | 'pending' | 'syncing' | 'error'
+        error: string | null
+      }) => void,
     ) => () => void
   }
 }

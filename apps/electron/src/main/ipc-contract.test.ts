@@ -20,6 +20,7 @@ const EXPECTED_CHANNELS = [
   'secrets:import-s3',
   'secrets:remove',
   'secrets:status',
+  'sync:get-status',
   'shell:open-external',
   'app:close-decision',
 ] as const
@@ -29,6 +30,7 @@ const EXPECTED_EVENT_CHANNELS = [
   'menu:command',
   'chat:chunk',
   'chat:complete',
+  'sync:status',
 ] as const
 
 describe('IPC channel contract', () => {

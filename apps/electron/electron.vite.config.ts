@@ -53,7 +53,9 @@ export default defineConfig({
       // The conversation storage and provider packages are source-only
       // TypeScript with no build step, so they must be bundled into main rather
       // than required at runtime.
-      externalizeDeps: { exclude: ['@app-20/conversation-storage', '@app-20/ai-provider'] },
+      externalizeDeps: {
+        exclude: ['@app-20/conversation-storage', '@app-20/ai-provider', '@app-20/sync'],
+      },
     },
   },
   preload: {
