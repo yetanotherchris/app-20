@@ -9,12 +9,31 @@ import { createSecretStore, type SecretStore } from './secretStore'
 
 const MAX_SECRET_BYTES = 64 * 1024
 
+let storagePrepared = false
+
+/**
+ * Linux without a keyring selects the `basic_text` backend, where
+ * `isEncryptionAvailable()` stays false until the in-memory password fallback
+ * is enabled. `setUsePlainTextEncryption` is a no-op when a real password
+ * manager is present and on Windows and macOS. research.md R1 records that the
+ * fallback is accepted so secret import works on Linux.
+ */
+function prepareStorage(): void {
+  if (storagePrepared) return
+  storagePrepared = true
+  if (process.platform === 'linux' && !safeStorage.isEncryptionAvailable()) {
+    safeStorage.setUsePlainTextEncryption(true)
+  }
+}
+
 const cipher = {
   encrypt(plaintext: string): string {
+    prepareStorage()
     if (!safeStorage.isEncryptionAvailable()) throw new AppError('secret-store-unavailable')
     return safeStorage.encryptString(plaintext).toString('base64')
   },
   decrypt(stored: string): string | null {
+    prepareStorage()
     try {
       return safeStorage.decryptString(Buffer.from(stored, 'base64'))
     } catch {
