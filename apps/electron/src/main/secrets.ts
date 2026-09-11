@@ -37,33 +37,52 @@ function requireStorage(): void {
   if (!safeStorage.isEncryptionAvailable()) throw new AppError('secret-store-unavailable')
 }
 
-let passphrase: string | null = null
+let passphrasePromise: Promise<string> | null = null
 
 /**
- * Returns the age passphrase, creating and vault-protecting one on first use.
- * The passphrase is random and stored via `safeStorage` (DPAPI, Keychain, or
- * libsecret) in a sibling file. A vault that cannot decrypt an existing
- * passphrase is a read failure, not a reason to generate a new one.
+ * Reads the vault-protected passphrase, or null when none has been created.
+ * Reads never create one: an absent passphrase means there is no readable
+ * payload, so the store treats it as empty.
  */
-async function getOrCreatePassphrase(): Promise<string> {
-  if (passphrase) return passphrase
+async function readPassphrase(): Promise<string | null> {
   requireStorage()
 
-  let stored: string | null = null
+  let stored: string
   try {
     stored = await fs.readFile(passphraseFilePath(), 'utf8')
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw new AppError('read-failed')
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null
+    throw new AppError('read-failed')
   }
 
-  if (stored !== null) {
-    try {
-      passphrase = safeStorage.decryptString(Buffer.from(stored, 'base64'))
-      return passphrase
-    } catch {
-      throw new AppError('read-failed')
-    }
+  try {
+    const value = safeStorage.decryptString(Buffer.from(stored, 'base64'))
+    if (value.length === 0) throw new Error('empty passphrase')
+    return value
+  } catch {
+    throw new AppError('read-failed')
   }
+}
+
+/**
+ * Returns the passphrase, creating and vault-protecting one on first use. The
+ * in-flight promise is shared so two concurrent first writes cannot generate
+ * two passphrases, which would leave one payload undecryptable. A failed
+ * creation clears the promise so a later attempt can retry.
+ */
+function getOrCreatePassphrase(): Promise<string> {
+  if (!passphrasePromise) {
+    passphrasePromise = createPassphrase().catch((error: unknown) => {
+      passphrasePromise = null
+      throw error
+    })
+  }
+  return passphrasePromise
+}
+
+async function createPassphrase(): Promise<string> {
+  const existing = await readPassphrase()
+  if (existing) return existing
 
   const created = randomBytes(PASSPHRASE_BYTES).toString('base64url')
   await ensurePrivateDirectory(dirname(passphraseFilePath()))
@@ -72,16 +91,23 @@ async function getOrCreatePassphrase(): Promise<string> {
     safeStorage.encryptString(created).toString('base64'),
     SECRET_FILE_MODE,
   )
-  passphrase = created
   return created
 }
 
 const cipher = {
   async encrypt(plaintext: string): Promise<string> {
-    return encryptWithPassphrase(await getOrCreatePassphrase(), plaintext)
+    const passphrase = await getOrCreatePassphrase()
+    try {
+      return await encryptWithPassphrase(passphrase, plaintext)
+    } catch (error) {
+      if (error instanceof AppError) throw error
+      throw new AppError('write-failed')
+    }
   },
   async decrypt(ciphertext: string): Promise<string | null> {
-    return decryptWithPassphrase(await getOrCreatePassphrase(), ciphertext)
+    const passphrase = await readPassphrase()
+    if (!passphrase) return null
+    return decryptWithPassphrase(passphrase, ciphertext)
   },
 }
 

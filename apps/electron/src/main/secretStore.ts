@@ -7,9 +7,9 @@ import { SECRET_FILE_MODE, ensurePrivateDirectory } from './privateFile'
 import { SECRET_KINDS, isSecretKind } from './secretKinds'
 
 export interface SecretCipher {
-  /** Encrypts the whole store payload, a JSON string, to armored text. */
+  /** Encrypts the whole store payload (a JSON string) to a storable string. */
   encrypt(plaintext: string): Promise<string>
-  /** Decrypts an armored payload, or returns null when it cannot be read. */
+  /** Decrypts a stored payload, or returns null when it cannot be read. */
   decrypt(ciphertext: string): Promise<string | null>
 }
 
@@ -82,15 +82,15 @@ export function createSecretStore(options: {
     return result
   }
 
-  async function setEntry(kind: SecretKind, stored: string | null): Promise<void> {
+  async function setEntry(kind: SecretKind, plaintext: string | null): Promise<void> {
     const { storageKey } = definitionFor(kind)
     const secrets = await readStored(filePath, cipher)
 
-    if (stored === null) {
+    if (plaintext === null) {
       if (!Object.prototype.hasOwnProperty.call(secrets, storageKey)) return
       delete secrets[storageKey]
     } else {
-      secrets[storageKey] = stored
+      secrets[storageKey] = plaintext
     }
 
     const ciphertext = await cipher.encrypt(JSON.stringify(secrets))

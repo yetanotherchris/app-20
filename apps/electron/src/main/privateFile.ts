@@ -2,7 +2,7 @@ import { promises as fs } from 'node:fs'
 import { AppError } from './errors'
 
 export const SECRET_FILE_MODE = 0o600
-export const SECRET_DIR_MODE = 0o700
+const SECRET_DIR_MODE = 0o700
 
 /**
  * Creates the directory if needed and narrows it to the owner. The chmod also
