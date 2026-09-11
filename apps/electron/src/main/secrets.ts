@@ -4,6 +4,7 @@ import type { Result } from '../shared/error-codes'
 import type { SecretKind, SecretsStatus } from '../shared/ipc-contract'
 import { secretsFilePath } from './appData'
 import { AppError, err, failure, ok } from './errors'
+import { decodeEncrypted, encodeEncrypted } from './secretEncoding'
 import { validateSecret } from './secretKinds'
 import { createSecretStore, type SecretStore } from './secretStore'
 
@@ -26,25 +27,18 @@ function prepareStorage(): void {
   }
 }
 
-/**
- * Encrypts a value with `safeStorage` and stores the serialized `Buffer` it
- * returns, the same shape VS Code's EncryptionMainService writes. The stored
- * JSON holds ciphertext only; the plaintext stays in main.
- */
 const cipher = {
   encrypt(plaintext: string): string {
     prepareStorage()
     if (!safeStorage.isEncryptionAvailable()) throw new AppError('secret-store-unavailable')
-    return JSON.stringify(safeStorage.encryptString(plaintext))
+    return encodeEncrypted(safeStorage.encryptString(plaintext))
   },
   decrypt(stored: string): string | null {
     prepareStorage()
+    const buffer = decodeEncrypted(stored)
+    if (!buffer) return null
     try {
-      const parsed: unknown = JSON.parse(stored)
-      if (parsed === null || typeof parsed !== 'object') return null
-      const data = (parsed as { data?: unknown }).data
-      if (!Array.isArray(data)) return null
-      return safeStorage.decryptString(Buffer.from(data))
+      return safeStorage.decryptString(buffer)
     } catch {
       return null
     }
