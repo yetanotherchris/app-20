@@ -83,9 +83,8 @@ apps/electron/src/
 
 tests/e2e/
 ├── secret-storage.spec.ts       # spec 103 acceptance scenarios
-├── launch-shell.ts              # removeSecret available through the bridge
 ├── app-bridge.d.ts              # removeSecret type
-└── shell.spec.ts                # bridge method list
+└── shell.spec.ts                # bridge method list and menu assertion
 ```
 
 **Structure Decision**: The store and validators are split by responsibility. Validators are pure and depend only on the shared error codes, so they test without Node or Electron. The store depends only on `node:fs` and an injected `SecretCipher`, so it tests with a fake cipher and a temp file. `secrets.ts` stays the Electron adapter and keeps the same exported names the IPC layer and `chatStream.ts` already use. This keeps the existing import behavior and adds removal without widening the renderer surface.

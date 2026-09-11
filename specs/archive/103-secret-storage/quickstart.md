@@ -32,7 +32,7 @@ Expected: all green. The e2e run builds Electron and launches it under Playwrigh
 
 The suite launches the app with a temp data directory, points the provider at a local fake OpenRouter server, and drives the menu with stubbed native dialogs.
 
-1. **US1 import and use**: import `sk-or-test-key` from a file, assert the status shows the provider key present, send a prompt, and assert the fake server received an `Authorization` header carrying the key and the reply rendered.
+1. **US1 import and use**: import `sk-or-key-one` from a file, assert the status shows the provider key present, send a prompt, and assert the fake server received an `Authorization` header carrying the key and the reply rendered.
 2. **US1 overwrite (SC-002)**: import a second key, send another prompt, and assert the latest request used the second key.
 3. **US1 reject**: import a malformed key file, assert the error notification names the credential-file message and the status stays unchanged.
 4. **US1 multi-secret reject**: import a JSON file containing both a provider key field and S3 fields, assert the `multiple-secrets` message and that nothing is stored.

@@ -33,7 +33,6 @@ export function createSecretStore(options: {
 
 ```ts
 export interface SecretKindDefinition {
-  kind: SecretKind
   storageKey: string
   validate(raw: string): ValidationResult
 }
