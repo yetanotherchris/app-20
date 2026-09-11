@@ -17,6 +17,12 @@ export interface LaunchShellOptions {
   openRouterEndpoint?: string
   /** Import this provider key before the first prompt; tests that send need one. */
   providerKey?: string
+  /**
+   * Set OPENROUTER_API_KEY for the app process. When omitted the variable is
+   * removed from the child environment, so a developer's own key cannot change
+   * a test's outcome.
+   */
+  openRouterApiKey?: string
 }
 
 export function electronMainPath(): string {
@@ -42,10 +48,13 @@ export async function launchShell(options: LaunchShellOptions = {}): Promise<Lau
   if (options.openRouterEndpoint) {
     extra['APP20_OPENROUTER_ENDPOINT'] = options.openRouterEndpoint
   }
+  const env = cleanEnv(extra)
+  if (options.openRouterApiKey === undefined) delete env['OPENROUTER_API_KEY']
+  else env['OPENROUTER_API_KEY'] = options.openRouterApiKey
 
   const app = await _electron.launch({
     args: [electronMainPath(), `--user-data-dir=${userDataDir}`],
-    env: cleanEnv(extra),
+    env,
   })
   const page = await app.firstWindow()
   await page.waitForLoadState('domcontentloaded')
@@ -162,8 +171,10 @@ export async function spawnSecondInstance(
   userDataDir: string,
   conversationDir: string,
 ): Promise<number | null> {
+  const env = cleanEnv({ APP20_CONVERSATION_DIR: conversationDir, APP20_DATA_DIR: userDataDir })
+  delete env['OPENROUTER_API_KEY']
   const child = spawn(executable, [electronMainPath(), `--user-data-dir=${userDataDir}`], {
-    env: cleanEnv({ APP20_CONVERSATION_DIR: conversationDir, APP20_DATA_DIR: userDataDir }),
+    env,
     stdio: 'ignore',
   })
   return new Promise((resolve) => {

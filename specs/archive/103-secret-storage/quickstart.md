@@ -38,8 +38,9 @@ The suite launches the app with a temp data directory, points the provider at a 
 4. **US1 multi-secret reject**: import a JSON file containing both a provider key field and S3 fields, assert the `multiple-secrets` message and that nothing is stored.
 5. **US2 import S3**: import a valid credentials file and assert the S3 status is present.
 6. **US2 reject S3**: import `{"accessKeyId": 5}`, assert the error and that the S3 status is unchanged.
-7. **US3 remove provider key (SC-005)**: remove the stored provider key, assert the status clears, send a prompt, and assert the missing-key message appears and no request reaches the server.
+7. **US3 remove provider key (SC-005, no environment key set)**: remove the stored provider key, assert the status clears, send a prompt, and assert the missing-key message appears and no request reaches the server.
 8. **US3 remove S3**: remove the stored S3 credentials and assert the S3 status clears.
+9. **US4 environment key (FR-009)**: launch with `OPENROUTER_API_KEY` set and no import; assert the status shows the provider key present, send a prompt, and assert the request used the environment key; assert the environment key is not persisted by relaunching without it and seeing the status clear.
 
 ## Manual check
 
@@ -47,3 +48,4 @@ The suite launches the app with a temp data directory, points the provider at a 
 2. File, Import Provider API Key, choose a file containing one key. Confirm the success notification.
 3. Send a prompt. Confirm a response arrives.
 4. File, Remove Provider API Key. Send a prompt. Confirm the missing-key message.
+5. Set `OPENROUTER_API_KEY` (`$env:OPENROUTER_API_KEY` on PowerShell, `export OPENROUTER_API_KEY=...` on macOS/Linux) and relaunch; send a prompt with no import and confirm it is answered.
