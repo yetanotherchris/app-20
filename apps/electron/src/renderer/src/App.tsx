@@ -12,7 +12,6 @@ import {
 } from './components/Notifications'
 import { ShellTopBar } from './components/ShellTopBar'
 import { messageForCode } from './errorMessages'
-import { recentEntries } from './history/historyEntries'
 import { useCloseGuard } from './hooks/useCloseGuard'
 import { useConversationFolder } from './hooks/useConversationFolder'
 import { useConversationHistory } from './hooks/useConversationHistory'
@@ -42,7 +41,11 @@ export function App() {
   )
 
   const session = useShellSession(folder.key, reportError)
-  const history = useConversationHistory(reportCode)
+  const {
+    entries: historyEntries,
+    loading: historyLoading,
+    refresh: refreshHistory,
+  } = useConversationHistory(reportCode)
 
   const saveWithNotification = useCallback(async () => {
     const code = await session.save()
@@ -67,8 +70,8 @@ export function App() {
 
   const openHistory = useCallback(() => {
     setDrawerOpen(true)
-    void history.refresh()
-  }, [history])
+    void refreshHistory()
+  }, [refreshHistory])
 
   const closeHistory = useCallback(() => setDrawerOpen(false), [])
 
@@ -76,20 +79,30 @@ export function App() {
     async (id: string) => {
       const code = await session.openConversation(id)
       if (code !== null) {
-        pushNotification('error', messageForCode(code))
+        reportCode(code)
+        void refreshHistory()
         return
       }
       setDrawerOpen(false)
     },
-    [session, pushNotification],
+    [session, reportCode, refreshHistory],
   )
 
   const startNewFromDrawer = useCallback(async () => {
     const started = await createNewConversation()
     if (!started) return
     setDrawerOpen(false)
-    void history.refresh()
-  }, [createNewConversation, history])
+    void refreshHistory()
+  }, [createNewConversation, refreshHistory])
+
+  useEffect(() => {
+    if (!drawerOpen) return
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setDrawerOpen(false)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [drawerOpen])
 
   const closeGuard = useCloseGuard({
     dirty: session.dirty,
@@ -210,8 +223,8 @@ export function App() {
       </View>
       <HistoryDrawer
         open={drawerOpen}
-        entries={recentEntries(history.entries)}
-        loading={history.loading}
+        entries={historyEntries}
+        loading={historyLoading}
         onSelect={(id) => {
           void selectConversation(id)
         }}

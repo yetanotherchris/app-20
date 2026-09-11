@@ -1,6 +1,7 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useRef, useState } from 'react'
 import type { ManifestEntry } from '@app-20/conversation-storage'
 import type { AppErrorCode } from '../../../shared/error-codes'
+import { recentEntries } from '../history/historyEntries'
 
 export interface ConversationHistory {
   entries: readonly ManifestEntry[]
@@ -17,21 +18,25 @@ export interface ConversationHistory {
 export function useConversationHistory(onError: (code: AppErrorCode) => void): ConversationHistory {
   const [entries, setEntries] = useState<readonly ManifestEntry[]>([])
   const [loading, setLoading] = useState(false)
+  const requestIdRef = useRef(0)
 
   const refresh = useCallback(async () => {
+    requestIdRef.current += 1
+    const requestId = requestIdRef.current
     setLoading(true)
     try {
       const result = await window.appBridge.listConversations()
+      if (requestId !== requestIdRef.current) return
       if (result.ok) {
-        setEntries(result.value.entries)
+        setEntries(recentEntries(result.value.entries))
         if (result.value.report.corrupt > 0) onError('conversation-corrupt')
       } else {
         onError(result.code)
       }
     } catch {
-      onError('unknown')
+      if (requestId === requestIdRef.current) onError('unknown')
     } finally {
-      setLoading(false)
+      if (requestId === requestIdRef.current) setLoading(false)
     }
   }, [onError])
 

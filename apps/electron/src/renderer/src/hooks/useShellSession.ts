@@ -21,7 +21,6 @@ export interface ShellSession {
   status: ChatStatus
   dirty: boolean
   saving: boolean
-  conversationId: string
   messageActions: readonly MessageAction[]
   setDraft: (value: string) => void
   submit: () => void
@@ -53,7 +52,6 @@ export function useShellSession(
   const [saving, setSaving] = useState(false)
 
   const conversationIdRef = useRef(createId('conversation'))
-  const [conversationId, setConversationId] = useState(conversationIdRef.current)
   const conversationCreatedAtRef = useRef(new Date().toISOString())
   const baseConversationRef = useRef<Conversation | null>(null)
   const activeRequestRef = useRef<string | null>(null)
@@ -188,6 +186,18 @@ export function useShellSession(
     abortActiveRequest()
   }, [stopChatOperation, abortActiveRequest])
 
+  const applyConversation = useCallback(
+    (conversation: Conversation) => {
+      baseConversationRef.current = conversation
+      replaceMessages(fromConversation(conversation))
+      setDraftState(conversation.draft ?? '')
+      conversationIdRef.current = conversation.id
+      conversationCreatedAtRef.current = conversation.createdAt
+      setDirty(false)
+    },
+    [replaceMessages],
+  )
+
   const newConversation = useCallback(() => {
     stopChatOperation()
     abortActiveRequest()
@@ -196,7 +206,6 @@ export function useShellSession(
     baseConversationRef.current = null
     replaceMessages([])
     setDraftState('')
-    setConversationId(conversationIdRef.current)
     setDirty(true)
   }, [stopChatOperation, abortActiveRequest, replaceMessages])
 
@@ -205,36 +214,30 @@ export function useShellSession(
       if (id === conversationIdRef.current) return null
 
       // No autosave yet (spec 107 owns it), so persist the current conversation
-      // before switching and abort if that fails (constitution III).
-      if (dirtyRef.current) {
+      // before switching and abort if that fails (constitution III). An empty,
+      // untouched new conversation is not written.
+      if (dirtyRef.current && hasUserActivity()) {
         const code = await save()
         if (code !== null) return code
       }
 
-      stopChatOperation()
-      abortActiveRequest()
-
+      // Read before stopping, so a failed read leaves an in-flight response
+      // running on the conversation that stays active.
       const read = await window.appBridge.readConversation(id)
       if (!read.ok) return read.code
 
-      const conversation = read.value.conversation
-      baseConversationRef.current = conversation
-      replaceMessages(fromConversation(conversation))
-      setDraftState(conversation.draft ?? '')
-      conversationIdRef.current = conversation.id
-      conversationCreatedAtRef.current = conversation.createdAt
-      setConversationId(conversation.id)
-      setDirty(false)
+      stopChatOperation()
+      abortActiveRequest()
+      applyConversation(read.value.conversation)
       return null
     },
-    [save, stopChatOperation, abortActiveRequest, replaceMessages],
+    [save, stopChatOperation, abortActiveRequest, hasUserActivity, applyConversation],
   )
 
   useEffect(() => {
     stopChatOperation()
     abortActiveRequest()
     conversationIdRef.current = createId('conversation')
-    setConversationId(conversationIdRef.current)
     conversationCreatedAtRef.current = new Date().toISOString()
     baseConversationRef.current = null
     if (!folderKey) {
@@ -268,14 +271,7 @@ export function useShellSession(
         if (cancelled) return
         if (hasUserActivity()) return
         if (read.ok) {
-          const conversation = read.value.conversation
-          baseConversationRef.current = conversation
-          replaceMessages(fromConversation(conversation))
-          setDraftState(conversation.draft ?? '')
-          conversationIdRef.current = conversation.id
-          conversationCreatedAtRef.current = conversation.createdAt
-          setConversationId(conversation.id)
-          setDirty(false)
+          applyConversation(read.value.conversation)
           return
         }
         if (read.code === 'conversation-corrupt' && !reportedCorrupt) {
@@ -293,6 +289,7 @@ export function useShellSession(
     stopChatOperation,
     abortActiveRequest,
     replaceMessages,
+    applyConversation,
     reportError,
     hasUserActivity,
   ])
@@ -303,7 +300,6 @@ export function useShellSession(
     status: chatStatus,
     dirty,
     saving,
-    conversationId,
     messageActions,
     setDraft,
     submit,

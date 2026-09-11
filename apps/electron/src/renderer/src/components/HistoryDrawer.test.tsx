@@ -66,13 +66,19 @@ describe('HistoryDrawer', () => {
     expect(props.onNew).toHaveBeenCalledTimes(1)
   })
 
-  it('closes on scrim press and Escape', () => {
+  it('closes on scrim press', () => {
     const props = noopProps()
     render(<HistoryDrawer open entries={[]} {...props} />)
 
     fireEvent.click(screen.getByTestId('chat.history.scrim'))
-    fireEvent.keyDown(window, { key: 'Escape' })
 
-    expect(props.onClose).toHaveBeenCalledTimes(2)
+    expect(props.onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('shows neither the empty state nor rows while loading', () => {
+    render(<HistoryDrawer open entries={[]} {...noopProps()} loading />)
+
+    expect(screen.queryByTestId('chat.history.empty')).toBeNull()
+    expect(screen.queryByTestId('chat.history.entry')).toBeNull()
   })
 })

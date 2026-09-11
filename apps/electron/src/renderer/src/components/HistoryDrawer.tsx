@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import type { ReactNode } from 'react'
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native'
 import type { ManifestEntry } from '@app-20/conversation-storage'
 import { historyDate, historyModel, historyTitle } from '../history/historyEntries'
@@ -25,16 +25,40 @@ export function HistoryDrawer({
   onNew,
   onClose,
 }: HistoryDrawerProps) {
-  useEffect(() => {
-    if (!open) return
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [open, onClose])
-
   if (!open) return null
+
+  let body: ReactNode
+  if (entries.length > 0) {
+    body = (
+      <ScrollView style={styles.list} testID="chat.history.list">
+        {entries.map((entry) => {
+          const title = historyTitle(entry)
+          return (
+            <Pressable
+              key={entry.id}
+              accessibilityRole="button"
+              accessibilityLabel={title}
+              onPress={() => onSelect(entry.id)}
+              style={styles.entry}
+              testID="chat.history.entry"
+            >
+              <Text numberOfLines={1} style={styles.entryTitle}>
+                {title}
+              </Text>
+              <Text style={styles.entryMeta}>{historyModel(entry)}</Text>
+              <Text style={styles.entryMeta}>{historyDate(entry.updatedAt)}</Text>
+            </Pressable>
+          )
+        })}
+      </ScrollView>
+    )
+  } else if (!loading) {
+    body = (
+      <Text style={styles.empty} testID="chat.history.empty">
+        No conversations yet.
+      </Text>
+    )
+  }
 
   return (
     <View style={styles.overlay} testID="chat.history.overlay">
@@ -55,32 +79,7 @@ export function HistoryDrawer({
         >
           <Text style={styles.newLabel}>New conversation</Text>
         </Pressable>
-        {entries.length === 0 ? (
-          loading ? null : (
-            <Text style={styles.empty} testID="chat.history.empty">
-              No conversations yet.
-            </Text>
-          )
-        ) : (
-          <ScrollView style={styles.list} testID="chat.history.list">
-            {entries.map((entry) => (
-              <Pressable
-                key={entry.id}
-                accessibilityRole="button"
-                accessibilityLabel={historyTitle(entry)}
-                onPress={() => onSelect(entry.id)}
-                style={styles.entry}
-                testID="chat.history.entry"
-              >
-                <Text numberOfLines={1} style={styles.entryTitle}>
-                  {historyTitle(entry)}
-                </Text>
-                <Text style={styles.entryMeta}>{historyModel(entry)}</Text>
-                <Text style={styles.entryMeta}>{historyDate(entry.updatedAt)}</Text>
-              </Pressable>
-            ))}
-          </ScrollView>
-        )}
+        {body}
       </View>
     </View>
   )
@@ -93,16 +92,22 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    flexDirection: 'row',
   },
   scrim: {
-    flex: 1,
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: 'rgba(15, 23, 42, 0.45)',
   },
   panel: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
     width: 300,
     maxWidth: '85%',
-    height: '100%',
     paddingHorizontal: 16,
     paddingVertical: 16,
     backgroundColor: '#ffffff',

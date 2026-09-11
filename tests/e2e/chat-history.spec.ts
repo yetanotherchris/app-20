@@ -1,4 +1,4 @@
-import { mkdtemp, writeFile } from 'node:fs/promises'
+import { mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { test, expect, type Page } from '@playwright/test'
@@ -78,13 +78,15 @@ test.describe('US1 - browse and resume a recent conversation', () => {
 
   test.beforeAll(async () => {
     shell = await launchSeeded({
-      'conversation-newer.json': conversationFile({
+      // File names sort opposite to the dates, so an alphabetical listing would
+      // fail the newest-first assertion.
+      'conversation-z-newer.json': conversationFile({
         id: 'conversation-newer',
         title: 'Newer chat',
         content: 'newer message',
         updatedAt: '2026-09-10T12:00:00.000Z',
       }),
-      'conversation-older.json': conversationFile({
+      'conversation-a-older.json': conversationFile({
         id: 'conversation-older',
         title: 'Older chat',
         content: 'older message',
@@ -132,6 +134,71 @@ test.describe('US1 - browse and resume a recent conversation', () => {
 
     await expect(shell.page.getByTestId('chat.history.drawer')).toHaveCount(0)
     await expect(shell.page.getByText('older message')).toBeVisible()
+  })
+
+  test('selecting the active conversation closes without reloading it', async () => {
+    await openDrawer(shell.page)
+    await shell.page.getByTestId('chat.history.entry').filter({ hasText: 'Older chat' }).click()
+
+    await expect(shell.page.getByTestId('chat.history.drawer')).toHaveCount(0)
+    await expect(shell.page.getByText('Echo: follow up')).toBeVisible()
+  })
+})
+
+test.describe('Edge - a blocked or unreadable switch keeps the current conversation', () => {
+  const seeded = {
+    'conversation-a.json': conversationFile({
+      id: 'conversation-a',
+      title: 'Target chat',
+      content: 'target message',
+      updatedAt: '2026-09-09T12:00:00.000Z',
+    }),
+    'conversation-b.json': conversationFile({
+      id: 'conversation-b',
+      title: 'Active chat',
+      content: 'active message',
+      updatedAt: '2026-09-10T12:00:00.000Z',
+    }),
+  }
+
+  test('aborts the switch when the current conversation cannot be saved', async () => {
+    const shell = await launchSeeded(seeded)
+    try {
+      await expect(shell.page.getByText('active message')).toBeVisible()
+      await shell.page.getByTestId('chat.composer.input').fill('unsent draft')
+      await openDrawer(shell.page)
+
+      await rm(shell.conversationDir, { recursive: true, force: true })
+      await shell.page.getByTestId('chat.history.entry').filter({ hasText: 'Target chat' }).click()
+
+      await expect(shell.page.getByTestId('shell.notification.error').first()).toContainText(
+        'could not be read',
+      )
+      await expect(shell.page.getByTestId('chat.history.drawer')).toBeVisible()
+      await expect(shell.page.getByText('active message')).toBeVisible()
+      await expect(shell.page.getByTestId('chat.composer.input')).toHaveValue('unsent draft')
+    } finally {
+      await closeShell(shell)
+    }
+  })
+
+  test('reports an unreadable target and keeps the current conversation', async () => {
+    const shell = await launchSeeded(seeded)
+    try {
+      await expect(shell.page.getByText('active message')).toBeVisible()
+      await openDrawer(shell.page)
+
+      await rm(join(shell.conversationDir, 'conversation-a.json'), { force: true })
+      await shell.page.getByTestId('chat.history.entry').filter({ hasText: 'Target chat' }).click()
+
+      await expect(shell.page.getByTestId('shell.notification.error').first()).toContainText(
+        'could not be found',
+      )
+      await expect(shell.page.getByTestId('chat.history.drawer')).toBeVisible()
+      await expect(shell.page.getByText('active message')).toBeVisible()
+    } finally {
+      await closeShell(shell)
+    }
   })
 })
 
@@ -251,6 +318,7 @@ test.describe('Edge - the drawer does not interrupt a response', () => {
 
     await expect(shell.page.getByTestId('chat.history.drawer')).toHaveCount(0)
     await expect(shell.page.getByTestId('chat.composer.stop')).toBeVisible()
+    await expect(shell.page.getByText('streaming partial')).toBeVisible()
 
     await forceExitShell(shell.app)
   })
