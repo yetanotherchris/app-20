@@ -2,12 +2,14 @@ import { app, ipcMain, type IpcMainInvokeEvent } from 'electron'
 import { parseConversation } from '@app-20/conversation-storage'
 import type { Result } from '../shared/error-codes'
 import type { IpcChannel, IpcRequest } from '../shared/ipc-contract'
+import { startChat, stopChat } from './chatStream'
 import { resolveClose } from './closeGate'
 import { getConversationFolderInfo, revealConversationFolder } from './conversationFolder'
 import { getConversationStore } from './conversationStore'
 import { AppError, failure, ok } from './errors'
-import { getSecretsStatus, importProviderKey, importS3Credentials } from './secrets'
+import { getSecretsStatus, importProviderKey, importS3Credentials, removeSecret } from './secrets'
 import { openExternalUrl } from './security'
+import { getSyncStatus, scheduleSync } from './sync'
 import { getMainWindow } from './window'
 
 function isTrustedSender(event: IpcMainInvokeEvent): boolean {
@@ -62,11 +64,30 @@ export function registerIpcHandlers(): void {
     const conversation = parseConversation(request.conversation)
     if (!conversation) throw new AppError('invalid-conversation')
     await getConversationStore().save(conversation)
+    // Upload in the background; the save response never waits on the network.
+    scheduleSync()
     return ok({ savedAt: conversation.updatedAt })
   })
+  handle('chat:start', (request) => startChat(request))
+  handle('chat:stop', (request) => {
+    stopChat(request.requestId)
+    return ok({})
+  })
   handle('secrets:import-provider-key', () => importProviderKey())
-  handle('secrets:import-s3', () => importS3Credentials())
+  handle('secrets:import-s3', async () => {
+    const result = await importS3Credentials()
+    // A new credential changes whether sync is configured; run with it.
+    if (result.ok) scheduleSync()
+    return result
+  })
+  handle('secrets:remove', async (request) => {
+    const result = await removeSecret(request?.kind)
+    // Removing the S3 credential disables sync; refresh the status.
+    if (result.ok && request?.kind === 's3') scheduleSync()
+    return result
+  })
   handle('secrets:status', async () => ok(await getSecretsStatus()))
+  handle('sync:get-status', () => ok(getSyncStatus()))
   handle('shell:open-external', async (request) => {
     await openExternalUrl(request.url)
     return ok({})

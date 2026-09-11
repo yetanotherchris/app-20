@@ -1,17 +1,37 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import type { SyncStatus } from '../../../shared/ipc-contract'
 
 export interface ShellTopBarProps {
   workspaceName: string | null
   dirty: boolean
   saving: boolean
+  sync: SyncStatus
+  onOpenHistory: () => void
   onNewConversation: () => void
   onSave: () => void
+}
+
+function syncLabel(state: SyncStatus['state']): string {
+  switch (state) {
+    case 'disabled':
+      return 'Sync off'
+    case 'idle':
+      return 'Synced'
+    case 'pending':
+      return 'Sync pending'
+    case 'syncing':
+      return 'Syncing...'
+    case 'error':
+      return 'Sync failed'
+  }
 }
 
 export function ShellTopBar({
   workspaceName,
   dirty,
   saving,
+  sync,
+  onOpenHistory,
   onNewConversation,
   onSave,
 }: ShellTopBarProps) {
@@ -23,9 +43,21 @@ export function ShellTopBar({
         {workspaceName ? `Workspace: ${workspaceName}` : 'No workspace'}
       </Text>
       <View style={styles.actions}>
+        <Text style={styles.status} testID="shell.sync-status">
+          {syncLabel(sync.state)}
+        </Text>
         <Text style={styles.status} testID="shell.dirty">
           {saving ? 'Saving...' : dirty ? 'Unsaved changes' : 'Saved'}
         </Text>
+        <Pressable
+          accessibilityRole="button"
+          disabled={!workspaceName}
+          onPress={onOpenHistory}
+          style={[styles.button, !workspaceName ? styles.buttonDisabled : null]}
+          testID="shell.history-toggle"
+        >
+          <Text style={styles.buttonLabel}>History</Text>
+        </Pressable>
         <Pressable
           accessibilityRole="button"
           disabled={!workspaceName}

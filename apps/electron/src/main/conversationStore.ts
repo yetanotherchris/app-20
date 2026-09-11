@@ -46,6 +46,11 @@ export function getConversationStore(): ConversationStore {
   return store
 }
 
+/** The same path-validated, atomic port the store uses, for the sync engine. */
+export function getConversationFilePort(): ConversationFilePort {
+  return createFolderPort()
+}
+
 export async function reconcileConversations(): Promise<ReconcileReport> {
   return getConversationStore().reconcile()
 }

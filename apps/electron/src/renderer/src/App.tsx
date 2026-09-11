@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { LLMChat } from 'app-20-llmchat'
-import type { MenuCommand } from '../../shared/ipc-contract'
+import type { AppErrorCode } from '../../shared/error-codes'
+import type { MenuCommand, SecretKind } from '../../shared/ipc-contract'
 import { CloseConfirmDialog } from './components/CloseConfirmDialog'
+import { HistoryDrawer } from './components/HistoryDrawer'
 import {
   Notifications,
   type NotificationItem,
@@ -12,18 +14,15 @@ import { ShellTopBar } from './components/ShellTopBar'
 import { messageForCode } from './errorMessages'
 import { useCloseGuard } from './hooks/useCloseGuard'
 import { useConversationFolder } from './hooks/useConversationFolder'
+import { useConversationHistory } from './hooks/useConversationHistory'
 import { useShellSession } from './hooks/useShellSession'
-
-function streamDelayFromLocation(): number | undefined {
-  const raw = new URLSearchParams(window.location.search).get('streamDelay')
-  if (!raw) return undefined
-  const value = Number(raw)
-  return Number.isFinite(value) && value > 0 ? value : undefined
-}
+import { useSyncStatus } from './hooks/useSyncStatus'
 
 export function App() {
   const folder = useConversationFolder()
+  const sync = useSyncStatus()
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
+  const [drawerOpen, setDrawerOpen] = useState(false)
   const notificationIdRef = useRef(0)
 
   const pushNotification = useCallback((level: NotificationLevel, message: string) => {
@@ -36,7 +35,17 @@ export function App() {
     [pushNotification],
   )
 
-  const session = useShellSession(folder.key, reportError, streamDelayFromLocation())
+  const reportCode = useCallback(
+    (code: AppErrorCode) => pushNotification('error', messageForCode(code)),
+    [pushNotification],
+  )
+
+  const session = useShellSession(folder.key, reportError)
+  const {
+    entries: historyEntries,
+    loading: historyLoading,
+    refresh: refreshHistory,
+  } = useConversationHistory(reportCode)
 
   const saveWithNotification = useCallback(async () => {
     const code = await session.save()
@@ -45,17 +54,55 @@ export function App() {
   }, [session, pushNotification])
 
   // Starting a new conversation must never discard unsaved work, so save first
-  // and abort if the save fails (constitution III).
-  const createNewConversation = useCallback(async () => {
+  // and abort if the save fails (constitution III). Resolves true when the new
+  // conversation is active.
+  const createNewConversation = useCallback(async (): Promise<boolean> => {
     if (session.dirty) {
       const code = await session.save()
       if (code !== null) {
         pushNotification('error', messageForCode(code))
-        return
+        return false
       }
     }
     session.newConversation()
+    return true
   }, [session, pushNotification])
+
+  const openHistory = useCallback(() => {
+    setDrawerOpen(true)
+    void refreshHistory()
+  }, [refreshHistory])
+
+  const closeHistory = useCallback(() => setDrawerOpen(false), [])
+
+  const selectConversation = useCallback(
+    async (id: string) => {
+      const code = await session.openConversation(id)
+      if (code !== null) {
+        reportCode(code)
+        void refreshHistory()
+        return
+      }
+      setDrawerOpen(false)
+    },
+    [session, reportCode, refreshHistory],
+  )
+
+  const startNewFromDrawer = useCallback(async () => {
+    const started = await createNewConversation()
+    if (!started) return
+    setDrawerOpen(false)
+    void refreshHistory()
+  }, [createNewConversation, refreshHistory])
+
+  useEffect(() => {
+    if (!drawerOpen) return
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setDrawerOpen(false)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [drawerOpen])
 
   const closeGuard = useCloseGuard({
     dirty: session.dirty,
@@ -64,7 +111,7 @@ export function App() {
   })
 
   const runImport = useCallback(
-    async (kind: 'provider-key' | 's3') => {
+    async (kind: SecretKind) => {
       const result =
         kind === 'provider-key'
           ? await window.appBridge.importProviderKey()
@@ -75,6 +122,21 @@ export function App() {
           kind === 'provider-key' ? 'Provider API key imported.' : 'S3 credentials imported.',
         )
       } else if (result.code !== 'chooser-cancelled') {
+        pushNotification('error', messageForCode(result.code))
+      }
+    },
+    [pushNotification],
+  )
+
+  const runRemove = useCallback(
+    async (kind: SecretKind) => {
+      const result = await window.appBridge.removeSecret(kind)
+      if (result.ok) {
+        pushNotification(
+          'info',
+          kind === 'provider-key' ? 'Provider API key removed.' : 'S3 credentials removed.',
+        )
+      } else {
         pushNotification('error', messageForCode(result.code))
       }
     },
@@ -93,6 +155,12 @@ export function App() {
         case 'import-s3-credentials':
           await runImport('s3')
           break
+        case 'remove-provider-key':
+          await runRemove('provider-key')
+          break
+        case 'remove-s3-credentials':
+          await runRemove('s3')
+          break
         case 'new-conversation':
           await createNewConversation()
           break
@@ -101,7 +169,7 @@ export function App() {
           break
       }
     },
-    [folder, runImport, createNewConversation, saveWithNotification],
+    [folder, runImport, runRemove, createNewConversation, saveWithNotification],
   )
 
   const menuCommandRef = useRef(handleMenuCommand)
@@ -121,6 +189,8 @@ export function App() {
         workspaceName={folder.info?.displayName ?? null}
         dirty={session.dirty}
         saving={session.saving}
+        sync={sync}
+        onOpenHistory={openHistory}
         onNewConversation={createNewConversation}
         onSave={() => {
           void saveWithNotification()
@@ -143,12 +213,26 @@ export function App() {
           onSubmit={session.submit}
           onStop={session.stop}
           onLoadEarlier={() => undefined}
+          messageActions={session.messageActions}
+          onMessageAction={session.onMessageAction}
           onLinkPress={(href) => {
             void window.appBridge.openExternal(href)
           }}
           placeholder={folderReady ? 'Send a message' : 'Conversation folder is unavailable'}
         />
       </View>
+      <HistoryDrawer
+        open={drawerOpen}
+        entries={historyEntries}
+        loading={historyLoading}
+        onSelect={(id) => {
+          void selectConversation(id)
+        }}
+        onNew={() => {
+          void startNewFromDrawer()
+        }}
+        onClose={closeHistory}
+      />
       {closeGuard.request ? (
         <CloseConfirmDialog
           reason={closeGuard.request}

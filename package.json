@@ -26,6 +26,7 @@
     "test:e2e": "npm run build:electron && playwright test"
   },
   "devDependencies": {
+    "@20minutes/s3rver": "^4.0.4",
     "@axe-core/playwright": "^4.13.0",
     "@eslint/js": "^9.17.0",
     "@playwright/test": "^1.63.0",

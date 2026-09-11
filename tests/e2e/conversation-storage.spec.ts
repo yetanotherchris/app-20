@@ -11,6 +11,21 @@ import {
   readConversationJson,
   type LaunchedShell,
 } from './launch-shell'
+import { startFakeOpenRouter, type FakeOpenRouter } from './fake-openrouter'
+
+let fake: FakeOpenRouter
+
+test.beforeAll(async () => {
+  fake = await startFakeOpenRouter()
+  process.env['APP20_OPENROUTER_ENDPOINT'] = fake.endpoint
+  process.env['APP20_TEST_PROVIDER_KEY'] = 'sk-or-test-key'
+})
+
+test.afterAll(async () => {
+  await fake.close()
+  delete process.env['APP20_OPENROUTER_ENDPOINT']
+  delete process.env['APP20_TEST_PROVIDER_KEY']
+})
 
 interface StoredMessage {
   id: string
@@ -72,7 +87,7 @@ function manifestJson(entries: StoredManifestEntry[]): string {
 async function sendPrompt(page: Page, text: string): Promise<void> {
   await page.getByTestId('chat.composer.input').fill(text)
   await page.getByTestId('chat.composer.send').click()
-  await expect(page.getByText(`Local echo: ${text}`)).toBeVisible()
+  await expect(page.getByText(`Echo: ${text}`)).toBeVisible()
 }
 
 async function save(page: Page): Promise<void> {
@@ -132,7 +147,7 @@ test.describe('US1 - a conversation survives a restart', () => {
       })
       try {
         await expect(second.page.getByTestId('shell.topbar')).toBeVisible()
-        await expect(second.page.getByText('Local echo: schema check')).toBeVisible()
+        await expect(second.page.getByText('Echo: schema check')).toBeVisible()
         await expect(second.page.getByTestId('chat.composer.input')).toHaveValue(
           'draft survives storage',
         )

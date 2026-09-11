@@ -14,6 +14,17 @@ interface E2eReconcileReport {
   corrupt: number
 }
 
+interface E2eChatMessage {
+  role: 'system' | 'user' | 'assistant'
+  content: string
+}
+
+type E2eChatCompletionResult =
+  { kind: 'complete' } | { kind: 'stopped' } | { kind: 'error'; code: string }
+
+type E2eSyncStatus =
+  { state: 'disabled' | 'idle' | 'pending' | 'syncing' } | { state: 'error'; error: string }
+
 interface Window {
   appBridge: {
     getAppVersion: () => Promise<E2eResult<{ version: string }>>
@@ -24,12 +35,27 @@ interface Window {
     >
     readConversation: (id: string) => Promise<E2eResult<{ conversation: unknown }>>
     saveConversation: (conversation: unknown) => Promise<E2eResult<{ savedAt: string }>>
+    startChat: (request: {
+      requestId: string
+      messages: E2eChatMessage[]
+      model?: string
+    }) => Promise<E2eResult<{ model: string }>>
+    stopChat: (requestId: string) => Promise<E2eResult<Record<string, never>>>
     importProviderKey: () => Promise<E2eResult<{ kind: 'provider-key' | 's3' }>>
     importS3Credentials: () => Promise<E2eResult<{ kind: 'provider-key' | 's3' }>>
     getSecretsStatus: () => Promise<E2eResult<{ providerKey: boolean; s3: boolean }>>
+    getSyncStatus: () => Promise<E2eResult<E2eSyncStatus>>
+    removeSecret: (
+      kind: 'provider-key' | 's3',
+    ) => Promise<E2eResult<{ kind: 'provider-key' | 's3' }>>
     openExternal: (url: string) => Promise<E2eResult<Record<string, never>>>
     reportCloseDecision: (decision: 'close' | 'cancel') => Promise<void>
     onCloseRequested: (handler: (event: { reason: 'close' | 'quit' }) => void) => () => void
     onMenuCommand: (handler: (event: { command: string }) => void) => () => void
+    onChatChunk: (handler: (event: { requestId: string; text: string }) => void) => () => void
+    onChatComplete: (
+      handler: (event: { requestId: string; result: E2eChatCompletionResult }) => void,
+    ) => () => void
+    onSyncStatus: (handler: (status: E2eSyncStatus) => void) => () => void
   }
 }
