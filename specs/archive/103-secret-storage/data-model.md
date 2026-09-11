@@ -11,7 +11,7 @@ The identity of a stored credential. Beta has two.
 | `provider-key` | `providerKey` | Provider API key | `validateProviderKey` |
 | `s3` | `s3` | S3 credentials | `validateS3Credentials` |
 
-The kind id is the value passed over IPC. The storage key is the field name in `secrets.json`; it matches the shape spec 102 wrote, so no migration is required. Adding a kind appends a registry entry with a new storage key and validator; existing entries are untouched (FR-006).
+The kind id is the value passed over IPC. The storage key is the field name in `secrets.json`. Adding a kind appends a registry entry with a new storage key and validator; existing entries are untouched (FR-006). An entry an earlier build wrote with the base64 encoding does not decode and reads as absent, so the user imports again (beta no-migration).
 
 ### SecretsFile
 
@@ -36,7 +36,7 @@ The node-only store bound to a file path and a cipher.
 
 | Operation | Input | Output | Notes |
 | --- | --- | --- | --- |
-| `status()` | none | `{ providerKey: boolean, s3: boolean }` | true when the kind's entry is present |
+| `status()` | none | `{ providerKey: boolean, s3: boolean }` | true only when the kind's entry decrypts |
 | `read(kind)` | kind id | `string \| null` | decrypted plaintext; null when absent or undecryptable |
 | `write(kind, plaintext)` | kind id, plaintext | void | encrypts, sets the storage key, atomic write |
 | `remove(kind)` | kind id | void | deletes the storage key, atomic write; absent is a no-op |
@@ -61,7 +61,8 @@ Cross-kind detection: for a file that parses as a JSON object, the set of known 
 | `chooser-cancelled` | No folder was chosen. | import only; not shown as an error |
 | `invalid-secret` | That file is not a valid credential file. | import |
 | `multiple-secrets` | That file contains more than one kind of secret. Import one secret per file. | import |
-| `secret-store-unavailable` | Secure storage is not available on this device. | import |
+| `secret-store-unavailable` | Secure storage is not available on this device. | import; read when the vault is unavailable |
+| `read-failed` | The file could not be read. | read/import/remove when the store file cannot be read |
 | `write-failed` | The file could not be saved. | import/remove when the atomic write fails |
 
 Errors carry a code and a fixed message; no secret value, path, or raw parser message is included (FR-005).
