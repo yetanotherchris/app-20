@@ -44,7 +44,8 @@ export const ERROR_MESSAGES: Record<AppErrorCode, string> = {
   'write-failed': 'The file could not be saved.',
   'chooser-cancelled': 'No folder was chosen.',
   'invalid-secret': 'That file is not a valid credential file.',
-  'multiple-secrets': 'That file contains more than one kind of secret. Import one secret per file.',
+  'multiple-secrets':
+    'That file contains more than one kind of secret. Import one secret per file.',
   'secret-store-unavailable': 'Secure storage is not available on this device.',
   'conversation-not-found': 'That conversation could not be found.',
   'conversation-corrupt': 'That conversation file could not be read.',
