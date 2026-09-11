@@ -7,6 +7,8 @@ import {
   closeShell,
   forceExitShell,
   launchShell,
+  readOpenDialogCalls,
+  stubCancelledOpenDialog,
   stubOpenDialog,
   writeKeyFile,
   type LaunchedShell,
@@ -204,7 +206,7 @@ test.describe('US2 - import S3 credentials', () => {
 })
 
 test.describe('US3 - remove a stored secret', () => {
-  test('removing the provider key makes the next send fail with the missing-key error', async () => {
+  test('removing the provider key gates the next send and retains the draft', async () => {
     const shell = await launch()
     try {
       await importFile(shell, 'Import Provider API Key...', 'provider-key.txt', 'sk-or-key-one')
@@ -218,11 +220,11 @@ test.describe('US3 - remove a stored secret', () => {
       )
       expect((await secretStatus(shell)).providerKey).toBe(false)
 
+      await stubCancelledOpenDialog(shell.app)
       fake.reset()
       await sendPrompt(shell.page, 'after removal')
-      await expect(shell.page.getByTestId('shell.notification.error').last()).toContainText(
-        'No provider API key is stored',
-      )
+      await expect.poll(() => readOpenDialogCalls(shell.app)).toBe(1)
+      await expect(shell.page.getByTestId('chat.composer.input')).toHaveValue('after removal')
       expect(fake.requests).toHaveLength(0)
     } finally {
       await closeShell(shell)

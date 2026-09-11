@@ -39,16 +39,10 @@ async function launchWithKey(): Promise<{ shell: LaunchedShell; fake: FakeOpenRo
   return { shell, fake }
 }
 
-async function launchWithoutKey(): Promise<{ shell: LaunchedShell; fake: FakeOpenRouter }> {
-  const fake = await startFakeOpenRouter()
-  const userDataDir = await mkdtemp(join(tmpdir(), 'app20-user-'))
-  const shell = await launchShell({ openRouterEndpoint: fake.endpoint, userDataDir })
-  await expect(shell.page.getByTestId('shell.topbar')).toBeVisible()
-  return { shell, fake }
-}
-
 async function storedConversation(shell: LaunchedShell): Promise<StoredConversation> {
-  await expect.poll(() => listConversationJsonFiles(shell.conversationDir).then((names) => names.length)).toBeGreaterThan(0)
+  await expect
+    .poll(() => listConversationJsonFiles(shell.conversationDir).then((names) => names.length))
+    .toBeGreaterThan(0)
   const names = await listConversationJsonFiles(shell.conversationDir)
   return readConversationJson<StoredConversation>(shell.conversationDir, names[0] as string)
 }
@@ -92,22 +86,6 @@ test.describe('US1 - send a message and get a response', () => {
       )
       await expect(shell.page.getByText('keep my prompt')).toBeVisible()
       await expect(shell.page.getByTestId('chat.action.retry')).toBeVisible()
-    } finally {
-      await closeShell(shell)
-      await fake.close()
-    }
-  })
-
-  test('reports a missing key without calling the provider and keeps the prompt', async () => {
-    const { shell, fake } = await launchWithoutKey()
-    try {
-      await sendPrompt(shell.page, 'no key here')
-
-      await expect(shell.page.getByTestId('shell.notification.error').last()).toContainText(
-        'No provider API key is stored. Import one to continue.',
-      )
-      await expect(shell.page.getByText('no key here')).toBeVisible()
-      expect(fake.requests).toHaveLength(0)
     } finally {
       await closeShell(shell)
       await fake.close()

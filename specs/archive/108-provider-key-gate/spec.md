@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-11
 
-**Status**: Draft
+**Status**: Archived
 
 **Input**: User description: "The provider-key gate: when no OpenRouter API key is stored, the app presents the key import flow (spec 103) before or at the user's first send, so the first prompt is not sent into a missing-key error. Extracted from the former spec 105 chat-session-flow."
 

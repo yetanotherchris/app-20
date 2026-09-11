@@ -91,7 +91,7 @@ export function App() {
   }, [drawerOpen])
 
   const runImport = useCallback(
-    async (kind: SecretKind) => {
+    async (kind: SecretKind): Promise<boolean> => {
       const result =
         kind === 'provider-key'
           ? await window.appBridge.importProviderKey()
@@ -101,12 +101,30 @@ export function App() {
           'info',
           kind === 'provider-key' ? 'Provider API key imported.' : 'S3 credentials imported.',
         )
+        return true
       } else if (result.code !== 'chooser-cancelled') {
         pushNotification('error', messageForCode(result.code))
       }
+      return false
     },
     [pushNotification],
   )
+
+  const submitPrompt = useCallback(async () => {
+    try {
+      const status = await window.appBridge.getSecretsStatus()
+      if (!status.ok) {
+        reportCode(status.code)
+        return
+      }
+      if (!status.value.providerKey) {
+        if (!(await runImport('provider-key'))) return
+      }
+      session.submit()
+    } catch {
+      reportError(messageForCode('unknown'))
+    }
+  }, [session, runImport, reportCode, reportError])
 
   const runRemove = useCallback(
     async (kind: SecretKind) => {
@@ -162,11 +180,11 @@ export function App() {
 
   return (
     <View style={styles.app}>
-        <ShellTopBar
-          workspaceName={folder.info?.displayName ?? null}
-          sync={sync}
-          onOpenHistory={openHistory}
-          onNewConversation={createNewConversation}
+      <ShellTopBar
+        workspaceName={folder.info?.displayName ?? null}
+        sync={sync}
+        onOpenHistory={openHistory}
+        onNewConversation={createNewConversation}
       />
       {folder.error ? (
         <View style={styles.folderError} testID="shell.folder-error">
@@ -182,7 +200,7 @@ export function App() {
           isLoadingEarlier={false}
           disabled={!folderReady}
           onChangeDraft={session.setDraft}
-          onSubmit={session.submit}
+          onSubmit={submitPrompt}
           onStop={session.stop}
           onLoadEarlier={() => undefined}
           messageActions={session.messageActions}
