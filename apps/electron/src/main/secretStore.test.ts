@@ -1,5 +1,5 @@
-import { promises as fs } from 'node:fs'
 import { chmod, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
+import { promises as fs } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -8,8 +8,8 @@ import { AppError } from './errors'
 import { createSecretStore, type SecretCipher } from './secretStore'
 
 const cipher: SecretCipher = {
-  encrypt: async (plaintext) => `enc:${plaintext}`,
-  decrypt: async (stored) => (stored.startsWith('enc:') ? stored.slice(4) : null),
+  encrypt: (plaintext) => `enc:${plaintext}`,
+  decrypt: (stored) => (stored.startsWith('enc:') ? stored.slice(4) : null),
 }
 
 describe('secret store', () => {
@@ -20,18 +20,13 @@ describe('secret store', () => {
     return createSecretStore({ filePath, cipher })
   }
 
-  async function encryptPayload(value: unknown): Promise<string> {
-    return cipher.encrypt(JSON.stringify(value))
-  }
-
-  async function readPayload(): Promise<Record<string, unknown>> {
-    const plaintext = await cipher.decrypt(await readFile(filePath, 'utf8'))
-    return plaintext ? (JSON.parse(plaintext) as Record<string, unknown>) : {}
+  async function readFileObject(): Promise<Record<string, unknown>> {
+    return JSON.parse(await readFile(filePath, 'utf8')) as Record<string, unknown>
   }
 
   beforeEach(async () => {
     root = await mkdtemp(join(tmpdir(), 'app20-secrets-'))
-    filePath = join(root, 'secrets.json.age')
+    filePath = join(root, 'secrets.json')
   })
 
   afterEach(async () => {
@@ -50,10 +45,9 @@ describe('secret store', () => {
     await expect(store.status()).resolves.toEqual({ providerKey: true, s3: false })
   })
 
-  it('passes the whole payload through the cipher', async () => {
+  it('encrypts the stored value', async () => {
     await makeStore().write('provider-key', 'sk-or-key')
-    expect(await readFile(filePath, 'utf8')).toBe('enc:{"providerKey":"sk-or-key"}')
-    expect(await readPayload()).toEqual({ providerKey: 'sk-or-key' })
+    expect(await readFile(filePath, 'utf8')).toBe('{"providerKey":"enc:sk-or-key"}')
   })
 
   it('narrows the directory and file permissions on POSIX', async () => {
@@ -93,7 +87,7 @@ describe('secret store', () => {
     await store.write('provider-key', 'first')
     await store.write('provider-key', 'second')
     expect(await store.read('provider-key')).toBe('second')
-    expect(Object.keys(await readPayload())).toEqual(['providerKey'])
+    expect(Object.keys(await readFileObject())).toEqual(['providerKey'])
   })
 
   it('serializes overlapping writes so neither is lost', async () => {
@@ -123,7 +117,7 @@ describe('secret store', () => {
   it('keeps the previous secret when a later write fails', async () => {
     let calls = 0
     const flaky: SecretCipher = {
-      encrypt: async (plaintext) => {
+      encrypt: (plaintext) => {
         calls += 1
         if (calls > 1) throw new Error('cipher down')
         return `enc:${plaintext}`
@@ -138,19 +132,19 @@ describe('secret store', () => {
   })
 
   it('preserves unknown entries written by a newer build', async () => {
-    await writeFile(filePath, await encryptPayload({ token: 'future' }))
+    await writeFile(filePath, JSON.stringify({ token: 'enc:future' }))
     await makeStore().write('provider-key', 'sk-or-key')
-    expect(await readPayload()).toEqual({ token: 'future', providerKey: 'sk-or-key' })
+    expect(await readFileObject()).toEqual({ token: 'enc:future', providerKey: 'enc:sk-or-key' })
   })
 
   it('preserves unknown non-string entries on write', async () => {
-    await writeFile(filePath, await encryptPayload({ future: 42 }))
+    await writeFile(filePath, JSON.stringify({ future: 42 }))
     await makeStore().write('provider-key', 'sk-or-key')
-    expect(await readPayload()).toEqual({ future: 42, providerKey: 'sk-or-key' })
+    expect(await readFileObject()).toEqual({ future: 42, providerKey: 'enc:sk-or-key' })
   })
 
   it('treats a corrupt file as empty', async () => {
-    await writeFile(filePath, 'not an encrypted payload')
+    await writeFile(filePath, 'not json')
     const store = makeStore()
     await expect(store.status()).resolves.toEqual({ providerKey: false, s3: false })
     expect(await store.read('provider-key')).toBeNull()
@@ -163,35 +157,22 @@ describe('secret store', () => {
     await expect(makeStore().status()).rejects.toMatchObject({ code: 'read-failed' })
   })
 
-  it('surfaces a cipher failure from a read', async () => {
-    await writeFile(filePath, await cipher.encrypt(JSON.stringify({ providerKey: 'x' })))
-    const failing: SecretCipher = {
-      encrypt: cipher.encrypt,
-      decrypt: async () => {
-        throw new AppError('read-failed')
-      },
-    }
-    await expect(
-      createSecretStore({ filePath, cipher: failing }).status(),
-    ).rejects.toMatchObject({ code: 'read-failed' })
-  })
-
   it('ignores a non-string stored entry', async () => {
-    await writeFile(filePath, await encryptPayload({ providerKey: 5 }))
+    await writeFile(filePath, JSON.stringify({ providerKey: 5 }))
     const store = makeStore()
     await expect(store.status()).resolves.toEqual({ providerKey: false, s3: false })
     expect(await store.read('provider-key')).toBeNull()
   })
 
   it('treats an empty stored value as absent in both status and read', async () => {
-    await writeFile(filePath, await encryptPayload({ providerKey: '' }))
+    await writeFile(filePath, JSON.stringify({ providerKey: '' }))
     const store = makeStore()
     await expect(store.status()).resolves.toEqual({ providerKey: false, s3: false })
     expect(await store.read('provider-key')).toBeNull()
   })
 
-  it('returns null when the payload cannot be decrypted', async () => {
-    await writeFile(filePath, 'garbage')
+  it('returns null when a stored value cannot be decrypted', async () => {
+    await writeFile(filePath, JSON.stringify({ providerKey: 'garbage' }))
     expect(await makeStore().read('provider-key')).toBeNull()
   })
 

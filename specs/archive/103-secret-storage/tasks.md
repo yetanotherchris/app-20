@@ -8,8 +8,6 @@
 
 **Organization**: Tasks are grouped by user story. Setup and Foundational phases block all stories. Spec 102 already shipped the import path; the Foundational phase extracts it into a testable store with no behavior change, and the story phases add the missing behaviour.
 
-**Amendment**: The store was later changed from per-value `safeStorage` ciphertext to an age-encrypted envelope under a vault-held passphrase (research R1, spec 108). Tasks T004 and T006 below describe the original cipher; the current store contract is `contracts/secret-store.md`.
-
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Can run in parallel (different files, no dependencies)

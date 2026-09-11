@@ -48,7 +48,7 @@ Below are thoughts for an initial beta phase, a proof of concept.
 - Use OpenRouter for beta releases.
 - Send chat-completions requests to `https://openrouter.ai/api/v1/chat/completions`.
 - Use model `openrouter/auto`.
-- Import the OpenRouter API key from a file through a file chooser and store it locally, encrypted at rest with age under a passphrase held in the OS credential store.
+- Import the OpenRouter API key from a file through a file chooser and store it locally.
 
 ## Conversation Storage
 
@@ -68,7 +68,7 @@ Below are thoughts for an initial beta phase, a proof of concept.
 ## S3 Sync
 
 - Configure an S3 bucket for each user.
-- Import S3 credentials from a file through a file chooser and store them locally, encrypted at rest with age under a passphrase held in the OS credential store.
+- Import S3 credentials from a file through a file chooser and store them locally.
 - Run a background sync job to upload local conversation and manifest changes.
 - On application startup, download the latest conversation JSON files and manifest from S3.
 - Use overwrite behavior for sync conflicts in beta releases.
@@ -80,3 +80,4 @@ Below are thoughts for an initial beta phase, a proof of concept.
 - Support AI providers other than OpenRouter in a future release; some may require OAuth.
 - Add an application PIN or Face ID lock in a future release.
 - Add optional age encryption for conversation JSON in a future release.
+- Add optional age encryption for S3 credentials and AI provider keys in a future release.

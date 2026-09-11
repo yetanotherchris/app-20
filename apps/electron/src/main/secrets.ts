@@ -1,19 +1,13 @@
 import { dialog, safeStorage } from 'electron'
-import { randomBytes } from 'node:crypto'
 import { promises as fs } from 'node:fs'
-import { dirname } from 'node:path'
 import type { Result } from '../shared/error-codes'
 import type { SecretKind, SecretsStatus } from '../shared/ipc-contract'
-import { decryptWithPassphrase, encryptWithPassphrase } from './ageCipher'
-import { atomicWriteFile } from './atomicWrite'
-import { passphraseFilePath, secretsFilePath } from './appData'
+import { secretsFilePath } from './appData'
 import { AppError, err, failure, ok } from './errors'
-import { SECRET_FILE_MODE, ensurePrivateDirectory } from './privateFile'
 import { validateSecret } from './secretKinds'
 import { createSecretStore, type SecretStore } from './secretStore'
 
 const MAX_SECRET_BYTES = 64 * 1024
-const PASSPHRASE_BYTES = 32
 
 let storagePrepared = false
 
@@ -32,82 +26,19 @@ function prepareStorage(): void {
   }
 }
 
-function requireStorage(): void {
-  prepareStorage()
-  if (!safeStorage.isEncryptionAvailable()) throw new AppError('secret-store-unavailable')
-}
-
-let passphrasePromise: Promise<string> | null = null
-
-/**
- * Reads the vault-protected passphrase, or null when none has been created.
- * Reads never create one: an absent passphrase means there is no readable
- * payload, so the store treats it as empty.
- */
-async function readPassphrase(): Promise<string | null> {
-  requireStorage()
-
-  let stored: string
-  try {
-    stored = await fs.readFile(passphraseFilePath(), 'utf8')
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return null
-    throw new AppError('read-failed')
-  }
-
-  try {
-    const value = safeStorage.decryptString(Buffer.from(stored, 'base64'))
-    if (value.length === 0) throw new Error('empty passphrase')
-    return value
-  } catch {
-    throw new AppError('read-failed')
-  }
-}
-
-/**
- * Returns the passphrase, creating and vault-protecting one on first use. The
- * in-flight promise is shared so two concurrent first writes cannot generate
- * two passphrases, which would leave one payload undecryptable. A failed
- * creation clears the promise so a later attempt can retry.
- */
-function getOrCreatePassphrase(): Promise<string> {
-  if (!passphrasePromise) {
-    passphrasePromise = createPassphrase().catch((error: unknown) => {
-      passphrasePromise = null
-      throw error
-    })
-  }
-  return passphrasePromise
-}
-
-async function createPassphrase(): Promise<string> {
-  const existing = await readPassphrase()
-  if (existing) return existing
-
-  const created = randomBytes(PASSPHRASE_BYTES).toString('base64url')
-  await ensurePrivateDirectory(dirname(passphraseFilePath()))
-  await atomicWriteFile(
-    passphraseFilePath(),
-    safeStorage.encryptString(created).toString('base64'),
-    SECRET_FILE_MODE,
-  )
-  return created
-}
-
 const cipher = {
-  async encrypt(plaintext: string): Promise<string> {
-    const passphrase = await getOrCreatePassphrase()
-    try {
-      return await encryptWithPassphrase(passphrase, plaintext)
-    } catch (error) {
-      if (error instanceof AppError) throw error
-      throw new AppError('write-failed')
-    }
+  encrypt(plaintext: string): string {
+    prepareStorage()
+    if (!safeStorage.isEncryptionAvailable()) throw new AppError('secret-store-unavailable')
+    return safeStorage.encryptString(plaintext).toString('base64')
   },
-  async decrypt(ciphertext: string): Promise<string | null> {
-    const passphrase = await readPassphrase()
-    if (!passphrase) return null
-    return decryptWithPassphrase(passphrase, ciphertext)
+  decrypt(stored: string): string | null {
+    prepareStorage()
+    try {
+      return safeStorage.decryptString(Buffer.from(stored, 'base64'))
+    } catch {
+      return null
+    }
   },
 }
 

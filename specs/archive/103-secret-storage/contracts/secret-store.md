@@ -6,10 +6,10 @@ Spec 103 lives in the Electron main process and is reached from the renderer onl
 
 ```ts
 export interface SecretCipher {
-  /** Encrypt the whole payload (a JSON string) to a storable string; throw when the vault is unavailable. */
-  encrypt(plaintext: string): Promise<string>
-  /** Decrypt a stored payload, or return null when it cannot be decrypted. */
-  decrypt(ciphertext: string): Promise<string | null>
+  /** Encrypt plaintext to a storable string, or throw when encryption is unavailable. */
+  encrypt(plaintext: string): string
+  /** Decrypt a stored value, or return null when it cannot be decrypted. */
+  decrypt(stored: string): string | null
 }
 
 export interface SecretStore {
@@ -25,13 +25,10 @@ export function createSecretStore(options: {
 }): SecretStore
 ```
 
-- The cipher operates on the whole payload. `secrets.ts` supplies the age passphrase implementation; `ageCipher.ts` holds the pure primitives.
-- The payload file is `<appData>/secrets.json.age`; the vault-protected passphrase is `<appData>/secrets.key`.
 - `write` and `remove` are atomic and preserve entries for other kinds.
 - `write` creates the file `0600` and its directory `0700` on POSIX, so only the owner can read the stored secrets; if the directory cannot be prepared, the write fails with `write-failed`.
 - `remove` on an absent kind resolves without an error.
-- `read` returns null on absence or an undecryptable payload; it never throws secret material into an error.
-- There is no migration. The legacy `secrets.json` is not read or converted (AGENTS.md beta rule).
+- `read` returns null on absence or decrypt failure; it never throws secret material into an error.
 
 ## Validation contract (`apps/electron/src/main/secretKinds.ts`)
 
@@ -72,6 +69,5 @@ Two new `File` entries dispatched as `menu:command` values:
 
 - The plaintext of any secret is produced and consumed only in main. It is never returned over IPC, written to a log, or included in an error (FR-005).
 - The renderer sees only booleans (`SecretsStatus`) and typed error codes.
-- The age passphrase is random per install and is held only in the OS vault via `safeStorage`; the payload is encrypted with age passphrase mode.
-- The secrets files live under the app data directory, outside the conversation folder, and are never uploaded (FR-002).
-- `secrets.json.age` and `secrets.key` are not committed to the repository.
+- The secret file lives under the app data directory, outside the conversation folder, and is never uploaded (FR-002).
+- `secrets.json` is not committed to the repository.

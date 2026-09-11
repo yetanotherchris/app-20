@@ -5,7 +5,6 @@ import { test, expect, type Page } from '@playwright/test'
 import {
   clickMenuItem,
   closeShell,
-  forceExitShell,
   launchShell,
   stubOpenDialog,
   writeKeyFile,
@@ -63,18 +62,11 @@ test.describe('US1 - import the AI provider key', () => {
       )
       expect((await secretStatus(shell)).providerKey).toBe(true)
 
-      // The payload lives outside the conversation workspace, is an age file,
-      // and is never plaintext; the key never reaches the rendered document
-      // (spec 103 FR-002/FR-005, spec 108 SC-002).
-      const rawSecrets = await readFile(join(shell.userDataDir, 'secrets.json.age'), 'utf8')
-      expect(rawSecrets.startsWith('-----BEGIN AGE ENCRYPTED FILE-----')).toBe(true)
+      // The secret file lives outside the conversation workspace and is not
+      // plaintext, and the key never reaches the rendered document (FR-002, FR-005).
+      const rawSecrets = await readFile(join(shell.userDataDir, 'secrets.json'), 'utf8')
       expect(rawSecrets).not.toContain('sk-or-key-one')
-      expect(await readFile(join(shell.userDataDir, 'secrets.key'), 'utf8')).not.toContain(
-        'sk-or-key-one',
-      )
-      expect(existsSync(join(shell.userDataDir, 'secrets.json'))).toBe(false)
-      expect(existsSync(join(shell.conversationDir, 'secrets.json.age'))).toBe(false)
-      expect(existsSync(join(shell.conversationDir, 'secrets.key'))).toBe(false)
+      expect(existsSync(join(shell.conversationDir, 'secrets.json'))).toBe(false)
       expect(await shell.page.content()).not.toContain('sk-or-key-one')
 
       fake.reset()
@@ -179,7 +171,7 @@ test.describe('US2 - import S3 credentials', () => {
       await expect(shell.page.getByTestId('shell.notification.info').last()).toContainText(
         'S3 credentials imported',
       )
-      const first = await readFile(join(shell.userDataDir, 'secrets.json.age'), 'utf8')
+      const first = await readFile(join(shell.userDataDir, 'secrets.json'), 'utf8')
 
       await importFile(
         shell,
@@ -188,7 +180,7 @@ test.describe('US2 - import S3 credentials', () => {
         JSON.stringify({ accessKeyId: 'AKIATWO', secretAccessKey: 'secret-two' }),
       )
       await expect(shell.page.getByTestId('shell.notification.info')).toHaveCount(2)
-      const second = await readFile(join(shell.userDataDir, 'secrets.json.age'), 'utf8')
+      const second = await readFile(join(shell.userDataDir, 'secrets.json'), 'utf8')
       expect(second).not.toBe(first)
       expect((await secretStatus(shell)).s3).toBe(true)
     } finally {
@@ -285,38 +277,6 @@ test.describe('US3 - remove a stored secret', () => {
       if (!result.ok) expect(result.code).toBe('invalid-secret')
     } finally {
       await closeShell(shell)
-    }
-  })
-})
-
-test.describe('US1 - the vault passphrase survives a restart', () => {
-  test('reuses the stored passphrase and still sends the key', async () => {
-    const first = await launch()
-    let second: LaunchedShell | undefined
-    try {
-      await importFile(first, 'Import Provider API Key...', 'provider-key.txt', 'sk-or-restart')
-      await expect(first.page.getByTestId('shell.notification.info').last()).toContainText(
-        'Provider API key imported',
-      )
-
-      // The passphrase file must be re-read and the payload decrypted, not
-      // regenerated (spec 108: the passphrase is stable across restarts).
-      await forceExitShell(first.app)
-      second = await launchShell({
-        userDataDir: first.userDataDir,
-        conversationDir: first.conversationDir,
-        openRouterEndpoint: fake.endpoint,
-      })
-      await expect(second.page.getByTestId('shell.topbar')).toBeVisible()
-      expect((await secretStatus(second)).providerKey).toBe(true)
-
-      fake.reset()
-      await sendPrompt(second.page, 'after restart')
-      await expect(second.page.getByText('Echo: after restart')).toBeVisible()
-      expect(fake.requests.at(-1)?.authorization).toBe('Bearer sk-or-restart')
-    } finally {
-      await closeShell(second)
-      await closeShell(first)
     }
   })
 })
