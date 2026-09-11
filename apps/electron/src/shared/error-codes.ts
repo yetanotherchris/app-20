@@ -18,6 +18,7 @@ export const APP_ERROR_CODES = [
   'provider-error',
   'invalid-chat-request',
   'not-permitted',
+  'sync-failed',
   'unknown',
 ] as const
 
@@ -57,5 +58,6 @@ export const ERROR_MESSAGES: Record<AppErrorCode, string> = {
   'provider-error': 'The provider returned an error.',
   'invalid-chat-request': 'The chat request was invalid.',
   'not-permitted': 'That link cannot be opened.',
+  'sync-failed': 'S3 sync failed. Check the bucket and credentials.',
   unknown: 'Something went wrong.',
 }

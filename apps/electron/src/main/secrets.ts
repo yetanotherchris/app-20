@@ -4,6 +4,7 @@ import type { Result } from '../shared/error-codes'
 import type { SecretKind, SecretsStatus } from '../shared/ipc-contract'
 import { secretsFilePath } from './appData'
 import { AppError, err, failure, ok } from './errors'
+import { parseS3Config, type S3Config } from './s3Config'
 import { decodeEncrypted, encodeEncrypted } from './secretEncoding'
 import { validateSecret } from './secretKinds'
 import { createSecretStore, type SecretStore } from './secretStore'
@@ -68,6 +69,17 @@ export async function getSecretsStatus(): Promise<SecretsStatus> {
  */
 export async function getProviderKey(): Promise<string | null> {
   return secretStore().read('provider-key')
+}
+
+/**
+ * Reads and parses the stored S3 credential. Returns null when nothing is
+ * stored, the JSON is unreadable, or no bucket is present, so sync reports
+ * disabled rather than attempting an unusable request (FR-001). A keys-only
+ * secret imported under spec 103 therefore reads as not configured until the
+ * user re-imports with a bucket.
+ */
+export async function getS3Config(): Promise<S3Config | null> {
+  return parseS3Config(await secretStore().read('s3'))
 }
 
 async function pickFile(title: string): Promise<string | null> {

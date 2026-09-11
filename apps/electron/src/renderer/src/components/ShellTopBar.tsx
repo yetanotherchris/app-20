@@ -1,17 +1,35 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native'
+import type { SyncStatus } from '../../../shared/ipc-contract'
 
 export interface ShellTopBarProps {
   workspaceName: string | null
   dirty: boolean
   saving: boolean
+  sync: SyncStatus
   onNewConversation: () => void
   onSave: () => void
+}
+
+function syncLabel(state: SyncStatus['state']): string {
+  switch (state) {
+    case 'disabled':
+      return 'Sync off'
+    case 'idle':
+      return 'Synced'
+    case 'pending':
+      return 'Sync pending'
+    case 'syncing':
+      return 'Syncing...'
+    case 'error':
+      return 'Sync failed'
+  }
 }
 
 export function ShellTopBar({
   workspaceName,
   dirty,
   saving,
+  sync,
   onNewConversation,
   onSave,
 }: ShellTopBarProps) {
@@ -23,6 +41,9 @@ export function ShellTopBar({
         {workspaceName ? `Workspace: ${workspaceName}` : 'No workspace'}
       </Text>
       <View style={styles.actions}>
+        <Text style={styles.status} testID="shell.sync-status">
+          {syncLabel(sync.state)}
+        </Text>
         <Text style={styles.status} testID="shell.dirty">
           {saving ? 'Saving...' : dirty ? 'Unsaved changes' : 'Saved'}
         </Text>

@@ -1,5 +1,6 @@
 import type { AppErrorCode } from '../shared/error-codes'
 import type { SecretKind } from '../shared/ipc-contract'
+import { S3_BUCKET_PATTERN, S3_REGION_PATTERN, isHttpUrl } from './s3Config'
 
 export type ValidationResult = { ok: true; value: string } | { ok: false; code: AppErrorCode }
 
@@ -73,6 +74,24 @@ function validateProviderKey(raw: string): ValidationResult {
   return { ok: true, value }
 }
 
+type OptionalString = { ok: true; value: string | undefined } | { ok: false }
+
+function readOptionalString(value: Record<string, unknown>, key: string): OptionalString {
+  const raw = value[key]
+  if (raw === undefined) return { ok: true, value: undefined }
+  if (typeof raw !== 'string') return { ok: false }
+  const trimmed = raw.trim()
+  if (trimmed.length === 0) return { ok: false }
+  return { ok: true, value: trimmed }
+}
+
+/**
+ * Spec 104 extends the s3 secret with optional bucket, region, and endpoint so
+ * a keys-only file still validates while a fully-specified file carries the
+ * bucket coordinates sync needs. Optional fields are validated when present so
+ * a malformed bucket or endpoint cannot reshape the request target, and only
+ * the recognised fields are stored.
+ */
 function validateS3Credentials(raw: string): ValidationResult {
   const json = parseJsonObject(raw)
   if (!json) return invalid()
@@ -82,10 +101,32 @@ function validateS3Credentials(raw: string): ValidationResult {
   if (typeof accessKeyId !== 'string' || accessKeyId.trim().length === 0) return invalid()
   if (typeof secretAccessKey !== 'string' || secretAccessKey.trim().length === 0) return invalid()
 
-  const normalized = {
+  const normalized: Record<string, string> = {
     accessKeyId: accessKeyId.trim(),
     secretAccessKey: secretAccessKey.trim(),
   }
+
+  const bucket = readOptionalString(json, 'bucket')
+  if (!bucket.ok) return invalid()
+  if (bucket.value !== undefined) {
+    if (!S3_BUCKET_PATTERN.test(bucket.value)) return invalid()
+    normalized.bucket = bucket.value
+  }
+
+  const region = readOptionalString(json, 'region')
+  if (!region.ok) return invalid()
+  if (region.value !== undefined) {
+    if (!S3_REGION_PATTERN.test(region.value)) return invalid()
+    normalized.region = region.value
+  }
+
+  const endpoint = readOptionalString(json, 'endpoint')
+  if (!endpoint.ok) return invalid()
+  if (endpoint.value !== undefined) {
+    if (!isHttpUrl(endpoint.value)) return invalid()
+    normalized.endpoint = endpoint.value
+  }
+
   return { ok: true, value: JSON.stringify(normalized) }
 }
 

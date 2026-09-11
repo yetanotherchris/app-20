@@ -13,9 +13,11 @@ import { messageForCode } from './errorMessages'
 import { useCloseGuard } from './hooks/useCloseGuard'
 import { useConversationFolder } from './hooks/useConversationFolder'
 import { useShellSession } from './hooks/useShellSession'
+import { useSyncStatus } from './hooks/useSyncStatus'
 
 export function App() {
   const folder = useConversationFolder()
+  const sync = useSyncStatus()
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
   const notificationIdRef = useRef(0)
 
@@ -135,6 +137,7 @@ export function App() {
         workspaceName={folder.info?.displayName ?? null}
         dirty={session.dirty}
         saving={session.saving}
+        sync={sync}
         onNewConversation={createNewConversation}
         onSave={() => {
           void saveWithNotification()

@@ -1,0 +1,14 @@
+{
+  "name": "@app-20/sync",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Platform-neutral last-write-wins reconciliation of conversation files against a remote object store",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "dependencies": {
+    "@app-20/conversation-storage": "^0.1.0"
+  }
+}

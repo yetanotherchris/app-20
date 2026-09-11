@@ -19,6 +19,9 @@ export interface SecretsStatus {
   s3: boolean
 }
 
+export type SyncStatus =
+  { state: 'disabled' | 'idle' | 'pending' | 'syncing' } | { state: 'error'; error: AppErrorCode }
+
 export type MenuCommand =
   | 'reveal-workspace'
   | 'import-provider-key'
@@ -69,6 +72,7 @@ export interface IpcContract {
   'secrets:import-s3': { request: void; response: Result<{ kind: SecretKind }> }
   'secrets:remove': { request: { kind: SecretKind }; response: Result<{ kind: SecretKind }> }
   'secrets:status': { request: void; response: Result<SecretsStatus> }
+  'sync:get-status': { request: void; response: Result<SyncStatus> }
   'shell:open-external': { request: { url: string }; response: Result<Empty> }
   'app:close-decision': { request: { decision: CloseDecision }; response: void }
 }
@@ -78,6 +82,7 @@ export interface IpcEvents {
   'menu:command': MenuCommandEvent
   'chat:chunk': { requestId: string; text: string }
   'chat:complete': { requestId: string; result: ChatCompletionResult }
+  'sync:status': SyncStatus
 }
 
 export type IpcChannel = keyof IpcContract
@@ -101,6 +106,7 @@ export const IPC_CHANNELS = [
   'secrets:import-s3',
   'secrets:remove',
   'secrets:status',
+  'sync:get-status',
   'shell:open-external',
   'app:close-decision',
 ] as const satisfies readonly IpcChannel[]
@@ -111,6 +117,7 @@ export const IPC_EVENT_CHANNELS = [
   'menu:command',
   'chat:chunk',
   'chat:complete',
+  'sync:status',
 ] as const satisfies readonly IpcEventChannel[]
 
 type ChannelIsListed<C extends IpcChannel> = C extends (typeof IPC_CHANNELS)[number] ? true : never
@@ -139,6 +146,7 @@ export interface AppBridge {
   importS3Credentials: () => Promise<Result<{ kind: SecretKind }>>
   removeSecret: (kind: SecretKind) => Promise<Result<{ kind: SecretKind }>>
   getSecretsStatus: () => Promise<Result<SecretsStatus>>
+  getSyncStatus: () => Promise<Result<SyncStatus>>
   openExternal: (url: string) => Promise<Result<Empty>>
   reportCloseDecision: (decision: CloseDecision) => Promise<void>
   onCloseRequested: (handler: (event: CloseRequestedEvent) => void) => () => void
@@ -147,4 +155,5 @@ export interface AppBridge {
   onChatComplete: (
     handler: (event: { requestId: string; result: ChatCompletionResult }) => void,
   ) => () => void
+  onSyncStatus: (handler: (status: SyncStatus) => void) => () => void
 }

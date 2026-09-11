@@ -39,12 +39,14 @@ const appBridge: AppBridge = {
   importS3Credentials: () => invoke('secrets:import-s3'),
   removeSecret: (kind) => invoke('secrets:remove', { kind }),
   getSecretsStatus: () => invoke('secrets:status'),
+  getSyncStatus: () => invoke('sync:get-status'),
   openExternal: (url) => invoke('shell:open-external', { url }),
   reportCloseDecision: (decision) => invoke('app:close-decision', { decision }),
   onCloseRequested: (handler) => subscribe('app:close-requested', handler),
   onMenuCommand: (handler) => subscribe('menu:command', handler),
   onChatChunk: (handler) => subscribe('chat:chunk', handler),
   onChatComplete: (handler) => subscribe('chat:complete', handler),
+  onSyncStatus: (handler) => subscribe('sync:status', handler),
 }
 
 contextBridge.exposeInMainWorld('appBridge', appBridge)
