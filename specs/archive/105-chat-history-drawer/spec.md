@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-07
 
-**Status**: Draft
+**Status**: Archived
 
 **Input**: User description: "A history drawer on the left of the chat screen: a toggled overlay listing recent conversations with title, model, and date, resuming one on selection, and starting a new conversation from the top of the drawer. Restore on startup and autosave are owned by spec 107."
 

@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { LLMChat } from 'app-20-llmchat'
+import type { AppErrorCode } from '../../shared/error-codes'
 import type { MenuCommand, SecretKind } from '../../shared/ipc-contract'
 import { CloseConfirmDialog } from './components/CloseConfirmDialog'
+import { HistoryDrawer } from './components/HistoryDrawer'
 import {
   Notifications,
   type NotificationItem,
@@ -10,8 +12,10 @@ import {
 } from './components/Notifications'
 import { ShellTopBar } from './components/ShellTopBar'
 import { messageForCode } from './errorMessages'
+import { recentEntries } from './history/historyEntries'
 import { useCloseGuard } from './hooks/useCloseGuard'
 import { useConversationFolder } from './hooks/useConversationFolder'
+import { useConversationHistory } from './hooks/useConversationHistory'
 import { useShellSession } from './hooks/useShellSession'
 import { useSyncStatus } from './hooks/useSyncStatus'
 
@@ -19,6 +23,7 @@ export function App() {
   const folder = useConversationFolder()
   const sync = useSyncStatus()
   const [notifications, setNotifications] = useState<NotificationItem[]>([])
+  const [drawerOpen, setDrawerOpen] = useState(false)
   const notificationIdRef = useRef(0)
 
   const pushNotification = useCallback((level: NotificationLevel, message: string) => {
@@ -31,7 +36,13 @@ export function App() {
     [pushNotification],
   )
 
+  const reportCode = useCallback(
+    (code: AppErrorCode) => pushNotification('error', messageForCode(code)),
+    [pushNotification],
+  )
+
   const session = useShellSession(folder.key, reportError)
+  const history = useConversationHistory(reportCode)
 
   const saveWithNotification = useCallback(async () => {
     const code = await session.save()
@@ -40,17 +51,45 @@ export function App() {
   }, [session, pushNotification])
 
   // Starting a new conversation must never discard unsaved work, so save first
-  // and abort if the save fails (constitution III).
-  const createNewConversation = useCallback(async () => {
+  // and abort if the save fails (constitution III). Resolves true when the new
+  // conversation is active.
+  const createNewConversation = useCallback(async (): Promise<boolean> => {
     if (session.dirty) {
       const code = await session.save()
       if (code !== null) {
         pushNotification('error', messageForCode(code))
-        return
+        return false
       }
     }
     session.newConversation()
+    return true
   }, [session, pushNotification])
+
+  const openHistory = useCallback(() => {
+    setDrawerOpen(true)
+    void history.refresh()
+  }, [history])
+
+  const closeHistory = useCallback(() => setDrawerOpen(false), [])
+
+  const selectConversation = useCallback(
+    async (id: string) => {
+      const code = await session.openConversation(id)
+      if (code !== null) {
+        pushNotification('error', messageForCode(code))
+        return
+      }
+      setDrawerOpen(false)
+    },
+    [session, pushNotification],
+  )
+
+  const startNewFromDrawer = useCallback(async () => {
+    const started = await createNewConversation()
+    if (!started) return
+    setDrawerOpen(false)
+    void history.refresh()
+  }, [createNewConversation, history])
 
   const closeGuard = useCloseGuard({
     dirty: session.dirty,
@@ -138,6 +177,7 @@ export function App() {
         dirty={session.dirty}
         saving={session.saving}
         sync={sync}
+        onOpenHistory={openHistory}
         onNewConversation={createNewConversation}
         onSave={() => {
           void saveWithNotification()
@@ -168,6 +208,18 @@ export function App() {
           placeholder={folderReady ? 'Send a message' : 'Conversation folder is unavailable'}
         />
       </View>
+      <HistoryDrawer
+        open={drawerOpen}
+        entries={recentEntries(history.entries)}
+        loading={history.loading}
+        onSelect={(id) => {
+          void selectConversation(id)
+        }}
+        onNew={() => {
+          void startNewFromDrawer()
+        }}
+        onClose={closeHistory}
+      />
       {closeGuard.request ? (
         <CloseConfirmDialog
           reason={closeGuard.request}

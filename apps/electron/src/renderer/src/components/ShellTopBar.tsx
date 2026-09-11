@@ -6,6 +6,7 @@ export interface ShellTopBarProps {
   dirty: boolean
   saving: boolean
   sync: SyncStatus
+  onOpenHistory: () => void
   onNewConversation: () => void
   onSave: () => void
 }
@@ -30,6 +31,7 @@ export function ShellTopBar({
   dirty,
   saving,
   sync,
+  onOpenHistory,
   onNewConversation,
   onSave,
 }: ShellTopBarProps) {
@@ -47,6 +49,15 @@ export function ShellTopBar({
         <Text style={styles.status} testID="shell.dirty">
           {saving ? 'Saving...' : dirty ? 'Unsaved changes' : 'Saved'}
         </Text>
+        <Pressable
+          accessibilityRole="button"
+          disabled={!workspaceName}
+          onPress={onOpenHistory}
+          style={[styles.button, !workspaceName ? styles.buttonDisabled : null]}
+          testID="shell.history-toggle"
+        >
+          <Text style={styles.buttonLabel}>History</Text>
+        </Pressable>
         <Pressable
           accessibilityRole="button"
           disabled={!workspaceName}

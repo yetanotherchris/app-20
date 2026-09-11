@@ -21,11 +21,18 @@ export interface ShellSession {
   status: ChatStatus
   dirty: boolean
   saving: boolean
+  conversationId: string
   messageActions: readonly MessageAction[]
   setDraft: (value: string) => void
   submit: () => void
   stop: () => void
   newConversation: () => void
+  /**
+   * Switch the active conversation to `id`. Selecting the active conversation
+   * returns null without a reload or draft change. Otherwise the current
+   * conversation is saved first and the switch aborts with the blocking code.
+   */
+  openConversation: (id: string) => Promise<AppErrorCode | null>
   onMessageAction: (action: MessageAction, message: Message) => void
   /** Returns null on success, or the error code that blocked the save. */
   save: () => Promise<AppErrorCode | null>
@@ -46,6 +53,7 @@ export function useShellSession(
   const [saving, setSaving] = useState(false)
 
   const conversationIdRef = useRef(createId('conversation'))
+  const [conversationId, setConversationId] = useState(conversationIdRef.current)
   const conversationCreatedAtRef = useRef(new Date().toISOString())
   const baseConversationRef = useRef<Conversation | null>(null)
   const activeRequestRef = useRef<string | null>(null)
@@ -53,6 +61,8 @@ export function useShellSession(
   const messagesRef = useRef<readonly Message[]>([])
   const draftRef = useRef(draft)
   draftRef.current = draft
+  const dirtyRef = useRef(dirty)
+  dirtyRef.current = dirty
 
   const request = useCallback(
     (operation: ChatOperation, controls: ChatSessionControls) => {
@@ -186,13 +196,45 @@ export function useShellSession(
     baseConversationRef.current = null
     replaceMessages([])
     setDraftState('')
+    setConversationId(conversationIdRef.current)
     setDirty(true)
   }, [stopChatOperation, abortActiveRequest, replaceMessages])
+
+  const openConversation = useCallback(
+    async (id: string): Promise<AppErrorCode | null> => {
+      if (id === conversationIdRef.current) return null
+
+      // No autosave yet (spec 107 owns it), so persist the current conversation
+      // before switching and abort if that fails (constitution III).
+      if (dirtyRef.current) {
+        const code = await save()
+        if (code !== null) return code
+      }
+
+      stopChatOperation()
+      abortActiveRequest()
+
+      const read = await window.appBridge.readConversation(id)
+      if (!read.ok) return read.code
+
+      const conversation = read.value.conversation
+      baseConversationRef.current = conversation
+      replaceMessages(fromConversation(conversation))
+      setDraftState(conversation.draft ?? '')
+      conversationIdRef.current = conversation.id
+      conversationCreatedAtRef.current = conversation.createdAt
+      setConversationId(conversation.id)
+      setDirty(false)
+      return null
+    },
+    [save, stopChatOperation, abortActiveRequest, replaceMessages],
+  )
 
   useEffect(() => {
     stopChatOperation()
     abortActiveRequest()
     conversationIdRef.current = createId('conversation')
+    setConversationId(conversationIdRef.current)
     conversationCreatedAtRef.current = new Date().toISOString()
     baseConversationRef.current = null
     if (!folderKey) {
@@ -232,6 +274,7 @@ export function useShellSession(
           setDraftState(conversation.draft ?? '')
           conversationIdRef.current = conversation.id
           conversationCreatedAtRef.current = conversation.createdAt
+          setConversationId(conversation.id)
           setDirty(false)
           return
         }
@@ -260,11 +303,13 @@ export function useShellSession(
     status: chatStatus,
     dirty,
     saving,
+    conversationId,
     messageActions,
     setDraft,
     submit,
     stop,
     newConversation,
+    openConversation,
     onMessageAction,
     save,
   }
