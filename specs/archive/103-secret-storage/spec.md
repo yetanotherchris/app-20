@@ -61,7 +61,7 @@ The user removes a stored secret; the dependent feature fails clearly until a ne
 
 ### Functional Requirements
 
-- **FR-001**: Secrets MUST be imported through a file chooser (the iOS app uses the platform document picker; see spec 106).
+- **FR-001**: Imported secrets MUST come through a file chooser (the iOS app uses the platform document picker; see spec 106). The provider API key may additionally be supplied by the `OPENROUTER_API_KEY` environment variable (FR-009).
 - **FR-002**: Secrets MUST be stored locally on the device, outside the conversation workspace, and MUST NOT be uploaded to the S3 bucket.
 - **FR-003**: Imported content MUST be validated before storage.
 - **FR-004**: Re-import MUST overwrite the stored secret.
@@ -69,6 +69,7 @@ The user removes a stored secret; the dependent feature fails clearly until a ne
 - **FR-006**: Adding a new credential type (such as an OAuth token) MUST require no change to already-stored secrets and no migration of the store.
 - **FR-007**: The user MUST be able to remove a stored secret.
 - **FR-008**: Secret material MUST NOT be stored in plaintext inside the conversation workspace; the at-rest storage mechanism is a plan decision.
+- **FR-009**: The provider API key MAY be supplied by the `OPENROUTER_API_KEY` environment variable, which takes precedence over the imported key in every build, including packaged builds. An environment key is validated by the same rules as an imported key, is never written to the store, and is never returned to the renderer.
 
 ### Key Entities
 
@@ -83,7 +84,7 @@ The user removes a stored secret; the dependent feature fails clearly until a ne
 - **SC-002**: Re-import updates the stored secret.
 - **SC-003**: Malformed files are rejected without partial storage.
 - **SC-004**: Secrets never appear in logs or user-visible errors.
-- **SC-005**: After removal, the dependent feature fails with the missing-credential error until re-import.
+- **SC-005**: After the stored secret is removed and no environment key is present, the dependent feature fails with the missing-credential error until re-import.
 
 ## Clarifications
 
@@ -93,6 +94,8 @@ The user removes a stored secret; the dependent feature fails clearly until a ne
 
 ## Assumptions
 
-- The app is single-user; secrets belong to that user on that device.- Beta uses file-based import; OAuth flows arrive with future providers.
+- The app is single-user; secrets belong to that user on that device.
+- Beta uses file-based import; OAuth flows arrive with future providers.
 - Secrets are never committed to the repository.
 - The at-rest protection mechanism (such as a platform credential store) is decided in the plan; the spec requires only that secrets stay out of the workspace and the bucket.
+- Honoring `OPENROUTER_API_KEY` in packaged builds is deliberate (FR-009). A same-user launcher or shell profile that sets it substitutes the key for every run. The provider endpoint stays pinned in packaged builds, so the key is not redirected to another host; the substitution changes only which OpenRouter account serves the request.

@@ -357,4 +357,35 @@ test.describe('US4 - the provider key may come from the environment', () => {
       await closeShell(first)
     }
   })
+
+  test('does not persist an environment key', async () => {
+    const first = await launch('sk-or-from-env')
+    let second: LaunchedShell | undefined
+    try {
+      await sendPrompt(first.page, 'env not stored')
+      await expect(first.page.getByText('Echo: env not stored')).toBeVisible()
+      expect(existsSync(join(first.userDataDir, 'secrets.json'))).toBe(false)
+      await forceExitShell(first.app)
+
+      second = await launchShell({
+        userDataDir: first.userDataDir,
+        conversationDir: first.conversationDir,
+        openRouterEndpoint: fake.endpoint,
+      })
+      await expect(second.page.getByTestId('shell.topbar')).toBeVisible()
+      expect((await secretStatus(second)).providerKey).toBe(false)
+    } finally {
+      await closeShell(second)
+      await closeShell(first)
+    }
+  })
+
+  test('ignores a blank environment value', async () => {
+    const shell = await launch('   ')
+    try {
+      expect((await secretStatus(shell)).providerKey).toBe(false)
+    } finally {
+      await closeShell(shell)
+    }
+  })
 })

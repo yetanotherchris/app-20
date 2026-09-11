@@ -8,7 +8,7 @@ import { parseS3Config, type S3Config } from './s3Config'
 import { decodeEncrypted, encodeEncrypted } from './secretEncoding'
 import { validateSecret } from './secretKinds'
 import { createSecretStore, type SecretStore } from './secretStore'
-import { resolveProviderKey } from './providerKey'
+import { hasProviderKey, resolveProviderKey } from './providerKey'
 
 const MAX_SECRET_BYTES = 64 * 1024
 
@@ -59,10 +59,14 @@ function secretStore(): SecretStore {
   return store
 }
 
+function providerKeyEnv(): string | undefined {
+  return process.env['OPENROUTER_API_KEY']
+}
+
 export async function getSecretsStatus(): Promise<SecretsStatus> {
   const status = await secretStore().status()
-  if (status.providerKey) return status
-  return { ...status, providerKey: resolveProviderKey(providerKeyEnv(), null) !== null }
+  const providerKey = status.providerKey || hasProviderKey(providerKeyEnv(), null)
+  return { ...status, providerKey }
 }
 
 /**
@@ -74,10 +78,6 @@ export async function getSecretsStatus(): Promise<SecretsStatus> {
  */
 export async function getProviderKey(): Promise<string | null> {
   return resolveProviderKey(providerKeyEnv(), await secretStore().read('provider-key'))
-}
-
-function providerKeyEnv(): string | undefined {
-  return process.env['OPENROUTER_API_KEY']
 }
 
 /**

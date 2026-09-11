@@ -38,18 +38,18 @@ A user with a key never sees the gate.
 
 ### Edge Cases
 
-- The stored key is removed after the gate passed; the next send fails with the missing-key error and the draft is retained.
-- A missing-key provider error arrives even though a key was thought stored; it is reported without losing the draft.
+- The stored key is removed after the gate passed, with no environment key set; the next send fails with the missing-key error and the draft is retained.
+- A missing-key provider error arrives even though a key was thought available; it is reported without losing the draft.
 - The gate applies on desktop and iOS, using the platform file chooser or document picker (specs 103 and 106).
 
 ## Requirements
 
 ### Functional Requirements
 
-- **FR-001**: When no provider key is stored, the app MUST present the key import flow (spec 103, archived) before or at the user's first send.
+- **FR-001**: When no provider key is available, the app MUST present the key import flow (spec 103, archived) before or at the user's first send. A key supplied by the `OPENROUTER_API_KEY` environment variable counts as available (spec 103 FR-009).
 - **FR-002**: A prompt MUST NOT be sent into a missing-key error as the normal first-run path; the gate MUST intercept before the request.
 - **FR-003**: If the user cancels the import, the send MUST be aborted and the composer draft MUST be retained.
-- **FR-004**: If a provider key is already stored, the gate MUST NOT appear.
+- **FR-004**: If a provider key is already available, from the store or the environment, the gate MUST NOT appear.
 - **FR-005**: A missing-key error from the provider MUST still be handled when it occurs, reported without losing the draft.
 - **FR-006**: The gate MUST use the spec 103 import flow and MUST NOT introduce a second credential store.
 - **FR-007**: Beta MUST NOT include accounts, login, or authentication.
