@@ -27,13 +27,13 @@ function installBridge(initial: SyncStatus): { push: (status: SyncStatus) => voi
 
 describe('useSyncStatus', () => {
   it('reads the current status on mount', async () => {
-    installBridge({ state: 'idle', error: null })
+    installBridge({ state: 'idle' })
     render(<Probe />)
     await waitFor(() => expect(screen.getByTestId('state').textContent).toBe('idle'))
   })
 
   it('follows status pushes from main', async () => {
-    const bridge = installBridge({ state: 'idle', error: null })
+    const bridge = installBridge({ state: 'idle' })
     render(<Probe />)
     await waitFor(() => expect(screen.getByTestId('state').textContent).toBe('idle'))
 

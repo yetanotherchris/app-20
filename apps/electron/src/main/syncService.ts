@@ -7,14 +7,12 @@ import type { SyncStatus } from '../shared/ipc-contract'
 const RETRY_DELAYS_MS = [1000, 4000, 10000]
 const DEFAULT_RETRY_MS = 10000
 
-export type SyncErrorCode = AppErrorCode
-
 /**
  * A connectivity failure is reported as `network-error`; everything else
  * (rejected credentials, a missing bucket, a malformed response) as
  * `sync-failed`. Both are path-free and carry no secret.
  */
-export function classifySyncError(error: unknown): SyncErrorCode {
+export function classifySyncError(error: unknown): AppErrorCode {
   if (error !== null && typeof error === 'object') {
     const name = (error as { name?: unknown }).name
     if (name === 'NetworkingError' || name === 'TimeoutError') return 'network-error'
@@ -54,7 +52,7 @@ function defaultWait(ms: number): Promise<void> {
  */
 export function createSyncService(deps: SyncServiceDeps): SyncService {
   const wait = deps.wait ?? defaultWait
-  let status: SyncStatus = { state: 'disabled', error: null }
+  let status: SyncStatus = { state: 'disabled' }
   let retriesUsed = 0
   let retryToken = 0
   let chain: Promise<void> = Promise.resolve()
@@ -65,17 +63,17 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
   }
 
   async function runOnce(remote: SyncRemote): Promise<void> {
-    setStatus({ state: 'syncing', error: null })
+    setStatus({ state: 'syncing' })
     try {
       await syncOnce(deps.resolveLocal(), remote)
       retriesUsed = 0
-      setStatus({ state: 'idle', error: null })
+      setStatus({ state: 'idle' })
     } catch (error) {
       const code = classifySyncError(error)
       if (retriesUsed < RETRY_DELAYS_MS.length) {
         const delayMs = RETRY_DELAYS_MS[retriesUsed] ?? DEFAULT_RETRY_MS
         retriesUsed += 1
-        setStatus({ state: 'pending', error: null })
+        setStatus({ state: 'pending' })
         void scheduleRetry(delayMs, remote)
       } else {
         retriesUsed = 0
@@ -104,13 +102,20 @@ export function createSyncService(deps: SyncServiceDeps): SyncService {
   }
 
   async function begin(withPending: boolean): Promise<void> {
-    const remote = await deps.resolveRemote()
-    if (!remote) {
+    let remote: SyncRemote | null
+    try {
+      remote = await deps.resolveRemote()
+    } catch (error) {
       retriesUsed = 0
-      setStatus({ state: 'disabled', error: null })
+      setStatus({ state: 'error', error: classifySyncError(error) })
       return
     }
-    if (withPending) setStatus({ state: 'pending', error: null })
+    if (!remote) {
+      retriesUsed = 0
+      setStatus({ state: 'disabled' })
+      return
+    }
+    if (withPending) setStatus({ state: 'pending' })
     await enqueue(remote)
   }
 

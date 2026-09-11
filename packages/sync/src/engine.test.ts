@@ -169,6 +169,42 @@ describe('syncOnce corrupt and empty objects', () => {
     expect(report.uploaded).toBe(1)
     expect(report.manifestUploaded).toBe(true)
   })
+
+  it('counts a corrupt remote object with no local copy as skipped', async () => {
+    const local = createInMemoryLocalPort()
+    const remote = createInMemorySyncRemote({ 'z.json': 'broken' })
+
+    const report = await syncOnce(local, remote)
+
+    expect(report.skipped).toBe(1)
+    expect(report.downloaded).toBe(0)
+    expect(local.files.has('z.json')).toBe(false)
+  })
+
+  it('does not overwrite a local copy that became newer during the run', async () => {
+    const older = raw(conversation('r', '2026-01-01T00:00:00.000Z', 'local old'))
+    const newer = raw(conversation('r', '2026-03-01T00:00:00.000Z', 'local new'))
+    const remoteRaw = raw(conversation('r', '2026-02-01T00:00:00.000Z', 'remote'))
+    let reads = 0
+    const local: ConversationFilePort = {
+      async listFileNames() {
+        return ['r.json']
+      },
+      async readText() {
+        reads += 1
+        return reads === 1 ? older : newer
+      },
+      async writeText(fileName) {
+        if (fileName === 'r.json') throw new Error('must not overwrite a newer local copy')
+      },
+    }
+    const remote = createInMemorySyncRemote({ 'r.json': remoteRaw })
+
+    const report = await syncOnce(local, remote)
+
+    expect(report.downloaded).toBe(0)
+    expect(reads).toBeGreaterThanOrEqual(2)
+  })
 })
 
 describe('syncOnce manifest handling', () => {

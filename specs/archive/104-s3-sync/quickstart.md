@@ -47,4 +47,4 @@ The e2e suite starts `@20minutes/s3rver` on a loopback port; no external service
 - With valid credentials and reachable bucket, saving shows `pending`, then `syncing`, then `Synced`.
 - With no S3 credentials or no bucket, the status reads `Sync off` and the app works fully offline (FR-001).
 - With an unreachable endpoint or rejected credentials, the status reads `Sync failed` after capped retries and local files are unchanged (SC-004).
-- A corrupt or empty remote object is skipped and cannot block startup (FR-006).
+- A corrupt or empty remote object is never treated as valid and cannot block startup (FR-006). With a valid local copy it is repaired; otherwise it is skipped.

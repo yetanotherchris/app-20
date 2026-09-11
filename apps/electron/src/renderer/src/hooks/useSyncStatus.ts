@@ -3,7 +3,7 @@ import type { SyncStatus } from '../../../shared/ipc-contract'
 
 /** Reads the current status once, then follows `sync:status` pushes from main. */
 export function useSyncStatus(): SyncStatus {
-  const [status, setStatus] = useState<SyncStatus>({ state: 'disabled', error: null })
+  const [status, setStatus] = useState<SyncStatus>({ state: 'disabled' })
 
   useEffect(() => {
     let active = true

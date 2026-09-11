@@ -4,13 +4,34 @@ import {
   type Conversation,
   type ConversationFilePort,
 } from '@app-20/conversation-storage'
-import { createInMemorySyncRemote } from '@app-20/sync'
-import type { SyncRemote } from '@app-20/sync'
+import { RemoteMissingError, type SyncRemote } from '@app-20/sync'
 import type { SyncStatus } from '../shared/ipc-contract'
 import { classifySyncError, createSyncService } from './syncService'
 
 interface LocalPort extends ConversationFilePort {
   readonly files: Map<string, string>
+}
+
+interface InMemoryRemote extends SyncRemote {
+  readonly objects: Map<string, string>
+}
+
+function createInMemoryRemote(seed: Record<string, string> = {}): InMemoryRemote {
+  const objects = new Map<string, string>(Object.entries(seed))
+  return {
+    objects,
+    async listNames() {
+      return [...objects.keys()]
+    },
+    async readText(name) {
+      const content = objects.get(name)
+      if (content === undefined) throw new RemoteMissingError(name)
+      return content
+    },
+    async writeText(name, content) {
+      objects.set(name, content)
+    },
+  }
 }
 
 function createLocalPort(seed: Record<string, string> = {}): LocalPort {
@@ -61,8 +82,8 @@ describe('createSyncService', () => {
 
     await service.runStartup()
 
-    expect(service.getStatus()).toEqual({ state: 'disabled', error: null })
-    expect(statuses).toContainEqual({ state: 'disabled', error: null })
+    expect(service.getStatus()).toEqual({ state: 'disabled' })
+    expect(statuses).toContainEqual({ state: 'disabled' })
   })
 
   it('moves from syncing to idle on success', async () => {
@@ -70,7 +91,7 @@ describe('createSyncService', () => {
     const local = createLocalPort({
       'a.json': serializeConversation(conversation('a', '2026-01-02T00:00:00.000Z')),
     })
-    const remote = createInMemorySyncRemote()
+    const remote = createInMemoryRemote()
     const service = createSyncService({
       resolveRemote: async () => remote,
       resolveLocal: () => local,
@@ -79,14 +100,14 @@ describe('createSyncService', () => {
 
     await service.runStartup()
 
-    expect(service.getStatus()).toEqual({ state: 'idle', error: null })
+    expect(service.getStatus()).toEqual({ state: 'idle' })
     expect(statuses.map((entry) => entry.state)).toEqual(['syncing', 'idle'])
     expect(remote.objects.get('a.json')).toBe(local.files.get('a.json'))
   })
 
   it('marks pending before a save-triggered run', async () => {
     const statuses: SyncStatus[] = []
-    const remote = createInMemorySyncRemote()
+    const remote = createInMemoryRemote()
     const service = createSyncService({
       resolveRemote: async () => remote,
       resolveLocal: () => createLocalPort(),

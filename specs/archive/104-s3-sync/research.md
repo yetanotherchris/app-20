@@ -40,6 +40,8 @@ Phase 0 decisions for spec 104. Each records the chosen option, why, and the alt
 
 **Rationale**: This is the documented beta policy (last-write-wins, no merge, no deletion propagation). Repairing a corrupt remote from a valid local copy stops a partial upload from blocking sync forever without risking local data.
 
+**Concurrency guard**: Before overwriting local content the engine re-reads the local file and keeps it when a save landed after the initial listing and is at least as new as the remote. Saves and sync runs are otherwise independent, so this holds last-write-wins across a save that lands mid-run. A corrupt local file is still never overwritten.
+
 **Alternatives considered**: Preserve the losing copy under a conflict suffix (rejected: the spec states the losing copy is overwritten and not preserved). Propagate deletions with tombstones (rejected: explicit spec assumption).
 
 ## R6: Bounded startup sync before the window opens
@@ -54,7 +56,7 @@ Phase 0 decisions for spec 104. Each records the chosen option, why, and the alt
 
 **Decision**: Track a status of `disabled`, `idle`, `pending`, `syncing`, or `error`, each with an optional typed error code. `disabled` means no stored credentials or no bucket. A completed local save sets `pending` and enqueues a run. A run sets `syncing`, then `idle` on success or schedules a retry on failure. Retries use capped exponential backoff (three attempts: 1 s, 4 s, 10 s); after the cap the status is `error` with `sync-failed` (or `network-error`). The next save or startup resets the attempt budget. Status is readable over `sync:get-status` and pushed on `sync:status`.
 
-**Rationale**: This matches FR-002's required visible states and the edge case that rejected credentials fail with a clear status and capped retries without touching local data. A single serial queue makes overlapping triggers safe.
+**Rationale**: This matches FR-002's required visible states and the edge case that rejected credentials fail with a clear status and capped retries without touching local data. A single serial queue makes overlapping triggers safe. Three retries follow the first attempt (delays 1 s, 4 s, 10 s), so a failing run makes four attempts before reporting `error`. Every S3 request is bounded by an abort timeout so an unresponsive endpoint cannot hold the queue open; a timeout is classified as `network-error`. A failure to resolve the credential is caught and reported as `error` rather than leaving the prior status.
 
 **Alternatives considered**: A spinner with no error state (rejected: FR-002 requires a failed state). Unlimited retries (rejected: the spec says capped). Event-driven per-file status (rejected: more surface than the beta status needs).
 

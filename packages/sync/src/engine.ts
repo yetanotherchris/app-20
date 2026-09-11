@@ -16,11 +16,12 @@ import { RemoteMissingError } from './errors'
 import type { SyncRemote, SyncReport } from './types'
 
 interface Side {
+  raw: string | null
   conversation: Conversation | null
 }
 
 function readSide(raw: string | null): Side {
-  return { conversation: raw === null ? null : parseConversationSafe(raw) }
+  return { raw, conversation: raw === null ? null : parseConversationSafe(raw) }
 }
 
 /**
@@ -34,6 +35,15 @@ async function readRemote(remote: SyncRemote, name: string): Promise<string | nu
   } catch (error) {
     if (error instanceof RemoteMissingError) return null
     throw error
+  }
+}
+
+/** Local reads treat any failure as missing; the host owns local error policy. */
+async function readLocal(local: ConversationFilePort, name: string): Promise<string | null> {
+  try {
+    return await local.readText(name)
+  } catch {
+    return null
   }
 }
 
@@ -107,12 +117,26 @@ export async function syncOnce(
         skipped += 1
         continue
       }
+      // A save may have landed after the listing; do not clobber a newer local copy.
+      const fresh = readSide(await readLocal(local, name))
+      if (fresh.conversation && fresh.conversation.updatedAt >= remoteSide.conversation.updatedAt) {
+        continue
+      }
       await local.writeText(name, remoteRaw)
       downloaded += 1
       continue
     }
     if (localSide.conversation && localRaw !== null && remoteSide.conversation) {
       if (remoteSide.conversation.updatedAt > localSide.conversation.updatedAt) {
+        // Re-read before overwriting so a concurrent save is not lost to an
+        // older remote copy (last-write-wins must hold across save and sync).
+        const fresh = readSide(await readLocal(local, name))
+        if (
+          fresh.conversation &&
+          fresh.conversation.updatedAt >= remoteSide.conversation.updatedAt
+        ) {
+          continue
+        }
         if (remoteRaw !== null) await local.writeText(name, remoteRaw)
         downloaded += 1
       } else if (localSide.conversation.updatedAt > remoteSide.conversation.updatedAt) {
@@ -121,7 +145,8 @@ export async function syncOnce(
       }
       continue
     }
-    // Neither side parses as a conversation: nothing to move.
+    // Neither side parses as a conversation: report and move on without touching either file.
+    if (localSide.raw !== null || remoteSide.raw !== null) skipped += 1
   }
 
   const serialized = serializeManifest(await buildManifest(local))

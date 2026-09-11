@@ -74,16 +74,19 @@ packages/sync/
 apps/electron/src/
 ├── shared/
 │   ├── ipc-contract.ts             # add sync:get-status, sync:status event, AppBridge methods, SyncStatus
-│   └── error-codes.ts              # add sync-not-configured, sync-failed
+│   └── error-codes.ts              # add sync-failed
 ├── main/
 │   ├── secretKinds.ts              # extend s3 validator with bucket/region/endpoint
 │   ├── secretKinds.test.ts
+│   ├── s3Config.ts                 # pure S3Config parse with re-applied field rules
+│   ├── s3Config.test.ts
 │   ├── secrets.ts                  # add getS3Config()
 │   ├── s3Remote.ts                 # @aws-sdk/client-s3 SyncRemote implementation
 │   ├── s3Remote.test.ts
 │   ├── conversationStore.ts        # export the filesystem port for sync
 │   ├── sync.ts                     # status, enqueue, startup sync, capped-backoff retry
-│   ├── sync.test.ts
+│   ├── syncService.ts              # Electron-free status and run queue
+│   ├── syncService.test.ts
 │   ├── ipc.ts                      # register sync:get-status; enqueue sync after conversations:save
 │   ├── ipc-contract.test.ts        # expected channel list
 │   └── index.ts                    # bounded startup sync before the window opens

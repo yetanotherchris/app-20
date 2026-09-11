@@ -74,8 +74,18 @@ export function registerIpcHandlers(): void {
     return ok({})
   })
   handle('secrets:import-provider-key', () => importProviderKey())
-  handle('secrets:import-s3', () => importS3Credentials())
-  handle('secrets:remove', (request) => removeSecret(request?.kind))
+  handle('secrets:import-s3', async () => {
+    const result = await importS3Credentials()
+    // A new credential changes whether sync is configured; run with it.
+    if (result.ok) scheduleSync()
+    return result
+  })
+  handle('secrets:remove', async (request) => {
+    const result = await removeSecret(request?.kind)
+    // Removing the S3 credential disables sync; refresh the status.
+    if (result.ok && request?.kind === 's3') scheduleSync()
+    return result
+  })
   handle('secrets:status', async () => ok(await getSecretsStatus()))
   handle('sync:get-status', () => ok(getSyncStatus()))
   handle('shell:open-external', async (request) => {

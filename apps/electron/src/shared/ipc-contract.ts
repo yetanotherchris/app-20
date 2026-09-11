@@ -1,6 +1,5 @@
 import type { Conversation, ConversationListResult } from '@app-20/conversation-storage'
 import type { ProviderMessage } from '@app-20/ai-provider'
-import type { SyncState } from '@app-20/sync'
 import type { AppErrorCode, Result } from './error-codes'
 
 export interface AppVersion {
@@ -20,10 +19,8 @@ export interface SecretsStatus {
   s3: boolean
 }
 
-export interface SyncStatus {
-  state: SyncState
-  error: AppErrorCode | null
-}
+export type SyncStatus =
+  { state: 'disabled' | 'idle' | 'pending' | 'syncing' } | { state: 'error'; error: AppErrorCode }
 
 export type MenuCommand =
   | 'reveal-workspace'

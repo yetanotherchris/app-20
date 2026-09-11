@@ -1,5 +1,6 @@
 import type { AppErrorCode } from '../shared/error-codes'
 import type { SecretKind } from '../shared/ipc-contract'
+import { S3_BUCKET_PATTERN, S3_REGION_PATTERN, isHttpUrl } from './s3Config'
 
 export type ValidationResult = { ok: true; value: string } | { ok: false; code: AppErrorCode }
 
@@ -9,10 +10,6 @@ export interface SecretKindDefinition {
 }
 
 const MAX_PROVIDER_KEY_CHARS = 8192
-
-/** S3 DNS-compatible bucket names: lowercase, 3-63 chars, no leading/trailing dot or dash. */
-const S3_BUCKET_PATTERN = /^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/
-const S3_REGION_PATTERN = /^[a-z0-9-]+$/
 
 /**
  * JSON field names that identify a kind. A file that carries another kind's
@@ -86,16 +83,6 @@ function readOptionalString(value: Record<string, unknown>, key: string): Option
   const trimmed = raw.trim()
   if (trimmed.length === 0) return { ok: false }
   return { ok: true, value: trimmed }
-}
-
-function isHttpUrl(value: string): boolean {
-  let url: URL
-  try {
-    url = new URL(value)
-  } catch {
-    return false
-  }
-  return url.protocol === 'http:' || url.protocol === 'https:'
 }
 
 /**

@@ -54,6 +54,7 @@ On startup, the app downloads remote conversations and manifest that are newer t
 - Q: The manifest has no single update timestamp, so how does it participate in FR-004 last-write-wins? A: Conflict resolution uses the conversation's own `updatedAt`. The remote manifest is downloaded and used as an index of conversation file names; after conversation objects are reconciled, the local manifest is rebuilt from the files present on disk and uploaded, so no manifest entry can reference a file that has not been written.
 - Q: What does the background job observe as its trigger in the current shell, which still saves on demand? A: A completed local save enqueues a sync. Spec 107 (autosave) will call the same enqueue path; spec 104 does not change the save trigger.
 - Q: Does the beta test suite need a real S3 service? A: No. E2E runs a local S3-compatible server (`@20minutes/s3rver`) and points the imported `endpoint` at it, matching the fake OpenRouter approach from spec 102.
+- Q: FR-006 says corrupt remote files are skipped, but the edge case says an interrupted upload must retry the complete file. Which applies? A: A remote object that is missing, empty, or unparseable is never treated as a valid conversation. When a valid local copy exists, it is uploaded to repair the remote object, which is what retries the complete file after an interrupted transfer. When no valid local copy exists, the object is skipped and neither side is changed. The general "not repaired or reconciled" assumption below is narrowed accordingly.
 
 ## Requirements
 
@@ -90,4 +91,4 @@ On startup, the app downloads remote conversations and manifest that are newer t
 - Device clocks are assumed roughly synchronized; clock skew between devices can misorder the conflict rule, and that risk is accepted for beta.
 - The losing copy in a conflict is overwritten and not preserved; a merge strategy is future work.
 - Deletions do not propagate in beta; the consequence (a deleted conversation returns from the bucket) is accepted.
-- Empty, missing, and corrupt remote files are not repaired or reconciled in beta; they are skipped.
+- Empty, missing, and corrupt remote files are not merged or reconciled in beta. A valid local copy repairs the remote object (retrying an interrupted transfer); otherwise the object is skipped and neither side changes.

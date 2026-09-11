@@ -20,11 +20,7 @@ export interface SyncReport {
   manifestUploaded: boolean
 }
 
-export function syncOnce(
-  local: ConversationFilePort,
-  remote: SyncRemote,
-  now?: () => Date,
-): Promise<SyncReport>
+export function syncOnce(local: ConversationFilePort, remote: SyncRemote): Promise<SyncReport>
 ```
 
 Rules:
@@ -50,6 +46,7 @@ Rules:
 - `listNames` pages `ListObjectsV2Command` on `ContinuationToken` and strips `S3_PREFIX`; keys outside the prefix are ignored.
 - `readText` uses `GetObjectCommand` and `Body.transformToString()`.
 - `writeText` uses `PutObjectCommand` with `ContentType: 'application/json'`.
+- Every request is bounded by an abort timeout so an unresponsive endpoint cannot wedge the sync queue.
 - Object names are appended to `S3_PREFIX`; a name is only ever one of the validated local file names, so it contains no path separator.
 
 ## Credential shape (`s3` secret kind)
@@ -87,12 +84,8 @@ Validation:
 | `sync:status` | `SyncStatus` |
 
 ```ts
-export type SyncState = 'disabled' | 'idle' | 'pending' | 'syncing' | 'error'
-
-export interface SyncStatus {
-  state: SyncState
-  error: AppErrorCode | null
-}
+export type SyncStatus =
+  { state: 'disabled' | 'idle' | 'pending' | 'syncing' } | { state: 'error'; error: AppErrorCode }
 ```
 
 `AppBridge` gains `getSyncStatus(): Promise<Result<SyncStatus>>` and `onSyncStatus(handler: (status: SyncStatus) => void): () => void`. No key, bucket, or endpoint is part of the snapshot. There is no generic `invoke` escape hatch.

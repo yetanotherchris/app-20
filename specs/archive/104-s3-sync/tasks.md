@@ -59,11 +59,11 @@
 
 - [x] T011 [P] [US1] Extend `validateS3Credentials` in `apps/electron/src/main/secretKinds.ts` to preserve and validate optional `bucket`/`region`/`endpoint` per `contracts/s3-sync.md`, and cover valid, invalid, and absent optional fields in `apps/electron/src/main/secretKinds.test.ts`.
 - [x] T012 [US1] Add `S3Config` and `getS3Config()` to `apps/electron/src/main/secrets.ts`: parse the stored `s3` plaintext, return `null` when absent or bucket-less, and never expose it over IPC.
-- [x] T013 [P] [US1] Add `sync-not-configured` and `sync-failed` to `APP_ERROR_CODES` and `ERROR_MESSAGES` in `apps/electron/src/shared/error-codes.ts`.
+- [x] T013 [P] [US1] Add `sync-failed` to `APP_ERROR_CODES` and `ERROR_MESSAGES` in `apps/electron/src/shared/error-codes.ts`.
 - [x] T014 [US1] Create `apps/electron/src/main/s3Remote.ts`: `S3_PREFIX`, `createS3Remote(config)` implementing `SyncRemote` with `ListObjectsV2Command` pagination, `GetObjectCommand` + `transformToString`, and `PutObjectCommand`, with the checksum and path-style options from `contracts/s3-sync.md`.
 - [x] T015 [US1] Create `apps/electron/src/main/s3Remote.test.ts`: name/prefix mapping, `listNames` pagination join and prefix strip, missing-key propagation, and the client options applied for endpoint versus AWS.
 - [x] T016 [US1] Create `apps/electron/src/main/sync.ts`: the serial queue, `getSyncStatus`, `enqueueSync`, `scheduleSync` (set `pending`, run, retry with capped backoff, set `error`), error classification to `network-error`/`sync-failed`, and a `sendToRenderer('sync:status', ...)` push on every transition.
-- [x] T017 [US1] Create `apps/electron/src/main/sync.test.ts` with an injected remote factory: disabled when unconfigured; pending-to-idle on success; error after the retry cap; retry resets on a later save; runs are serialized so two triggers do not overlap.
+- [x] T017 [US1] Create `apps/electron/src/main/syncService.test.ts` with an injected remote factory: disabled when unconfigured; pending-to-idle on success; error after the retry cap; retry resets on a later save; runs are serialized so two triggers do not overlap.
 - [x] T018 [US1] Register `sync:get-status` in `apps/electron/src/main/ipc.ts` and call `scheduleSync()` after `getConversationStore().save(...)` in the `conversations:save` handler.
 - [x] T019 [US1] Add `getSyncStatus` and `onSyncStatus` to `apps/electron/src/preload/index.ts`.
 - [x] T020 [P] [US1] Create `apps/electron/src/renderer/src/hooks/useSyncStatus.ts`: read the status once on mount and subscribe to `sync:status`; add `useSyncStatus.test.tsx`.
@@ -83,7 +83,7 @@
 **Independent Test**: Seed the bucket with a newer conversation, start a fresh profile, and confirm the content is downloaded and shown. Seed an older remote copy and confirm the local newer copy is uploaded.
 
 - [x] T025 [US2] Wire the startup path in `apps/electron/src/main/index.ts`: after `loadConversationFolder()` and `reconcileConversations()`, enqueue a sync and await it with a cap before `openWindow()`, so session restore (spec 105) starts after sync settles.
-- [x] T026 [US2] Create `apps/electron/src/main/syncBootstrap.ts` (or export from `sync.ts`) that builds the remote from `getS3Config()` and the local port from `getConversationFilePort()`, and returns a `disabled` status when `getS3Config()` is `null`.
+- [x] T026 [US2] Create `apps/electron/src/main/sync.ts` that builds the remote from `getS3Config()` and the local port from `getConversationFilePort()`, and returns a `disabled` status when `getS3Config()` is `null`.
 - [x] T027 [US2] Add the US2 e2e cases to `tests/e2e/s3-sync.spec.ts`: seed a newer remote conversation and manifest, launch a fresh profile, and assert the conversation is downloaded and visible; seed an older remote copy of a local conversation and assert the local newer content is uploaded and not overwritten; assert a conflict resolves by `updatedAt`.
 - [x] T028 [US2] Add the corrupt/missing/empty remote e2e case: put an invalid JSON object under `conversations/`, launch, and assert startup completes, the file is skipped, and other conversations still sync (FR-006).
 - [x] T029 [US2] Add the failure e2e case: import credentials with an unreachable endpoint (or an unknown access key), save, and assert the status reaches `Sync failed` after capped retries while the local conversation is intact (SC-004).
@@ -97,7 +97,7 @@
 **Purpose**: Align the existing suites, run the gates, and archive the spec.
 
 - [x] T030 [P] Update `BRIDGE_METHODS` in `tests/e2e/shell.spec.ts` for `getSyncStatus`.
-- [x] T031 Review `apps/electron/src/main/s3Remote.ts`, `sync.ts`, and `syncBootstrap.ts` against constitution I/II/IV: no credential, bucket, or endpoint reaches a log, error, or the renderer; no `any` at the boundary; local writes go through the atomic port.
+- [x] T031 Review `apps/electron/src/main/s3Remote.ts`, `sync.ts`, and `syncService.ts` against constitution I/II/IV: no credential, bucket, or endpoint reaches a log, error, or the renderer; no `any` at the boundary; local writes go through the atomic port.
 - [x] T032 Confirm `apps/electron/electron.vite.config.ts` bundles `@app-20/sync` (add it to `externalizeDeps.exclude` beside `@app-20/conversation-storage`) and that `@aws-sdk/client-s3` is a runtime dependency of `apps/electron`.
 - [x] T033 Run `npm run lint`, `npm run typecheck`, `npm run test`, and `npm run build:electron`; fix all failures.
 - [x] T034 Run `npm run test:e2e`; fix all failures.

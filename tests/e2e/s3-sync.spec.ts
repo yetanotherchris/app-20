@@ -267,6 +267,63 @@ test.describe('US2 - restore newer remote content on startup', () => {
     }
   })
 
+  test('keeps a save made while sync is failing and uploads it once credentials work', async () => {
+    const shell = await openShell()
+    try {
+      await importCreds(shell, 'http://127.0.0.1:1')
+      const id = 'conv-recover'
+      await saveConversation(shell.page, sample(id, '2026-02-01T00:00:00.000Z'))
+      await expect(shell.page.getByTestId('shell.sync-status')).toHaveText('Sync pending', {
+        timeout: 20_000,
+      })
+
+      // Fix the endpoint and save again; the queued local change propagates.
+      await importCreds(shell, fake.endpoint)
+      await saveConversation(shell.page, sample(id, '2026-02-02T00:00:00.000Z', 'recovered'))
+
+      await expect
+        .poll(() => fake.getText(`conversations/${id}.json`), { timeout: 20_000 })
+        .toContain('recovered')
+      await expect(shell.page.getByTestId('shell.sync-status')).toHaveText('Synced', {
+        timeout: 20_000,
+      })
+    } finally {
+      await closeShell(shell)
+    }
+  })
+
+  test('reports a rejected credential as sync failed without losing local data', async () => {
+    const shell = await openShell()
+    try {
+      const content = JSON.stringify({
+        accessKeyId: 'NOT-A-KEY',
+        secretAccessKey: 'nope',
+        bucket: fake.bucket,
+        region: 'us-east-1',
+        endpoint: fake.endpoint,
+      })
+      const file = await writeKeyFile(shell.userDataDir, 's3-bad.json', content)
+      await stubOpenDialog(shell.app, [file])
+      await clickMenuItem(shell.app, 'Import S3 Credentials...')
+      await expect(shell.page.getByTestId('shell.notification.info').last()).toContainText(
+        'S3 credentials imported',
+      )
+
+      const id = 'conv-rejected'
+      await saveConversation(shell.page, sample(id, '2026-02-01T00:00:00.000Z'))
+      await expect(shell.page.getByTestId('shell.sync-status')).toHaveText('Sync failed', {
+        timeout: 40_000,
+      })
+      const stored = await readConversationJson<TestConversation>(
+        shell.conversationDir,
+        `${id}.json`,
+      )
+      expect(stored.id).toBe(id)
+    } finally {
+      await closeShell(shell)
+    }
+  })
+
   test('reports a failed sync and leaves local data intact', async () => {
     const shell = await openShell()
     try {
