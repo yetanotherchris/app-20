@@ -26,6 +26,12 @@ describe('provider key validation', () => {
     expect(validateSecret('provider-key', 'first\nsecond').ok).toBe(false)
   })
 
+  it('never echoes rejected material back in the result', () => {
+    const result = validateSecret('provider-key', 'sk-secret-value\nsecond')
+    expect(result).toEqual({ ok: false, code: 'invalid-secret' })
+    expect(JSON.stringify(result)).not.toContain('sk-secret-value')
+  })
+
   it('rejects internal whitespace', () => {
     expect(validateSecret('provider-key', 'sk-or key').ok).toBe(false)
   })
