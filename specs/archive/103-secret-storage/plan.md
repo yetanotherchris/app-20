@@ -16,7 +16,7 @@ The work is split so the structural extraction lands first, with no behavior cha
 
 **Primary Dependencies**: No new dependency. At-rest protection uses Electron `safeStorage`; the file chooser uses Electron `dialog`. The pure validators import nothing but the shared error contract. The store uses `node:fs` and the existing `atomicWriteFile`.
 
-**Storage**: One JSON file at `<appData>/secrets.json` (`~/.config/app-20` on every platform, overridable with `APP20_DATA_DIR` for tests). Each entry is the base64 ciphertext of one secret, keyed by kind. Unknown keys are preserved on write.
+**Storage**: One JSON file at `<appData>/secrets.json` (`~/.config/app-20` on every platform, overridable with `APP20_DATA_DIR` for tests). Each entry is the JSON-serialized `safeStorage` ciphertext (the `Buffer` object) of one secret, keyed by kind, matching VS Code's `EncryptionMainService`. Unknown keys are preserved on write.
 
 **Testing**: Vitest for the pure validators and the store (fake cipher, temp file), the IPC contract test for the new channel, and Playwright (`_electron.launch`) against the built app with the existing fake OpenRouter server for import, overwrite, rejection, and removal.
 

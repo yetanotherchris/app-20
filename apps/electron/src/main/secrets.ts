@@ -26,16 +26,25 @@ function prepareStorage(): void {
   }
 }
 
+/**
+ * Encrypts a value with `safeStorage` and stores the serialized `Buffer` it
+ * returns, the same shape VS Code's EncryptionMainService writes. The stored
+ * JSON holds ciphertext only; the plaintext stays in main.
+ */
 const cipher = {
   encrypt(plaintext: string): string {
     prepareStorage()
     if (!safeStorage.isEncryptionAvailable()) throw new AppError('secret-store-unavailable')
-    return safeStorage.encryptString(plaintext).toString('base64')
+    return JSON.stringify(safeStorage.encryptString(plaintext))
   },
   decrypt(stored: string): string | null {
     prepareStorage()
     try {
-      return safeStorage.decryptString(Buffer.from(stored, 'base64'))
+      const parsed: unknown = JSON.parse(stored)
+      if (parsed === null || typeof parsed !== 'object') return null
+      const data = (parsed as { data?: unknown }).data
+      if (!Array.isArray(data)) return null
+      return safeStorage.decryptString(Buffer.from(data))
     } catch {
       return null
     }

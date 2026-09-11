@@ -19,12 +19,12 @@ The on-disk JSON object at `<appData>/secrets.json`.
 
 ```jsonc
 {
-  "providerKey": "<base64 of safeStorage ciphertext>",
-  "s3": "<base64 of safeStorage ciphertext>"
+  "providerKey": "{\"type\":\"Buffer\",\"data\":[118,49,48,...]}",
+  "s3": "{\"type\":\"Buffer\",\"data\":[118,49,48,...]}"
 }
 ```
 
-- Every value is a string. A non-string or unreadable entry is ignored on read.
+- Each value is the string `JSON.stringify(safeStorage.encryptString(value))`, the serialized `Buffer` that `safeStorage` returns (the shape VS Code's `EncryptionMainService` writes). A non-string or undecryptable entry is ignored on read.
 - Unknown keys are preserved on write so a build with extra kinds does not lose them when an older-kind write happens.
 - The file is written atomically (temp file in the same directory, then rename).
 - On POSIX the file is created `0600` and its directory `0700`, so only the owner can read it. The directory is narrowed on each write, which also fixes a directory an earlier build created at the default umask.

@@ -4,7 +4,7 @@ Spec 102 already shipped a working import path in `apps/electron/src/main/secret
 
 ## R1. At-rest protection: Electron `safeStorage`
 
-**Decision**: Encrypt each secret with `safeStorage.encryptString` and store the ciphertext base64-encoded in `secrets.json`. Treat unavailable encryption (`isEncryptionAvailable()` false) as a hard failure (`secret-store-unavailable`); never fall back to writing plaintext.
+**Decision**: Encrypt each secret with `safeStorage.encryptString` and store the JSON-serialized `Buffer` it returns in `secrets.json`, the shape VS Code's `EncryptionMainService` writes (`JSON.stringify(safeStorage.encryptString(value))`). Treat unavailable encryption (`isEncryptionAvailable()` false) as a hard failure (`secret-store-unavailable`); never fall back to writing plaintext.
 
 **Rationale**: `safeStorage` is backed by the OS credential service (DPAPI on Windows, Keychain on macOS, libsecret or KWallet on Linux). It needs no new dependency and the plaintext is produced and consumed only in main, which keeps it out of renderer memory and renderer crash dumps (constitution I). On POSIX the store creates `secrets.json` with mode `0600` and narrows its directory to `0700`, so the default umask cannot leave the ciphertext group- or world-readable.
 
@@ -14,7 +14,7 @@ On Linux where no keyring is selected, Electron uses the `basic_text` backend an
 
 ## R2. Store layout and extensibility: one file, one entry per kind
 
-**Decision**: Keep one JSON file at `<appData>/secrets.json`. Each entry is keyed by the kind's storage key and holds the base64 ciphertext. A `SecretKind` registry maps each kind id to its storage key and its validator. Setting or removing a kind reads the existing object, changes only that key, and writes the object back, so any other entry, including one written by a future build, is preserved.
+**Decision**: Keep one JSON file at `<appData>/secrets.json`. Each entry is keyed by the kind's storage key and holds the JSON-serialized `safeStorage` ciphertext. A `SecretKind` registry maps each kind id to its storage key and its validator. Setting or removing a kind reads the existing object, changes only that key, and writes the object back, so any other entry, including one written by a future build, is preserved.
 
 **Rationale**: FR-006 requires that adding a credential type (for example an OAuth token) neither rewrites existing entries nor runs a migration. A registry plus a per-key edit is exactly that: the new kind is a new registry entry, and older entries are untouched. The on-disk shape stays compatible with the `{ providerKey, s3 }` object spec 102 wrote, so no migration is needed for existing installs.
 
