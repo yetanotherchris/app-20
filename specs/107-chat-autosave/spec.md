@@ -124,7 +124,7 @@ If persistence fails, the user finds out and their words are not silently lost.
 - Chat clients such as ChatGPT and Claude are the behavioral model: they autosave after a short idle period, expose no save controls, and close without asking.
 - This supersedes the editor-derived requirements it was seeded with:
   - spec 100 (archived): FR-003, FR-004's "failed save MUST leave the document dirty" clause, US2, the edge case "Closing with a failed save must leave the document dirty", and SC-004.
-  - spec 105: US3 acceptance scenario 2 ("unsaved changes at quit... the user confirms"), SC-004, and the assumption "Close and quit confirmation is owned by spec 100".
+  - spec 105: the save, close-confirmation, and startup-restore requirements seeded into 105 are now owned here. Spec 105 was rewritten as the chat history drawer and no longer restates them.
   - It does not supersede spec 100 SC-002's "does not discard content", which this feature preserves.
 - The constitution was amended in this change (MAJOR, 1.0.0 to 2.0.0): Principle III now requires autosave with a reported, retried failed save instead of a dirty document and a confirmation prompt, and Principle V requires autosave tests instead of the close/quit confirmation test class. The spec's dependency on that amendment is therefore resolved.
 - No save prompt is shown under any circumstance, including a failed save at quit. Because autosave already runs on every terminal exchange and typing pause, a failure at quit risks at most the last in-flight change; that is accepted, and the trade-off is recorded here rather than hidden.

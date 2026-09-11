@@ -12,7 +12,7 @@
 
 ### User Story 1 - Chat on iPhone (Priority: P1)
 
-The user chats on their iPhone with the same conversation experience as desktop, including the session flow and key import.
+The user chats on their iPhone with the same conversation experience as desktop, including the history drawer, autosave, and key import.
 
 **Why this priority**: iOS is a beta platform; the chat must be fully usable there.
 
@@ -56,7 +56,7 @@ The user increases text size; the chat adapts.
 - Focus and text selection must behave on touch.
 - Composer growth and internal scrolling must work on small screens.
 - Stop must retain partial content on iOS as on desktop.
-- The app backgrounded or terminated mid-stream must not lose partial content (per spec 105 FR-003).
+- The app backgrounded or terminated mid-stream must not lose partial content (per spec 107).
 
 ## Requirements
 
@@ -69,8 +69,8 @@ The user increases text size; the chat adapts.
 - **FR-005**: The app MUST support dynamic type.
 - **FR-006**: Streaming, stop, composer growth, scrolling, and focus MUST behave as on desktop.
 - **FR-007**: Conversations MUST persist on iOS using the shared, platform-neutral storage layer (see spec 101).
-- **FR-008**: The iOS app MUST implement the session flow (spec 105) and key import (spec 103) using the platform document picker in place of the desktop file chooser.
-- **FR-009**: Partial content MUST be saved when the app is backgrounded or terminated, per spec 105 FR-003.
+- **FR-008**: The iOS app MUST implement the history drawer (spec 105), the autosave session flow (spec 107), and key import (spec 103) with the first-send gate (spec 108) using the platform document picker in place of the desktop file chooser.
+- **FR-009**: Partial content MUST be saved when the app is backgrounded or terminated, per spec 107.
 - **FR-010**: S3 sync (spec 104) is in iOS beta scope.
 
 ### Key Entities
