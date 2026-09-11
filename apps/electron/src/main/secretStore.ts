@@ -67,10 +67,6 @@ function isStoredString(value: unknown): value is string {
   return typeof value === 'string' && value.length > 0
 }
 
-function hasEntry(secrets: StoredSecrets, storageKey: string): boolean {
-  return isStoredString(secrets[storageKey])
-}
-
 export function createSecretStore(options: {
   filePath: string
   cipher: SecretCipher
@@ -80,6 +76,15 @@ export function createSecretStore(options: {
   function definitionFor(kind: SecretKind) {
     if (!isSecretKind(kind)) throw new AppError('invalid-secret')
     return SECRET_KINDS[kind]
+  }
+
+  // A kind counts as present only when its value decrypts, so `status` never
+  // reports a credential the store cannot actually return. An entry written by
+  // an earlier build with a different encoding fails here and reads as absent.
+  function readEntry(secrets: StoredSecrets, storageKey: string): string | null {
+    const stored = secrets[storageKey]
+    if (!isStoredString(stored)) return null
+    return cipher.decrypt(stored)
   }
 
   // Serializes each read-modify-write cycle so two overlapping imports or
@@ -116,16 +121,14 @@ export function createSecretStore(options: {
     async status() {
       const secrets = await readStored(filePath)
       return {
-        providerKey: hasEntry(secrets, SECRET_KINDS['provider-key'].storageKey),
-        s3: hasEntry(secrets, SECRET_KINDS.s3.storageKey),
+        providerKey: readEntry(secrets, SECRET_KINDS['provider-key'].storageKey) !== null,
+        s3: readEntry(secrets, SECRET_KINDS.s3.storageKey) !== null,
       }
     },
 
     async read(kind) {
       const { storageKey } = definitionFor(kind)
-      const stored = (await readStored(filePath))[storageKey]
-      if (!isStoredString(stored)) return null
-      return cipher.decrypt(stored)
+      return readEntry(await readStored(filePath), storageKey)
     },
 
     async write(kind, plaintext) {

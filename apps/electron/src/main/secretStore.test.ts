@@ -171,9 +171,11 @@ describe('secret store', () => {
     expect(await store.read('provider-key')).toBeNull()
   })
 
-  it('returns null when a stored value cannot be decrypted', async () => {
+  it('reports an undecryptable entry as absent in both status and read', async () => {
     await writeFile(filePath, JSON.stringify({ providerKey: 'garbage' }))
-    expect(await makeStore().read('provider-key')).toBeNull()
+    const store = makeStore()
+    await expect(store.status()).resolves.toEqual({ providerKey: false, s3: false })
+    expect(await store.read('provider-key')).toBeNull()
   })
 
   it('rejects an unknown kind with invalid-secret', async () => {

@@ -1,8 +1,17 @@
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { access, mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { appDataDir, conversationsDir, migrateData, secretsFilePath } from './appData'
+
+async function exists(path: string): Promise<boolean> {
+  try {
+    await access(path)
+    return true
+  } catch {
+    return false
+  }
+}
 
 describe('app data paths', () => {
   afterEach(() => {
@@ -40,29 +49,27 @@ describe('migrateData', () => {
     await rm(root, { recursive: true, force: true })
   })
 
-  it('moves secrets and conversations when the target is empty', async () => {
+  it('moves conversations and leaves secrets behind', async () => {
     await writeFile(join(legacy, 'secrets.json'), '{"providerKey":"x"}')
     await mkdir(join(legacy, 'conversations'), { recursive: true })
     await writeFile(join(legacy, 'conversations', 'c1.json'), '{}')
 
     await migrateData(legacy, target)
 
-    expect(await readFile(join(target, 'secrets.json'), 'utf8')).toBe('{"providerKey":"x"}')
     expect(await readFile(join(target, 'conversations', 'c1.json'), 'utf8')).toBe('{}')
+    expect(await exists(join(target, 'secrets.json'))).toBe(false)
   })
 
-  it('does not overwrite anything already at the target', async () => {
-    await writeFile(join(legacy, 'secrets.json'), '{"providerKey":"old"}')
+  it('does not overwrite an existing conversation folder', async () => {
     await mkdir(join(legacy, 'conversations'), { recursive: true })
-    await mkdir(target, { recursive: true })
-    await writeFile(join(target, 'secrets.json'), '{"providerKey":"new"}')
+    await writeFile(join(legacy, 'conversations', 'c1.json'), '{}')
     await mkdir(join(target, 'conversations'), { recursive: true })
     await writeFile(join(target, 'conversations', 'keep.json'), '{}')
 
     await migrateData(legacy, target)
 
-    expect(await readFile(join(target, 'secrets.json'), 'utf8')).toBe('{"providerKey":"new"}')
     expect(await readFile(join(target, 'conversations', 'keep.json'), 'utf8')).toBe('{}')
+    expect(await exists(join(target, 'conversations', 'c1.json'))).toBe(false)
   })
 
   it('is a no-op when there is no legacy data', async () => {
