@@ -210,6 +210,7 @@ AGENTS.md                         This file
   - **Behavioral changes**: adding or modifying actual functionality.
     This separation makes code reviews easier, reduces bugs, and creates clearer
     git history.
+- **Beta carries no on-disk data migrations.** When a stored format changes, the old local data is not converted or read. The store starts empty and the user imports or creates the data again. Do not write migration code for a format change. A discarded local secret or conversation is not a Principle III violation: that principle governs save atomicity and failed saves, not format upgrades.
 - Report honestly. If something is stubbed, partly done, or unverified, say so plainly. A confident wrong summary is worse than an uncertain accurate one.
 - Comments explain a local, non-obvious behavior, constraint, or safety reason. Delete comments that only restate the code, requirement IDs, or project history.
 - Do not write AI filler. Avoid slogans, performative certainty, self-grandiosity, ceremonial all-caps emphasis, and attempts to sound like an expert.
