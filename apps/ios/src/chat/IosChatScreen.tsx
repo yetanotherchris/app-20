@@ -63,7 +63,8 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
   const [gatePending, setGatePending] = useState(false)
   const [syncState, setSyncState] = useState('disabled')
   const [isKeyboardVisible, setKeyboardVisible] = useState(false)
-  const [keyboardHeight, setKeyboardHeight] = useState(0)
+  const [keyboardInset, setKeyboardInset] = useState(0)
+  const chatRegionRef = useRef<View>(null)
 
   const syncRef = useRef<ReturnType<typeof createSyncService> | null>(null)
   if (!syncRef.current) {
@@ -140,11 +141,15 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
   useEffect(() => {
     const show = Keyboard.addListener('keyboardDidShow', (event) => {
       setKeyboardVisible(true)
-      setKeyboardHeight(event.endCoordinates.height)
+      requestAnimationFrame(() => {
+        chatRegionRef.current?.measureInWindow((_x, top, _width, height) => {
+          setKeyboardInset(Math.max(0, top + height - event.endCoordinates.screenY))
+        })
+      })
     })
     const hide = Keyboard.addListener('keyboardDidHide', () => {
       setKeyboardVisible(false)
-      setKeyboardHeight(0)
+      setKeyboardInset(0)
     })
     return () => {
       show.remove()
@@ -261,7 +266,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
           </Pressable>
         ) : null}
       </View>
-      <View style={[styles.chat, { marginBottom: keyboardHeight }]}>
+      <View ref={chatRegionRef} style={[styles.chat, { marginBottom: keyboardInset }]}>
         <LLMChat.Root
           messages={chat.messages}
           draft={draft}
