@@ -233,7 +233,11 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
   }
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.screen}>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'height' : undefined}
+      keyboardVerticalOffset={0}
+      style={styles.screen}
+    >
       <View style={styles.topBar}>
         <Pressable
           accessibilityRole="button"
