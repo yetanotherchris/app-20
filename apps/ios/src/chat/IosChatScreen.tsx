@@ -1,5 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import { Pressable, StyleSheet, Text, View } from 'react-native'
+import {
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native'
 import {
   LLMChat,
   useChatSession,
@@ -56,6 +64,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
   const [historyOpen, setHistoryOpen] = useState(false)
   const [gatePending, setGatePending] = useState(false)
   const [syncState, setSyncState] = useState('disabled')
+  const [isKeyboardVisible, setKeyboardVisible] = useState(false)
 
   const syncRef = useRef<ReturnType<typeof createSyncService> | null>(null)
   if (!syncRef.current) {
@@ -127,6 +136,15 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
 
   useEffect(() => {
     void storeRef.current.list().then((result) => setEntries(result.entries))
+  }, [])
+
+  useEffect(() => {
+    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true))
+    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false))
+    return () => {
+      show.remove()
+      hide.remove()
+    }
   }, [])
 
   useEffect(() => {
@@ -215,7 +233,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
   }
 
   return (
-    <View style={styles.screen}>
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.screen}>
       <View style={styles.topBar}>
         <Pressable
           accessibilityRole="button"
@@ -226,9 +244,17 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
         <Pressable accessibilityRole="button" onPress={() => void newConversation()}>
           <Text style={styles.topBarButton}>New</Text>
         </Pressable>
+        <Text accessibilityLabel={`Sync status: ${syncState}`} style={styles.syncStatus}>
+          Sync: {syncState}
+        </Text>
         <Pressable accessibilityRole="button" onPress={() => void importS3Credentials()}>
-          <Text style={styles.topBarButton}>Sync: {syncState}</Text>
+          <Text style={styles.topBarButton}>Import S3</Text>
         </Pressable>
+        {isKeyboardVisible ? (
+          <Pressable accessibilityRole="button" onPress={Keyboard.dismiss}>
+            <Text style={styles.topBarButton}>Hide keyboard</Text>
+          </Pressable>
+        ) : null}
       </View>
       <View style={styles.chat}>
         <LLMChat.Root
@@ -274,7 +300,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
           ))}
         </View>
       ) : null}
-    </View>
+    </KeyboardAvoidingView>
   )
 }
 
@@ -282,11 +308,13 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   topBar: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
   },
   topBarButton: { color: '#0f766e', fontSize: 16, fontWeight: '600' },
+  syncStatus: { color: '#475569', fontSize: 16 },
   chat: { flex: 1 },
   notice: { backgroundColor: '#fee2e2', color: '#b91c1c', margin: 12, padding: 10 },
   drawer: {

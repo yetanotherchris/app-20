@@ -24,6 +24,8 @@
 - [ ] T009 Implement the iOS session host using the autosave and first-send gate behavior merged from specs 107 and 108.
 - [ ] T010 Compose `LLMChat.Root` inside a safe-area shell with native notifications, history drawer, and sync status.
 - [ ] T011 Add unit coverage for session, history, import-gate, lifecycle flush, and sync-state behavior.
+- [x] T015 Keep the composer above the iOS software keyboard and provide a keyboard-dismissal control without submitting the draft.
+- [x] T016 Render sync state as non-interactive status and expose S3 credential import through an explicit control.
 
 ## Phase 4: Validation and Completion
 

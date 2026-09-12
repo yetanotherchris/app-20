@@ -72,6 +72,8 @@ The user increases text size; the chat adapts.
 - **FR-008**: The iOS app MUST implement the history drawer (spec 105), the autosave session flow (spec 107), and key import (spec 103) with the first-send gate (spec 108) using the platform document picker in place of the desktop file chooser.
 - **FR-009**: Partial content MUST be saved when the app is backgrounded or terminated, per spec 107.
 - **FR-010**: S3 sync (spec 104) is in iOS beta scope.
+- **FR-011**: The composer and Send control MUST remain visible above the software keyboard, and the user MUST be able to dismiss that keyboard without sending the draft.
+- **FR-012**: Sync status MUST not invoke credential import. S3 import MUST use an explicitly labeled control, and provider-key import MUST occur only through the first-send gate.
 
 ### Key Entities
 
@@ -99,3 +101,5 @@ The user increases text size; the chat adapts.
 - 2026-09-11: Specs 107 and 108 are completed and merged to `main` before this spec is implemented. Their autosave and first-send key-gate behavior is reused by iOS rather than reimplemented in this spec.
 - 2026-09-11: iOS beta includes S3 sync.
 - 2026-09-11: After a successful provider-key import initiated by the first-send gate, the retained prompt sends automatically.
+- 2026-09-12: The iOS shell uses keyboard avoidance to keep the composer and Send control visible and shows a keyboard-dismissal control while the software keyboard is visible.
+- 2026-09-12: The shell renders sync state as status text and uses a separate `Import S3` control, so a user can distinguish S3 configuration from the provider-key import gate.
