@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 
-vi.mock('expo-file-system/legacy', () => ({
-  documentDirectory: 'file:///documents/',
+vi.mock('expo-file-system', () => ({
+  Paths: { document: { uri: 'file:///documents/' } },
 }))
 
 import { createConversationFilePort, type SandboxFileSystem } from './conversationFilePort'
