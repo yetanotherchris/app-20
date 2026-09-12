@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import {
   Alert,
   Keyboard,
@@ -61,6 +61,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
   const draftRef = useRef('')
   const controllerRef = useRef<AbortController | null>(null)
   const controlsRef = useRef<ChatSessionControls | null>(null)
+  const sessionGenerationRef = useRef(0)
   const secretPickerOpenRef = useRef(false)
   const [draft, setDraftState] = useState('')
   const [notice, setNotice] = useState<string | null>(null)
@@ -111,6 +112,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
   const chat = useChatSession({
     request: (operation: ChatOperation, controls: ChatSessionControls) => {
       const controller = new AbortController()
+      const requestGeneration = sessionGenerationRef.current
       controllerRef.current = controller
       controlsRef.current = controls
       const messages = toProviderMessages(messagesRef.current, operation.messageId)
@@ -135,16 +137,45 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
         } finally {
           controllerRef.current = null
           controlsRef.current = null
-          autosave.trigger()
+          if (requestGeneration === sessionGenerationRef.current) autosave.trigger()
         }
       })()
     },
   })
   messagesRef.current = chat.messages
 
+  const applyRestoredConversation = useEffectEvent((conversation: Conversation) => {
+    baseRef.current = conversation
+    conversationIdRef.current = conversation.id
+    createdAtRef.current = conversation.createdAt
+    chat.replaceMessages(fromConversation(conversation))
+    // Loading a draft must not schedule a write merely because state changed.
+    draftRef.current = conversation.draft ?? ''
+    setDraftState(conversation.draft ?? '')
+  })
+
   useEffect(() => {
-    void storeRef.current.list().then((result) => setEntries(result.entries))
-  }, [])
+    let cancelled = false
+    void (async () => {
+      const listed = await storeRef.current.list()
+      if (cancelled) return
+      setEntries(listed.entries)
+
+      for (const entry of listed.entries) {
+        if (cancelled || messagesRef.current.length > 0 || draftRef.current.length > 0) return
+        const result = await storeRef.current.read(entry.id)
+        if (result.kind === 'ok') {
+          if (!cancelled && messagesRef.current.length === 0 && draftRef.current.length === 0) {
+            applyRestoredConversation(result.conversation)
+          }
+          return
+        }
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [applyRestoredConversation])
 
   useEffect(() => {
     const show = Keyboard.addListener('keyboardDidShow', (event) => {
@@ -234,7 +265,8 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
     conversationIdRef.current = result.conversation.id
     createdAtRef.current = result.conversation.createdAt
     chat.replaceMessages(fromConversation(result.conversation))
-    setDraft(result.conversation.draft ?? '')
+    draftRef.current = result.conversation.draft ?? ''
+    setDraftState(result.conversation.draft ?? '')
     setHistoryOpen(false)
   }
 
@@ -278,6 +310,8 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
   async function clearConversations(): Promise<void> {
     if (clearPending || !(await autosave.flush())) return
     setClearPending(true)
+    const priorGeneration = sessionGenerationRef.current
+    sessionGenerationRef.current += 1
     try {
       await sync.clear()
       await storeRef.current.clear()
@@ -292,6 +326,8 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
       setHistoryOpen(false)
       setNotice('Conversations cleared.')
     } catch {
+      // A failed clear keeps the active request eligible to save its session.
+      sessionGenerationRef.current = priorGeneration
       setNotice('Could not clear conversations. The current conversation remains available.')
     } finally {
       setClearPending(false)
