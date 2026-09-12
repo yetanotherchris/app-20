@@ -363,6 +363,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
           messageActions={chat.messageActions}
           onMessageAction={chat.onMessageAction}
           onLinkPress={() => undefined}
+          minHeight={48}
           placeholder="Ask anything"
         />
       </View>
