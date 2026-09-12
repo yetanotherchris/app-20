@@ -12,7 +12,7 @@ Create an Expo iOS application that renders `app-20-llmchat` natively and uses t
 
 **Primary Dependencies**: Expo, Expo document picker, secure store, file system, safe-area context, and the AWS JavaScript S3 client through Metro's React Native/ES module resolver. Local iOS bundling proves that the selected client avoids Node imports; an authenticated EAS build remains required for device validation.
 
-**Storage**: App-sandbox conversation JSON files and manifest through `ConversationFilePort`; credentials in the iOS secure credential store; S3 mirrors the same JSON objects through `SyncRemote`
+**Storage**: App-sandbox conversation JSON files and manifest through `ConversationFilePort`; credentials in the iOS secure credential store; S3 mirrors the same JSON objects through `SyncRemote`. The beta clear action deletes all valid local conversation files and manifest, then all objects below the fixed S3 conversation prefix.
 
 **Testing**: Vitest for adapters and session orchestration; existing Electron Playwright suite; physical-iPhone acceptance checklist for native behavior
 
@@ -61,8 +61,9 @@ specs/106-ios-app/
 1. Confirm specs 107 and 108 are merged to `main`, then rebase this branch on that commit.
 2. Initialize the Expo application and verify an EAS iOS build before application code.
 3. Add storage, secrets, provider, and S3 adapters behind narrow typed interfaces. Confirm the S3 adapter through the local iOS bundle, then validate it in an EAS build.
-4. Compose the native shell around the shared chat component and the reusable history drawer.
-5. Add tests, complete the physical-device checklist, and archive this spec with its implementation PR.
+4. Extend the shared storage and sync ports with validated deletion operations, then test their local and S3 implementations.
+5. Compose the native shell around the shared chat component, overflow menu, and history drawer.
+6. Add tests, complete the physical-device checklist, and archive this spec with its implementation PR.
 
 ## Complexity Tracking
 

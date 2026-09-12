@@ -26,6 +26,8 @@
 - [ ] T011 Add unit coverage for session, history, import-gate, lifecycle flush, and sync-state behavior.
 - [x] T015 Keep the composer above the iOS software keyboard and provide a keyboard-dismissal control without submitting the draft.
 - [x] T016 Render sync state as non-interactive status and expose S3 credential import through an explicit control.
+- [x] T017 Extend the local storage and S3 sync ports with validated deletion operations and unit coverage for clearing every conversation object.
+- [x] T018 Replace secondary header controls with an overflow menu and add the confirmed beta clear-conversations flow with failure reporting.
 
 ## Phase 4: Validation and Completion
 

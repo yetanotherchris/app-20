@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import {
+  Alert,
   Keyboard,
   Pressable,
   StyleSheet,
@@ -65,6 +66,8 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
   const [notice, setNotice] = useState<string | null>(null)
   const [entries, setEntries] = useState<readonly ManifestEntry[]>([])
   const [historyOpen, setHistoryOpen] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const [clearPending, setClearPending] = useState(false)
   const [gatePending, setGatePending] = useState(false)
   const [syncState, setSyncState] = useState('disabled')
   const [isKeyboardVisible, setKeyboardVisible] = useState(false)
@@ -256,23 +259,57 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
     void sync.run()
   }
 
+  function confirmClearConversations(): void {
+    setMenuOpen(false)
+    Alert.alert(
+      'Clear all conversations?',
+      'This permanently removes all local and synced beta conversations.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Clear conversations',
+          style: 'destructive',
+          onPress: () => void clearConversations(),
+        },
+      ],
+    )
+  }
+
+  async function clearConversations(): Promise<void> {
+    if (clearPending || !(await autosave.flush())) return
+    setClearPending(true)
+    try {
+      await sync.clear()
+      await storeRef.current.clear()
+      controllerRef.current?.abort()
+      conversationIdRef.current = createId('conversation')
+      createdAtRef.current = new Date().toISOString()
+      baseRef.current = null
+      chat.replaceMessages([])
+      draftRef.current = ''
+      setDraftState('')
+      setEntries([])
+      setHistoryOpen(false)
+      setNotice('Conversations cleared.')
+    } catch {
+      setNotice('Could not clear conversations. The current conversation remains available.')
+    } finally {
+      setClearPending(false)
+    }
+  }
+
   return (
     <View style={styles.screen}>
       <View style={styles.topBar}>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => void refreshHistory().then(() => setHistoryOpen(true))}
-        >
-          <Text style={styles.topBarButton}>History</Text>
-        </Pressable>
-        <Pressable accessibilityRole="button" onPress={() => void newConversation()}>
-          <Text style={styles.topBarButton}>New</Text>
-        </Pressable>
         <Text accessibilityLabel={`Sync status: ${syncState}`} style={styles.syncStatus}>
           Sync: {syncState}
         </Text>
-        <Pressable accessibilityRole="button" onPress={() => void importS3Credentials()}>
-          <Text style={styles.topBarButton}>Import S3</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="More options"
+          onPress={() => setMenuOpen(!menuOpen)}
+        >
+          <Text style={styles.topBarButton}>...</Text>
         </Pressable>
         {isKeyboardVisible ? (
           <Pressable accessibilityRole="button" onPress={Keyboard.dismiss}>
@@ -280,6 +317,37 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
           </Pressable>
         ) : null}
       </View>
+      {menuOpen ? (
+        <View style={styles.menu}>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => void newConversation().then(() => setMenuOpen(false))}
+          >
+            <Text style={styles.menuItem}>New conversation</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() =>
+              void refreshHistory().then(() => setHistoryOpen(true)).then(() => setMenuOpen(false))
+            }
+          >
+            <Text style={styles.menuItem}>History</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => void importS3Credentials().then(() => setMenuOpen(false))}
+          >
+            <Text style={styles.menuItem}>Import S3</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            disabled={clearPending}
+            onPress={confirmClearConversations}
+          >
+            <Text style={styles.destructiveMenuItem}>Clear conversations</Text>
+          </Pressable>
+        </View>
+      ) : null}
       <View ref={chatRegionRef} style={[styles.chat, { marginBottom: keyboardInset }]}>
         <LLMChat.Root
           messages={chat.messages}
@@ -287,7 +355,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
           status={chat.status}
           hasEarlierMessages={false}
           isLoadingEarlier={false}
-          disabled={gatePending}
+          disabled={gatePending || clearPending}
           onChangeDraft={setDraft}
           onSubmit={() => void submit()}
           onStop={stop}
@@ -339,6 +407,18 @@ const styles = StyleSheet.create({
   },
   topBarButton: { color: '#0f766e', fontSize: 16, fontWeight: '600' },
   syncStatus: { color: '#475569', fontSize: 16 },
+  menu: {
+    backgroundColor: '#ffffff',
+    borderColor: '#cbd5e1',
+    borderRadius: 8,
+    borderWidth: 1,
+    position: 'absolute',
+    right: 16,
+    top: 52,
+    zIndex: 1,
+  },
+  menuItem: { color: '#0f172a', fontSize: 16, paddingHorizontal: 16, paddingVertical: 12 },
+  destructiveMenuItem: { color: '#b91c1c', fontSize: 16, paddingHorizontal: 16, paddingVertical: 12 },
   chat: { flex: 1 },
   notice: { backgroundColor: '#fee2e2', color: '#b91c1c', margin: 12, padding: 10 },
   drawer: {
