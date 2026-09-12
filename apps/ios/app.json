@@ -9,6 +9,11 @@
       "supportsTablet": false,
       "bundleIdentifier": "com.app20.chat"
     },
+    "extra": {
+      "eas": {
+        "projectId": "56b2ee88-1f9f-4581-9577-39f66e3f5514"
+      }
+    },
     "plugins": ["expo-document-picker", "expo-secure-store"]
   }
 }
