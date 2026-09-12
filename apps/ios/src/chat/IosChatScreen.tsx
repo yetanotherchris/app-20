@@ -34,8 +34,6 @@ interface IosChatScreenProps {
   appState: AppStateSource
 }
 
-const KEYBOARD_INSET_RATIO = 1 / 3
-
 function createId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
@@ -263,7 +261,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
           </Pressable>
         ) : null}
       </View>
-      <View style={[styles.chat, { marginBottom: keyboardHeight * KEYBOARD_INSET_RATIO }]}>
+      <View style={[styles.chat, { marginBottom: keyboardHeight }]}>
         <LLMChat.Root
           messages={chat.messages}
           draft={draft}

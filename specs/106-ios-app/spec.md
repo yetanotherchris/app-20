@@ -101,5 +101,5 @@ The user increases text size; the chat adapts.
 - 2026-09-11: Specs 107 and 108 are completed and merged to `main` before this spec is implemented. Their autosave and first-send key-gate behavior is reused by iOS rather than reimplemented in this spec.
 - 2026-09-11: iOS beta includes S3 sync.
 - 2026-09-11: After a successful provider-key import initiated by the first-send gate, the retained prompt sends automatically.
-- 2026-09-12: The iOS shell uses a device-validated fraction of the reported software-keyboard height to resize its chat region, keeping the composer and Send control above both system and third-party keyboards without excessive empty space, and shows a keyboard-dismissal control while the keyboard is visible.
+- 2026-09-12: The iOS shell uses the measured software-keyboard height to resize its chat region, keeping the composer and Send control above both system and third-party keyboards, and shows a keyboard-dismissal control while the keyboard is visible.
 - 2026-09-12: The shell renders sync state as status text and uses a separate `Import S3` control, so a user can distinguish S3 configuration from the provider-key import gate.
