@@ -7,6 +7,7 @@ export interface SyncService {
   state(): SyncState
   schedule(): void
   run(): Promise<void>
+  clear(): Promise<void>
 }
 
 export function createSyncService(
@@ -16,13 +17,15 @@ export function createSyncService(
 ): SyncService {
   let current: SyncState = 'disabled'
   let pending = false
+  let activeRun: Promise<void> | null = null
+  let clearing = false
 
   function setState(state: SyncState): void {
     current = state
     onState(state)
   }
 
-  async function run(): Promise<void> {
+  async function runOnce(): Promise<void> {
     const config = await secrets.getS3Config()
     if (!config) {
       setState('disabled')
@@ -37,6 +40,30 @@ export function createSyncService(
     }
   }
 
+  function run(): Promise<void> {
+    if (clearing) return Promise.resolve()
+    if (!activeRun) activeRun = runOnce().finally(() => (activeRun = null))
+    return activeRun
+  }
+
+  async function clear(): Promise<void> {
+    clearing = true
+    try {
+      if (activeRun) await activeRun
+      const config = await secrets.getS3Config()
+      if (!config) return
+      setState('syncing')
+      const remote = createS3Remote(config)
+      await Promise.all((await remote.listNames()).map((name) => remote.deleteText(name)))
+      setState('idle')
+    } catch (error) {
+      setState('error')
+      throw error
+    } finally {
+      clearing = false
+    }
+  }
+
   return {
     state: () => current,
     schedule() {
@@ -48,5 +75,6 @@ export function createSyncService(
       })
     },
     run,
+    clear,
   }
 }

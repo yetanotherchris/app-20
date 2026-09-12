@@ -40,4 +40,17 @@ describe('createConversationFilePort', () => {
 
     await expect(port.readText('../secret.json')).rejects.toThrow('Invalid conversation file name')
   })
+
+  it('deletes only validated conversation files', async () => {
+    const fileSystem = createFileSystem()
+    const port = createConversationFilePort(fileSystem)
+
+    await port.deleteText('manifest.json')
+
+    expect(fileSystem.deleteAsync).toHaveBeenCalledWith(
+      'file:///documents/conversations/manifest.json',
+      { idempotent: true },
+    )
+    await expect(port.deleteText('../secret.json')).rejects.toThrow('Invalid conversation file name')
+  })
 })

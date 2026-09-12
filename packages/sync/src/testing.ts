@@ -20,5 +20,8 @@ export function createInMemorySyncRemote(seed: Record<string, string> = {}): InM
     async writeText(name, content) {
       objects.set(name, content)
     },
+    async deleteText(name) {
+      objects.delete(name)
+    },
   }
 }

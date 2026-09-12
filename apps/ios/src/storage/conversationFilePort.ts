@@ -61,5 +61,9 @@ export function createConversationFilePort(
         throw error
       }
     },
+    async deleteText(name) {
+      await ensureDirectory()
+      await fileSystem.deleteAsync(fileUri(name), { idempotent: true })
+    },
   }
 }

@@ -6,6 +6,7 @@ export interface SyncRemote {
   listNames(): Promise<string[]>
   readText(name: string): Promise<string>
   writeText(name: string, content: string): Promise<void>
+  deleteText(name: string): Promise<void>
 }
 
 export interface SyncReport {

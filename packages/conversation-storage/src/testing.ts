@@ -21,5 +21,8 @@ export function createInMemoryConversationPort(
     async writeText(fileName, content) {
       files.set(fileName, content)
     },
+    async deleteText(fileName) {
+      files.delete(fileName)
+    },
   }
 }

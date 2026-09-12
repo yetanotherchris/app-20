@@ -27,6 +27,9 @@ function createInMemoryLocalPort(seed: Record<string, string> = {}): InMemoryLoc
     async writeText(fileName, content) {
       files.set(fileName, content)
     },
+    async deleteText(fileName) {
+      files.delete(fileName)
+    },
   }
 }
 
@@ -196,6 +199,9 @@ describe('syncOnce corrupt and empty objects', () => {
       },
       async writeText(fileName) {
         if (fileName === 'r.json') throw new Error('must not overwrite a newer local copy')
+      },
+      async deleteText() {
+        throw new Error('unused')
       },
     }
     const remote = createInMemorySyncRemote({ 'r.json': remoteRaw })

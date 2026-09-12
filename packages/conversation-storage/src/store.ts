@@ -17,6 +17,7 @@ export interface ConversationFilePort {
   listFileNames(): Promise<string[]>
   readText(fileName: string): Promise<string>
   writeText(fileName: string, content: string): Promise<void>
+  deleteText(fileName: string): Promise<void>
 }
 
 export interface ReconcileReport {
@@ -37,6 +38,7 @@ export interface ConversationStore {
   list(): Promise<ConversationListResult>
   read(id: string): Promise<ConversationLoad>
   save(conversation: Conversation): Promise<{ fileName: string }>
+  clear(): Promise<void>
   reconcile(): Promise<ReconcileReport>
 }
 
@@ -145,9 +147,17 @@ export function createConversationStore(port: ConversationFilePort): Conversatio
     return { fileName }
   }
 
+  async function clear(): Promise<void> {
+    const fileNames = await port.listFileNames()
+    const deletableNames = fileNames.filter(
+      (fileName) => fileName === MANIFEST_FILE_NAME || isConversationFileName(fileName),
+    )
+    await Promise.all(deletableNames.map((fileName) => port.deleteText(fileName)))
+  }
+
   async function reconcile(): Promise<ReconcileReport> {
     return (await list()).report
   }
 
-  return { list, read, save, reconcile }
+  return { list, read, save, clear, reconcile }
 }

@@ -1,4 +1,5 @@
 import {
+  DeleteObjectCommand,
   GetObjectCommand,
   ListObjectsV2Command,
   PutObjectCommand,
@@ -133,6 +134,16 @@ export function createS3Remote(
             }),
             { abortSignal: signal },
           ),
+        requestTimeoutMs,
+      )
+    },
+
+    async deleteText(name) {
+      await withTimeout(
+        (signal) =>
+          client.send(new DeleteObjectCommand({ Bucket: config.bucket, Key: keyFor(name) }), {
+            abortSignal: signal,
+          }),
         requestTimeoutMs,
       )
     },
