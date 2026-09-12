@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import {
   Keyboard,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   StyleSheet,
   Text,
@@ -65,6 +63,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
   const [gatePending, setGatePending] = useState(false)
   const [syncState, setSyncState] = useState('disabled')
   const [isKeyboardVisible, setKeyboardVisible] = useState(false)
+  const [keyboardHeight, setKeyboardHeight] = useState(0)
 
   const syncRef = useRef<ReturnType<typeof createSyncService> | null>(null)
   if (!syncRef.current) {
@@ -139,8 +138,14 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
   }, [])
 
   useEffect(() => {
-    const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardVisible(true))
-    const hide = Keyboard.addListener('keyboardDidHide', () => setKeyboardVisible(false))
+    const show = Keyboard.addListener('keyboardDidShow', (event) => {
+      setKeyboardVisible(true)
+      setKeyboardHeight(event.endCoordinates.height)
+    })
+    const hide = Keyboard.addListener('keyboardDidHide', () => {
+      setKeyboardVisible(false)
+      setKeyboardHeight(0)
+    })
     return () => {
       show.remove()
       hide.remove()
@@ -233,11 +238,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'height' : undefined}
-      keyboardVerticalOffset={0}
-      style={styles.screen}
-    >
+    <View style={styles.screen}>
       <View style={styles.topBar}>
         <Pressable
           accessibilityRole="button"
@@ -260,7 +261,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
           </Pressable>
         ) : null}
       </View>
-      <View style={styles.chat}>
+      <View style={[styles.chat, { marginBottom: keyboardHeight }]}>
         <LLMChat.Root
           messages={chat.messages}
           draft={draft}
@@ -304,7 +305,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
           ))}
         </View>
       ) : null}
-    </KeyboardAvoidingView>
+    </View>
   )
 }
 
