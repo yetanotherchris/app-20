@@ -4,17 +4,17 @@
 
 ## Phase 0: Prerequisites
 
-- [ ] T001 Confirm specs 107 and 108 are merged to `main`, rebase `spec-106-ios-app`, and verify their session interfaces support iOS. This task blocks all implementation work.
+- [x] T001 Confirm specs 107 and 108 are merged to `main`, rebase `spec-106-ios-app`, and verify their session interfaces support iOS. This task blocks all implementation work.
 
 ## Phase 1: Expo Foundation
 
-- [ ] T002 Create `apps/ios` with Expo configuration, strict TypeScript, safe-area root, and EAS internal-distribution configuration.
-- [ ] T003 Install native dependencies with Expo-compatible versions and prove a development EAS iOS build succeeds before adding host behavior.
-- [ ] T004 Add the root iOS scripts and workspace references required for typecheck, tests, and EAS builds.
+- [x] T002 Create `apps/ios` with Expo configuration, strict TypeScript, safe-area root, and EAS internal-distribution configuration.
+- [ ] T003 Install native dependencies with Expo-compatible versions and prove a development EAS iOS build succeeds before adding host behavior. Local Expo Doctor and iOS export pass; EAS is blocked because this environment is not authenticated.
+- [x] T004 Add the root iOS scripts and workspace references required for typecheck, tests, and EAS builds.
 
 ## Phase 2: Native Services
 
-- [ ] T005 Implement and unit-test the sandboxed atomic `ConversationFilePort` adapter.
+- [x] T005 Implement and unit-test the sandboxed atomic `ConversationFilePort` adapter.
 - [ ] T006 Implement and unit-test document-picker imports, validation, and secure storage for provider and S3 credentials without exposing plaintext to UI state.
 - [ ] T007 Implement and unit-test the OpenRouter streaming client using the secure provider-key service.
 - [ ] T008 Select, prove, and implement an Expo-compatible signed S3 `SyncRemote`; connect it to the existing sync engine and lifecycle-aware queue.

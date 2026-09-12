@@ -1,0 +1,14 @@
+{
+  "expo": {
+    "name": "app-20",
+    "slug": "app-20",
+    "version": "0.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.app20.chat"
+    },
+    "plugins": ["expo-document-picker", "expo-secure-store"]
+  }
+}
