@@ -2,7 +2,7 @@
   "name": "@app-20/ios",
   "private": true,
   "version": "0.0.0",
-  "main": "expo/AppEntry",
+  "main": "index.ts",
   "scripts": {
     "start": "expo start",
     "ios": "expo start --ios",
