@@ -21,7 +21,11 @@ import {
 } from '@app-20/conversation-storage'
 import type { AppStateStatus } from 'react-native'
 import { createConversationFilePort } from '../storage/conversationFilePort'
-import { createSecretService, type SecretErrorCode } from '../secrets/secretService'
+import {
+  createSecretService,
+  type SecretErrorCode,
+  type SecretResult,
+} from '../secrets/secretService'
 import { AutosaveQueue } from './autosaveQueue'
 import { fromConversation, toConversation, toProviderMessages } from './conversation'
 import { createSyncService } from '../sync/syncService'
@@ -56,6 +60,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
   const draftRef = useRef('')
   const controllerRef = useRef<AbortController | null>(null)
   const controlsRef = useRef<ChatSessionControls | null>(null)
+  const secretPickerOpenRef = useRef(false)
   const [draft, setDraftState] = useState('')
   const [notice, setNotice] = useState<string | null>(null)
   const [entries, setEntries] = useState<readonly ManifestEntry[]>([])
@@ -159,7 +164,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
 
   useEffect(() => {
     const subscription = appState.addEventListener('change', (state) => {
-      if (state !== 'active') void autosave.flush()
+      if (state !== 'active' && !secretPickerOpenRef.current) void autosave.flush()
       if (state === 'active') void sync.run()
     })
     return () => {
@@ -175,12 +180,21 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
     autosave.scheduleDraftSave()
   }
 
+  async function importSecret(kind: 'provider-key' | 's3'): Promise<SecretResult> {
+    secretPickerOpenRef.current = true
+    try {
+      return await secretsRef.current.import(kind)
+    } finally {
+      secretPickerOpenRef.current = false
+    }
+  }
+
   async function submit(): Promise<void> {
     if (gatePending || draftRef.current.trim().length === 0) return
     setGatePending(true)
     try {
       if (!(await secretsRef.current.hasProviderKey())) {
-        const imported = await secretsRef.current.import('provider-key')
+        const imported = await importSecret('provider-key')
         if (!imported.ok) {
           setNotice(errorMessage(imported.code))
           return
@@ -233,7 +247,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
   }
 
   async function importS3Credentials(): Promise<void> {
-    const result = await secretsRef.current.import('s3')
+    const result = await importSecret('s3')
     if (!result.ok) {
       if (result.code !== 'chooser-cancelled') setNotice(errorMessage(result.code))
       return
@@ -281,7 +295,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
           messageActions={chat.messageActions}
           onMessageAction={chat.onMessageAction}
           onLinkPress={() => undefined}
-          placeholder="Send a message"
+          placeholder="Ask anything"
         />
       </View>
       {notice ? (
