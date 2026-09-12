@@ -8,11 +8,11 @@ Create an Expo iOS application that renders `app-20-llmchat` natively and uses t
 
 ## Technical Context
 
-**Language/Version**: TypeScript strict, React Native, Expo SDK selected during setup
+**Language/Version**: TypeScript strict, React Native 0.86, Expo SDK 57
 
-**Primary Dependencies**: Expo, Expo document picker, secure store, file system, safe-area context, and compatible S3 SigV4 transport selected after an EAS build check
+**Primary Dependencies**: Expo, Expo document picker, secure store, file system, safe-area context, and the AWS JavaScript S3 client through Metro's React Native/ES module resolver. Local iOS bundling proves that the selected client avoids Node imports; an authenticated EAS build remains required for device validation.
 
-**Storage**: App-sandbox conversation JSON files and manifest through `ConversationFilePort`; credentials in the iOS secure credential store; S3 mirrors the same JSON objects through `SyncRemote`
+**Storage**: App-sandbox conversation JSON files and manifest through `ConversationFilePort`; credentials in the iOS secure credential store; S3 mirrors the same JSON objects through `SyncRemote`. The beta clear action deletes all valid local conversation files and manifest, then all objects below the fixed S3 conversation prefix.
 
 **Testing**: Vitest for adapters and session orchestration; existing Electron Playwright suite; physical-iPhone acceptance checklist for native behavior
 
@@ -22,13 +22,13 @@ Create an Expo iOS application that renders `app-20-llmchat` natively and uses t
 
 ## Constitution Check
 
-| Principle | Plan | Status |
-| --- | --- | --- |
-| I. Process Isolation | iOS has no Electron renderer boundary. Native services are exposed through narrow application interfaces; chat UI receives state and callbacks, not file or secret APIs. | PASS |
-| II. Path Trust | The iOS file adapter receives only fixed, validated bare names from the shared store and resolves them inside the app-owned conversation directory. | PASS |
-| III. No Data Loss | The file adapter writes a temporary sibling then replaces the destination. Autosave from spec 107 flushes terminal, idle-draft, and lifecycle state. | PASS |
-| IV. Fixed and Typed API | iOS uses typed local service interfaces. It does not add Electron preload or generic invocation APIs. | PASS |
-| V. Test Coverage | Unit tests cover native adapter rules; the physical-device checklist covers the native behaviors unavailable to Electron Playwright. | PASS |
+| Principle               | Plan                                                                                                                                                                     | Status |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------ |
+| I. Process Isolation    | iOS has no Electron renderer boundary. Native services are exposed through narrow application interfaces; chat UI receives state and callbacks, not file or secret APIs. | PASS   |
+| II. Path Trust          | The iOS file adapter receives only fixed, validated bare names from the shared store and resolves them inside the app-owned conversation directory.                      | PASS   |
+| III. No Data Loss       | The file adapter writes a temporary sibling then replaces the destination. Autosave from spec 107 flushes terminal, idle-draft, and lifecycle state.                     | PASS   |
+| IV. Fixed and Typed API | iOS uses typed local service interfaces. It does not add Electron preload or generic invocation APIs.                                                                    | PASS   |
+| V. Test Coverage        | Unit tests cover native adapter rules; the physical-device checklist covers the native behaviors unavailable to Electron Playwright.                                     | PASS   |
 
 ## Project Structure
 
@@ -60,10 +60,11 @@ specs/106-ios-app/
 
 1. Confirm specs 107 and 108 are merged to `main`, then rebase this branch on that commit.
 2. Initialize the Expo application and verify an EAS iOS build before application code.
-3. Add storage, secrets, provider, and S3 adapters behind narrow typed interfaces.
-4. Compose the native shell around the shared chat component and the reusable history drawer.
-5. Add tests, complete the physical-device checklist, and archive this spec with its implementation PR.
+3. Add storage, secrets, provider, and S3 adapters behind narrow typed interfaces. Confirm the S3 adapter through the local iOS bundle, then validate it in an EAS build.
+4. Extend the shared storage and sync ports with validated deletion operations, then test their local and S3 implementations.
+5. Compose the native shell around the shared chat component, overflow menu, and history drawer.
+6. Add tests, complete the physical-device checklist, and archive this spec with its implementation PR.
 
 ## Complexity Tracking
 
-The native S3 transport is the only non-trivial dependency decision. The desktop adapter cannot be copied because it assumes Node. The rejected alternative is implementing S3 reconciliation in the iOS app, which would duplicate `@app-20/sync` behavior and risk divergent conflict handling.
+The native S3 transport is the only non-trivial dependency decision. The desktop adapter cannot be copied because it assumes Node. The rejected alternative is implementing S3 reconciliation in the iOS app, which would duplicate `@app-20/sync` behavior and risk divergent conflict handling. The iOS session owns equivalent local autosave and first-send orchestration because specs 107 and 108 did not expose them as a shared package. This preserves their behavior without adding an Electron dependency to the native app; extracting that policy is deferred to a dedicated structural change.

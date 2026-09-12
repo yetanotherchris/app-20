@@ -36,6 +36,10 @@ function createFolderPort(): ConversationFilePort {
       const target = await assertPathWithinFolder(await requireConversationFolder(), fileName)
       await atomicWriteFile(target, content)
     },
+    async deleteText(fileName) {
+      const target = await assertPathWithinFolder(await requireConversationFolder(), fileName)
+      await fs.unlink(target)
+    },
   }
 }
 

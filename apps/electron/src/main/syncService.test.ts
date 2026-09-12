@@ -31,6 +31,9 @@ function createInMemoryRemote(seed: Record<string, string> = {}): InMemoryRemote
     async writeText(name, content) {
       objects.set(name, content)
     },
+    async deleteText(name) {
+      objects.delete(name)
+    },
   }
 }
 
@@ -48,6 +51,9 @@ function createLocalPort(seed: Record<string, string> = {}): LocalPort {
     },
     async writeText(fileName, content) {
       files.set(fileName, content)
+    },
+    async deleteText(fileName) {
+      files.delete(fileName)
     },
   }
 }
@@ -134,6 +140,9 @@ describe('createSyncService', () => {
       async writeText() {
         throw new Error('unused')
       },
+      async deleteText() {
+        throw new Error('unused')
+      },
     }
     const service = createSyncService({
       resolveRemote: async () => failing,
@@ -159,6 +168,9 @@ describe('createSyncService', () => {
         throw new Error('unused')
       },
       async writeText() {
+        throw new Error('unused')
+      },
+      async deleteText() {
         throw new Error('unused')
       },
     }
@@ -190,6 +202,9 @@ describe('createSyncService', () => {
         return ''
       },
       async writeText() {
+        // no-op
+      },
+      async deleteText() {
         // no-op
       },
     }

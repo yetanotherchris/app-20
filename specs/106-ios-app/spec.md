@@ -50,6 +50,20 @@ The user increases text size; the chat adapts.
 1. **Given** the largest dynamic type size, **When** the chat renders, **Then** content is readable and not clipped.
 2. **Given** the user scrolls during streaming, **When** content arrives, **Then** the scroll behavior matches the component's rules.
 
+### User Story 4 - Manage beta conversations (Priority: P2)
+
+The user opens an overflow menu to access secondary conversation controls and can clear every beta conversation from local storage and S3.
+
+**Why this priority**: Beta testers need a compact chat header and a reliable way to reset test data.
+
+**Independent Test**: Create and sync conversations, open the overflow menu, confirm Clear conversations, and verify that local history and configured S3 conversation objects are empty.
+
+**Acceptance Scenarios**:
+
+1. **Given** the chat screen is visible, **When** the user opens the overflow menu, **Then** it offers New conversation, History, Import S3, and Clear conversations.
+2. **Given** the user selects Clear conversations, **When** they confirm the destructive-action dialog, **Then** every local conversation and S3 conversation object is removed and a blank unsaved conversation is shown.
+3. **Given** the user selects Clear conversations, **When** they cancel the dialog or an object cannot be removed, **Then** the current conversation data remains available and the app reports the failure.
+
 ### Edge Cases
 
 - Safe areas must be respected on all notch and home-indicator layouts.
@@ -72,6 +86,10 @@ The user increases text size; the chat adapts.
 - **FR-008**: The iOS app MUST implement the history drawer (spec 105), the autosave session flow (spec 107), and key import (spec 103) with the first-send gate (spec 108) using the platform document picker in place of the desktop file chooser.
 - **FR-009**: Partial content MUST be saved when the app is backgrounded or terminated, per spec 107.
 - **FR-010**: S3 sync (spec 104) is in iOS beta scope.
+- **FR-011**: The composer and Send control MUST remain visible above the software keyboard, and the user MUST be able to dismiss that keyboard without sending the draft.
+- **FR-012**: Sync status MUST not invoke credential import. S3 import MUST use an explicitly labeled control, and provider-key import MUST occur only through the first-send gate.
+- **FR-013**: Secondary conversation controls MUST be presented in an overflow menu containing New conversation, History, Import S3, and Clear conversations.
+- **FR-014**: Clear conversations MUST require confirmation, then remove every local conversation and every configured S3 conversation object. If any removal fails, it MUST retain the current in-session conversation and report the failure.
 
 ### Key Entities
 
@@ -99,3 +117,7 @@ The user increases text size; the chat adapts.
 - 2026-09-11: Specs 107 and 108 are completed and merged to `main` before this spec is implemented. Their autosave and first-send key-gate behavior is reused by iOS rather than reimplemented in this spec.
 - 2026-09-11: iOS beta includes S3 sync.
 - 2026-09-11: After a successful provider-key import initiated by the first-send gate, the retained prompt sends automatically.
+- 2026-09-12: A document-picker launch temporarily suppresses lifecycle-triggered autosave. Cancelling a credential import keeps the current unsaved conversation and draft in place without creating a history entry.
+- 2026-09-12: The iOS shell measures the overlap between the software-keyboard frame and its chat region, keeping the composer and Send control above system and third-party keyboards without assuming a keyboard vendor or reported-height convention. It shows an app-level keyboard-dismissal control while the keyboard is visible because third-party keyboard extensions do not reliably support input accessories.
+- 2026-09-12: The shell renders sync state as status text and uses a separate `Import S3` control, so a user can distinguish S3 configuration from the provider-key import gate.
+- 2026-09-12: The beta overflow menu contains New conversation, History, Import S3, and Clear conversations. Clear conversations removes local and configured S3 conversation objects only after an explicit confirmation.

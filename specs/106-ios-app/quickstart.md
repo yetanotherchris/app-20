@@ -21,3 +21,4 @@ Run the repository lint, typecheck, and unit suites. Run the Electron Playwright
 6. During streaming, scroll away and back, then stop. Confirm the retained partial response matches desktop behavior.
 7. Background the app while streaming and while an idle-draft timer is pending. Reopen and confirm the partial response and draft persist.
 8. Import S3 credentials, create a conversation, allow sync, then verify the matching JSON objects and manifest exist in the configured bucket.
+9. Open the `...` menu and select Clear conversations. Cancel the confirmation once and confirm the current conversation remains. Confirm it on the second attempt, then verify local history and S3 conversation objects are empty and a blank chat is shown.

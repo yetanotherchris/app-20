@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import type { S3Client } from '@aws-sdk/client-s3'
+import { DeleteObjectCommand, type S3Client } from '@aws-sdk/client-s3'
 import { RemoteMissingError } from '@app-20/sync'
 import { clientOptions, createS3Remote, isMissingS3Error, S3_PREFIX } from './s3Remote'
 import type { S3Config } from './s3Config'
@@ -146,6 +146,23 @@ describe('createS3Remote.writeText', () => {
 
     expect(seen?.Key).toBe(`${S3_PREFIX}a.json`)
     expect(seen?.Body).toBe('{"id":"a"}')
+  })
+})
+
+describe('createS3Remote.deleteText', () => {
+  it('deletes the prefixed key', async () => {
+    let seen: CommandInput | undefined
+    let commandType: unknown
+    const client = fakeClient(async (command) => {
+      commandType = command
+      seen = commandInput(command)
+      return {}
+    })
+
+    await createS3Remote(baseConfig, client).deleteText('a.json')
+
+    expect(commandType).toBeInstanceOf(DeleteObjectCommand)
+    expect(seen?.Key).toBe(`${S3_PREFIX}a.json`)
   })
 })
 

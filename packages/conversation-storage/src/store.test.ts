@@ -151,6 +151,23 @@ describe('read', () => {
   })
 })
 
+describe('clear', () => {
+  it('deletes the manifest and valid conversation files only', async () => {
+    const port = createInMemoryConversationPort({
+      'c1.json': serializeConversation(sampleConversation()),
+      'manifest.json': serializeManifest({ version: 1, conversations: [] }),
+      'notes.txt': 'keep',
+      'nested/c2.json': 'keep',
+      'nested\\c3.json': 'keep',
+    })
+    const store = createConversationStore(port)
+
+    await store.clear()
+
+    expect([...port.files.keys()].sort()).toEqual(['nested/c2.json', 'nested\\c3.json', 'notes.txt'])
+  })
+})
+
 describe('list', () => {
   it('treats a missing manifest as an empty history and repairs orphans', async () => {
     const port = createInMemoryConversationPort({

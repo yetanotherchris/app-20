@@ -42,4 +42,17 @@ export default tseslint.config(
       },
     },
   },
+  {
+    files: ['apps/ios/metro.config.js'],
+    languageOptions: {
+      globals: {
+        __dirname: 'readonly',
+        module: 'readonly',
+        require: 'readonly',
+      },
+    },
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
 )
