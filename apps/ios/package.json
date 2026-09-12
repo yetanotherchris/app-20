@@ -15,7 +15,7 @@
     "@app-20/conversation-storage": "*",
     "@app-20/sync": "*",
     "@aws-sdk/client-s3": "^3.1131.0",
-    "app-20-llmchat": "^1.0.0",
+    "app-20-llmchat": "^1.0.5",
     "expo": "^57.0.22",
     "expo-document-picker": "~57.0.2",
     "expo-file-system": "~57.0.7",
