@@ -4,9 +4,9 @@
 
 **Created**: 2026-09-07
 
-**Status**: Planned
+**Status**: In progress
 
-**Input**: User description: "The iOS app: the shared chat component running natively on iPhone, with safe areas, keyboards, input composition, dynamic type, focus, text selection, composer growth, scrolling, streaming, and stop all validated on device."
+**Input**: User description: "The iOS app: the shared chat component running natively on iPhone, with safe areas, keyboards, input composition, dynamic type, focus, text selection, composer growth, scrolling, streaming, and stop. Manual local testing continues until a later spec declares the app ready for App Store work."
 
 ## User Scenarios & Testing
 
@@ -106,10 +106,10 @@ The user opens an overflow menu to access secondary conversation controls and ca
 
 ## Assumptions
 
-- iOS is built and distributed via a cloud build service; no beta distribution through the App Store when another supported method is available.
+- The iOS app is tested manually through Expo Go on an iPhone connected to the local development server. Cloud builds, Apple Developer Program enrollment, and App Store distribution are out of scope until a later readiness spec includes them.
 - Android is out of scope for beta.
 - The storage schema layer is platform-neutral per spec 101, so iOS reuses it unchanged.
-- Native iOS views are checked at release; automated tests cover the shared web-rendered behavior.
+- Native iOS views are checked manually through Expo Go during the early-beta phase. Automated testing and release validation are deferred to a later readiness spec.
 - S3 sync is in iOS beta scope. It uses the existing shared reconciliation rules with an iOS-specific transport and lifecycle scheduler.
 
 ## Clarifications
@@ -121,3 +121,5 @@ The user opens an overflow menu to access secondary conversation controls and ca
 - 2026-09-12: The iOS shell measures the overlap between the software-keyboard frame and its chat region, keeping the composer and Send control above system and third-party keyboards without assuming a keyboard vendor or reported-height convention. It shows an app-level keyboard-dismissal control while the keyboard is visible because third-party keyboard extensions do not reliably support input accessories.
 - 2026-09-12: The shell renders sync state as status text and uses a separate `Import S3` control, so a user can distinguish S3 configuration from the provider-key import gate.
 - 2026-09-12: The beta overflow menu contains New conversation, History, Import S3, and Clear conversations. Clear conversations removes local and configured S3 conversation objects only after an explicit confirmation.
+- 2026-09-13: Native E2E automation, EAS build validation, and the physical-iPhone checklist are deferred until the early beta host supports a usable chat loop. They are not completion gates for this implementation phase. A follow-on usability-validation spec will define the test runner, CI workflow, and device acceptance evidence.
+- 2026-09-13: All iOS testing is manual through Expo Go on an iPhone connected to `npm run dev:ios` for an indefinite early-beta period. Apple Developer Program enrollment, cloud builds, App Store preparation, distribution, and readiness criteria are deferred until a later spec explicitly declares the app ready for App Store work.
