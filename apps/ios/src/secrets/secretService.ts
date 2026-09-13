@@ -15,11 +15,25 @@ export interface S3Config {
   endpoint?: string
 }
 
+export interface SettingsSnapshot {
+  apiKey: string
+  s3: {
+    accessKeyId: string
+    secretAccessKey: string
+    bucket: string
+    region: string
+    endpoint: string
+  }
+}
+
 export interface SecretService {
   hasProviderKey(): Promise<boolean>
   import(kind: SecretKind): Promise<SecretResult>
   getProviderKey(): Promise<string | null>
   getS3Config(): Promise<S3Config | null>
+  readSettings(): Promise<SettingsSnapshot>
+  saveApiKey(value: string): Promise<void>
+  saveS3Config(config: S3Config | null): Promise<void>
 }
 
 const PROVIDER_KEY_STORAGE_KEY = 'providerKey'
@@ -95,6 +109,13 @@ function parseS3Config(stored: string | null): S3Config | null {
   return { accessKeyId, secretAccessKey, bucket, region, ...(endpoint ? { endpoint } : {}) }
 }
 
+function emptySettings(): SettingsSnapshot {
+  return {
+    apiKey: '',
+    s3: { accessKeyId: '', secretAccessKey: '', bucket: '', region: '', endpoint: '' },
+  }
+}
+
 export function createSecretService(): SecretService {
   async function importSecret(kind: SecretKind): Promise<SecretResult> {
     const picker = await DocumentPicker.getDocumentAsync({
@@ -129,6 +150,33 @@ export function createSecretService(): SecretService {
     },
     async getS3Config() {
       return parseS3Config(await SecureStore.getItemAsync(S3_STORAGE_KEY))
+    },
+    async readSettings() {
+      const [apiKey, s3] = await Promise.all([
+        SecureStore.getItemAsync(PROVIDER_KEY_STORAGE_KEY),
+        SecureStore.getItemAsync(S3_STORAGE_KEY),
+      ])
+      const snapshot = emptySettings()
+      snapshot.apiKey = apiKey ?? ''
+      const config = parseS3Config(s3)
+      if (config) {
+        snapshot.s3 = {
+          accessKeyId: config.accessKeyId,
+          secretAccessKey: config.secretAccessKey,
+          bucket: config.bucket,
+          region: config.region,
+          endpoint: config.endpoint ?? '',
+        }
+      }
+      return snapshot
+    },
+    async saveApiKey(value) {
+      if (value === '') await SecureStore.deleteItemAsync(PROVIDER_KEY_STORAGE_KEY)
+      else await SecureStore.setItemAsync(PROVIDER_KEY_STORAGE_KEY, value)
+    },
+    async saveS3Config(config) {
+      if (config === null) await SecureStore.deleteItemAsync(S3_STORAGE_KEY)
+      else await SecureStore.setItemAsync(S3_STORAGE_KEY, JSON.stringify(config))
     },
   }
 }
