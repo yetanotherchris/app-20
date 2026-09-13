@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-07
 
-**Status**: In progress
+**Status**: Archived
 
 **Input**: User description: "The iOS app: the shared chat component running natively on iPhone, with safe areas, keyboards, input composition, dynamic type, focus, text selection, composer growth, scrolling, streaming, and stop. Manual local testing continues until a later spec declares the app ready for App Store work."
 
