@@ -67,7 +67,6 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
   const [notice, setNotice] = useState<string | null>(null)
   const [entries, setEntries] = useState<readonly ManifestEntry[]>([])
   const [historyOpen, setHistoryOpen] = useState(false)
-  const [menuOpen, setMenuOpen] = useState(false)
   const [clearPending, setClearPending] = useState(false)
   const [gatePending, setGatePending] = useState(false)
   const [syncState, setSyncState] = useState('disabled')
@@ -292,7 +291,6 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
   }
 
   function confirmClearConversations(): void {
-    setMenuOpen(false)
     Alert.alert(
       'Clear all conversations?',
       'This permanently removes all local and synced beta conversations.',
@@ -336,54 +334,41 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
 
   return (
     <View style={styles.screen}>
-      <View style={styles.topBar}>
-        <Text accessibilityLabel={`Sync status: ${syncState}`} style={styles.syncStatus}>
-          Sync: {syncState}
-        </Text>
+      <View style={styles.header}>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="More options"
-          onPress={() => setMenuOpen(!menuOpen)}
+          accessibilityLabel="Open conversations"
+          style={styles.headerButton}
+          onPress={() => void refreshHistory().then(() => setHistoryOpen(true))}
         >
-          <Text style={styles.topBarButton}>...</Text>
+          <Text style={styles.headerIcon}>☰</Text>
         </Pressable>
-        {isKeyboardVisible ? (
-          <Pressable accessibilityRole="button" onPress={Keyboard.dismiss}>
-            <Text style={styles.topBarButton}>Hide keyboard</Text>
-          </Pressable>
-        ) : null}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Choose model, Openrouter Auto"
+          style={styles.modelPicker}
+          onPress={() => {
+            Keyboard.dismiss()
+            Alert.alert('Model', 'Openrouter Auto', [{ text: 'Openrouter Auto' }])
+          }}
+        >
+          <Text numberOfLines={1} style={styles.modelLabel}>
+            Openrouter Auto
+          </Text>
+          <Text style={styles.modelChevron}>⌄</Text>
+        </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Settings"
+          style={styles.headerButton}
+          onPress={() => {
+            Keyboard.dismiss()
+            setNotice('Settings are not implemented yet.')
+          }}
+        >
+          <Text style={styles.headerIcon}>⚙</Text>
+        </Pressable>
       </View>
-      {menuOpen ? (
-        <View style={styles.menu}>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => void newConversation().then(() => setMenuOpen(false))}
-          >
-            <Text style={styles.menuItem}>New conversation</Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() =>
-              void refreshHistory().then(() => setHistoryOpen(true)).then(() => setMenuOpen(false))
-            }
-          >
-            <Text style={styles.menuItem}>History</Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => void importS3Credentials().then(() => setMenuOpen(false))}
-          >
-            <Text style={styles.menuItem}>Import S3</Text>
-          </Pressable>
-          <Pressable
-            accessibilityRole="button"
-            disabled={clearPending}
-            onPress={confirmClearConversations}
-          >
-            <Text style={styles.destructiveMenuItem}>Clear conversations</Text>
-          </Pressable>
-        </View>
-      ) : null}
       <View ref={chatRegionRef} style={[styles.chat, { marginBottom: keyboardInset }]}>
         <LLMChat.Root
           messages={chat.messages}
@@ -399,7 +384,10 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
           messageActions={chat.messageActions}
           onMessageAction={chat.onMessageAction}
           onLinkPress={() => undefined}
-          minHeight={48}
+          composerVariant="ios"
+          minHeight={36}
+          maxHeight={132}
+          capabilities={{ stop: false }}
           placeholder="Ask anything"
         />
       </View>
@@ -411,10 +399,10 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
       {historyOpen ? (
         <View style={styles.drawer}>
           <Pressable accessibilityRole="button" onPress={() => setHistoryOpen(false)}>
-            <Text style={styles.topBarButton}>Close</Text>
+            <Text style={styles.headerIcon}>Close</Text>
           </Pressable>
           <Pressable accessibilityRole="button" onPress={() => void newConversation()}>
-            <Text style={styles.topBarButton}>New conversation</Text>
+            <Text style={styles.headerIcon}>New conversation</Text>
           </Pressable>
           {entries.map((entry) => (
             <Pressable
@@ -434,28 +422,37 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
 }
 
 const styles = StyleSheet.create({
-  screen: { flex: 1 },
-  topBar: {
+  screen: { backgroundColor: '#ffffff', flex: 1 },
+  header: {
+    alignItems: 'center',
     flexDirection: 'row',
-    flexWrap: 'wrap',
     justifyContent: 'space-between',
     paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingVertical: 6,
   },
-  topBarButton: { color: '#0f766e', fontSize: 16, fontWeight: '600' },
-  syncStatus: { color: '#475569', fontSize: 16 },
-  menu: {
+  headerButton: {
+    alignItems: 'center',
     backgroundColor: '#ffffff',
-    borderColor: '#cbd5e1',
-    borderRadius: 8,
+    borderColor: '#d1d1d6',
+    borderRadius: 22,
     borderWidth: 1,
-    position: 'absolute',
-    right: 16,
-    top: 52,
-    zIndex: 1,
+    height: 44,
+    justifyContent: 'center',
+    width: 44,
   },
-  menuItem: { color: '#0f172a', fontSize: 16, paddingHorizontal: 16, paddingVertical: 12 },
-  destructiveMenuItem: { color: '#b91c1c', fontSize: 16, paddingHorizontal: 16, paddingVertical: 12 },
+  headerIcon: { color: '#111111', fontSize: 24, lineHeight: 28 },
+  modelPicker: {
+    alignItems: 'center',
+    backgroundColor: '#f2f2f7',
+    borderRadius: 22,
+    flexDirection: 'row',
+    gap: 8,
+    height: 44,
+    maxWidth: 208,
+    paddingHorizontal: 16,
+  },
+  modelLabel: { color: '#111111', flexShrink: 1, fontSize: 17, lineHeight: 22 },
+  modelChevron: { color: '#007aff', fontSize: 20, lineHeight: 22 },
   chat: { flex: 1 },
   notice: { backgroundColor: '#fee2e2', color: '#b91c1c', margin: 12, padding: 10 },
   drawer: {
