@@ -35,7 +35,6 @@ Create an Expo iOS application that renders `app-20-llmchat` natively and uses t
 ```text
 apps/ios/
 ├── app.json                     # Expo and iOS bundle configuration
-├── eas.json                     # Deferred EAS build profile
 ├── package.json                 # iOS scripts and dependencies
 ├── tsconfig.json
 ├── App.tsx                      # safe-area application composition
@@ -61,7 +60,7 @@ specs/106-ios-app/
 1. Confirm specs 107 and 108 are merged to `main`, then rebase this branch on that commit.
 2. Initialize the Expo application and use the local development server for manual verification. Defer EAS and Apple Developer Program work until a later App Store readiness spec.
 3. Add storage, secrets, provider, and S3 adapters behind narrow typed interfaces. Confirm the S3 adapter through the local iOS bundle.
-4. Extend the shared storage and sync ports with validated deletion operations, then test their local and S3 implementations.
+4. Extend the shared storage and sync ports with validated deletion operations.
 5. Compose the native shell around the shared chat component, overflow menu, and history drawer.
 6. Continue manual local verification. Define automated testing, cloud builds, Apple program enrollment, and App Store readiness only in a later readiness spec.
 
