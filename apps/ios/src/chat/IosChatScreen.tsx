@@ -355,7 +355,9 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
           <Text numberOfLines={1} style={styles.modelLabel}>
             Openrouter Auto
           </Text>
-          <Text style={styles.modelChevron}>⌄</Text>
+          <View style={styles.modelChevron}>
+            <Text style={styles.modelChevronGlyph}>⌄</Text>
+          </View>
         </Pressable>
         <Pressable
           accessibilityRole="button"
@@ -389,13 +391,17 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
           maxHeight={132}
           capabilities={{ stop: false }}
           placeholder="Ask anything"
+          renderAboveComposer={() =>
+            notice ? (
+              <View style={styles.notice}>
+                <Text accessibilityRole="alert" style={styles.noticeText}>
+                  {notice}
+                </Text>
+              </View>
+            ) : null
+          }
         />
       </View>
-      {notice ? (
-        <Text accessibilityRole="alert" style={styles.notice}>
-          {notice}
-        </Text>
-      ) : null}
       {historyOpen ? (
         <View style={styles.drawer}>
           <Pressable accessibilityRole="button" onPress={() => setHistoryOpen(false)}>
@@ -452,9 +458,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   modelLabel: { color: '#111111', flexShrink: 1, fontSize: 17, lineHeight: 22 },
-  modelChevron: { color: '#007aff', fontSize: 20, lineHeight: 22 },
+  modelChevron: { alignItems: 'center', height: 22, justifyContent: 'center', width: 16 },
+  modelChevronGlyph: { color: '#007aff', fontSize: 16, lineHeight: 16 },
   chat: { flex: 1 },
-  notice: { backgroundColor: '#fee2e2', color: '#b91c1c', margin: 12, padding: 10 },
+  notice: {
+    backgroundColor: '#fff1f0',
+    borderRadius: 12,
+    marginHorizontal: 12,
+    marginTop: 8,
+    padding: 12,
+  },
+  noticeText: { color: '#c62828', fontSize: 13, lineHeight: 18 },
   drawer: {
     backgroundColor: '#ffffff',
     bottom: 0,
