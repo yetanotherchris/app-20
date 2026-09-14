@@ -38,7 +38,7 @@ export function toConversation(value: ConversationDraft, base: Conversation | nu
   })
   return {
     id: value.id,
-    title: messages.find((message) => message.role === 'user')?.content.slice(0, 80) ?? '',
+    title: base?.title || messages.find((message) => message.role === 'user')?.content.slice(0, 80) || '',
     model: value.model,
     createdAt: base?.createdAt ?? value.createdAt,
     updatedAt: new Date().toISOString(),

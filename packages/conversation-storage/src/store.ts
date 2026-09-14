@@ -38,6 +38,8 @@ export interface ConversationStore {
   list(): Promise<ConversationListResult>
   read(id: string): Promise<ConversationLoad>
   save(conversation: Conversation): Promise<{ fileName: string }>
+  rename(id: string, title: string): Promise<Conversation>
+  delete(id: string): Promise<void>
   clear(): Promise<void>
   reconcile(): Promise<ReconcileReport>
 }
@@ -147,6 +149,38 @@ export function createConversationStore(port: ConversationFilePort): Conversatio
     return { fileName }
   }
 
+  async function rename(id: string, title: string): Promise<Conversation> {
+    const trimmedTitle = title.trim()
+    if (trimmedTitle.length === 0 || trimmedTitle.length > 80) {
+      throw new Error('Conversation title must contain between 1 and 80 characters')
+    }
+
+    const loaded = await read(id)
+    if (loaded.kind !== 'ok') throw new Error('Conversation is unavailable')
+
+    const renamed = { ...loaded.conversation, title: trimmedTitle, updatedAt: new Date().toISOString() }
+    await save(renamed)
+    return renamed
+  }
+
+  async function deleteConversation(id: string): Promise<void> {
+    const manifest = await readManifest(port)
+    const entry = manifest.conversations.find((candidate) => candidate.id === id)
+    if (!entry) throw new Error('Conversation is unavailable')
+
+    const nextManifest = {
+      ...manifest,
+      conversations: manifest.conversations.filter((candidate) => candidate.id !== id),
+    }
+    await port.writeText(MANIFEST_FILE_NAME, serializeManifest(nextManifest))
+    try {
+      await port.deleteText(entry.fileName)
+    } catch (error) {
+      await port.writeText(MANIFEST_FILE_NAME, serializeManifest(manifest))
+      throw error
+    }
+  }
+
   async function clear(): Promise<void> {
     const fileNames = await port.listFileNames()
     const deletableNames = fileNames.filter(
@@ -159,5 +193,5 @@ export function createConversationStore(port: ConversationFilePort): Conversatio
     return (await list()).report
   }
 
-  return { list, read, save, clear, reconcile }
+  return { list, read, save, rename, delete: deleteConversation, clear, reconcile }
 }
