@@ -1,18 +1,21 @@
-import { useEffect, useEffectEvent, useRef, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
 import {
-  Alert,
+  ActionSheetIOS,
   Keyboard,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native'
+import Svg, { Path } from 'react-native-svg'
 import {
   LLMChat,
+  ContentRenderer,
   useChatSession,
   type ChatOperation,
   type ChatSessionControls,
   type Message,
+  type ThemeInput,
 } from 'app-20-llmchat'
 import { AUTOMATIC_MODEL, createOpenRouterProvider } from '@app-20/ai-provider'
 import {
@@ -39,6 +42,34 @@ interface IosChatScreenProps {
   appState: AppStateSource
 }
 
+const IOS_CHAT_THEME = {
+  colors: {
+    assistantBubble: '#ffffff',
+    background: '#ffffff',
+    border: '#d1d1d6',
+    composerBorder: '#d1d1d6',
+    composerSurface: '#fafafa',
+    danger: '#c62828',
+    primary: '#007aff',
+    sendBackground: '#007aff',
+    sendDisabled: '#e5e5ea',
+    sendForeground: '#ffffff',
+    text: '#111111',
+    textSecondary: '#6b6b70',
+    userBubble: '#e9e9ed',
+    userBubbleText: '#111111',
+  },
+  layout: { composerWidth: 1000, readingColumnWidth: 1000, sidePadding: 12 },
+  radii: { bubbleRadius: 22, composerRadius: 28, controlRadius: 22 },
+  spacing: { bubbleMarginH: 0, bubbleMarginV: 8, composerBottomGap: 12 },
+  typography: {
+    composerLineHeight: 22,
+    composerTextSize: 17,
+    messageLineHeight: 22,
+    messageTextSize: 17,
+  },
+} satisfies ThemeInput
+
 function createId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
@@ -59,18 +90,18 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
   const baseRef = useRef<Conversation | null>(null)
   const messagesRef = useRef<readonly Message[]>([])
   const draftRef = useRef('')
+  const parkedDraftRef = useRef<string | null>(null)
   const controllerRef = useRef<AbortController | null>(null)
   const controlsRef = useRef<ChatSessionControls | null>(null)
   const sessionGenerationRef = useRef(0)
   const secretPickerOpenRef = useRef(false)
   const [draft, setDraftState] = useState('')
+  const [editSourceId, setEditSourceId] = useState<string | null>(null)
+  const [modelName, setModelName] = useState('Openrouter Auto')
   const [notice, setNotice] = useState<string | null>(null)
   const [entries, setEntries] = useState<readonly ManifestEntry[]>([])
   const [historyOpen, setHistoryOpen] = useState(false)
-  const [clearPending, setClearPending] = useState(false)
   const [gatePending, setGatePending] = useState(false)
-  const [syncState, setSyncState] = useState('disabled')
-  const [isKeyboardVisible, setKeyboardVisible] = useState(false)
   const [keyboardInset, setKeyboardInset] = useState(0)
   const chatRegionRef = useRef<View>(null)
 
@@ -79,7 +110,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
     syncRef.current = createSyncService(
       createConversationFilePort(),
       secretsRef.current,
-      setSyncState,
+      () => undefined,
     )
   }
   const sync = syncRef.current
@@ -178,7 +209,6 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
 
   useEffect(() => {
     const show = Keyboard.addListener('keyboardDidShow', (event) => {
-      setKeyboardVisible(true)
       requestAnimationFrame(() => {
         chatRegionRef.current?.measureInWindow((_x, top, _width, height) => {
           setKeyboardInset(Math.max(0, top + height - event.endCoordinates.screenY))
@@ -186,7 +216,6 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
       })
     })
     const hide = Keyboard.addListener('keyboardDidHide', () => {
-      setKeyboardVisible(false)
       setKeyboardInset(0)
     })
     return () => {
@@ -207,11 +236,24 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
     }
   }, [appState, autosave, sync])
 
-  function setDraft(value: string): void {
+  const setDraft = useCallback((value: string): void => {
     draftRef.current = value
     setDraftState(value)
     autosave.scheduleDraftSave()
-  }
+  }, [autosave])
+
+  const startEdit = useCallback((message: Message): void => {
+    if (chat.status !== 'idle') return
+    if (editSourceId === null) parkedDraftRef.current = draftRef.current
+    setEditSourceId(message.id)
+    setDraft(message.contentParts.map((part) => part.text).join(''))
+  }, [chat.status, editSourceId, setDraft])
+
+  const cancelEdit = useCallback((): void => {
+    setEditSourceId(null)
+    setDraft(parkedDraftRef.current ?? '')
+    parkedDraftRef.current = null
+  }, [setDraft])
 
   async function importSecret(kind: 'provider-key' | 's3'): Promise<SecretResult> {
     secretPickerOpenRef.current = true
@@ -280,57 +322,66 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
     setHistoryOpen(false)
   }
 
-  async function importS3Credentials(): Promise<void> {
-    const result = await importSecret('s3')
-    if (!result.ok) {
-      if (result.code !== 'chooser-cancelled') setNotice(errorMessage(result.code))
-      return
-    }
-    setNotice('S3 credentials imported.')
-    void sync.run()
-  }
+  const renderMessage = useCallback(
+    (message: Message) => {
+      const isUser = message.role === 'user'
+      const isBusy = chat.status !== 'idle'
+      return (
+        <View style={isUser ? styles.userMessage : styles.assistantMessage}>
+          <View style={isUser ? styles.userBubble : undefined}>
+            <ContentRenderer messageId={message.id} parts={message.contentParts} textStyle={styles.messageText} />
+          </View>
+          {isUser ? (
+            <Pressable
+              accessibilityLabel="Edit and resend message"
+              accessibilityRole="button"
+              accessibilityState={{ disabled: isBusy, selected: editSourceId === message.id }}
+              disabled={isBusy}
+              onPress={() => startEdit(message)}
+              style={[styles.editMessage, editSourceId === message.id && styles.editMessageSelected]}
+            >
+              <Svg height={20} viewBox="0 0 24 24" width={20}>
+                <Path
+                  d="M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"
+                  fill="none"
+                  stroke={editSourceId === message.id ? '#007aff' : '#6b6b70'}
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                />
+              </Svg>
+            </Pressable>
+          ) : null}
+        </View>
+      )
+    },
+    [chat.status, editSourceId, startEdit],
+  )
 
-  function confirmClearConversations(): void {
-    Alert.alert(
-      'Clear all conversations?',
-      'This permanently removes all local and synced beta conversations.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Clear conversations',
-          style: 'destructive',
-          onPress: () => void clearConversations(),
-        },
-      ],
-    )
-  }
-
-  async function clearConversations(): Promise<void> {
-    if (clearPending || !(await autosave.flush())) return
-    setClearPending(true)
-    const priorGeneration = sessionGenerationRef.current
-    sessionGenerationRef.current += 1
-    try {
-      await sync.clear()
-      await storeRef.current.clear()
-      controllerRef.current?.abort()
-      conversationIdRef.current = createId('conversation')
-      createdAtRef.current = new Date().toISOString()
-      baseRef.current = null
-      chat.replaceMessages([])
-      draftRef.current = ''
-      setDraftState('')
-      setEntries([])
-      setHistoryOpen(false)
-      setNotice('Conversations cleared.')
-    } catch {
-      // A failed clear keeps the active request eligible to save its session.
-      sessionGenerationRef.current = priorGeneration
-      setNotice('Could not clear conversations. The current conversation remains available.')
-    } finally {
-      setClearPending(false)
-    }
-  }
+  const renderSend = useCallback(
+    ({ disabled, onPress }: { disabled: boolean; onPress: () => void }) => (
+      <Pressable
+        accessibilityLabel="Send message"
+        accessibilityRole="button"
+        accessibilityState={{ disabled }}
+        disabled={disabled}
+        onPress={onPress}
+        style={[styles.sendButton, disabled ? styles.sendDisabled : styles.sendEnabled]}
+      >
+        <Svg height={22} viewBox="0 0 24 24" width={22}>
+          <Path
+            d="M12 19V5M6 11l6-6 6 6"
+            fill="none"
+            stroke={disabled ? '#8e8e93' : '#ffffff'}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+          />
+        </Svg>
+      </Pressable>
+    ),
+    [],
+  )
 
   return (
     <View style={styles.screen}>
@@ -344,31 +395,52 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
           <Text style={styles.headerIcon}>☰</Text>
         </Pressable>
         <Pressable
+          accessibilityLabel={`Choose model, ${modelName}`}
           accessibilityRole="button"
-          accessibilityLabel="Choose model, Openrouter Auto"
-          style={styles.modelPicker}
           onPress={() => {
             Keyboard.dismiss()
-            Alert.alert('Model', 'Openrouter Auto', [{ text: 'Openrouter Auto' }])
+            ActionSheetIOS.showActionSheetWithOptions(
+              { cancelButtonIndex: 1, options: ['Openrouter Auto', 'Cancel'], title: 'Choose model' },
+              (index) => {
+                if (index === 0) setModelName('Openrouter Auto')
+              },
+            )
           }}
+          style={styles.modelPicker}
         >
           <Text numberOfLines={1} style={styles.modelLabel}>
-            Openrouter Auto
+            {modelName}
           </Text>
-          <View style={styles.modelChevron}>
-            <Text style={styles.modelChevronGlyph}>⌄</Text>
-          </View>
+          <Svg height={16} viewBox="0 0 24 24" width={16}>
+            <Path
+              d="m6 9 6 6 6-6"
+              fill="none"
+              stroke="#111111"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+            />
+          </Svg>
         </Pressable>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Settings"
+          accessibilityLabel="New chat"
           style={styles.headerButton}
           onPress={() => {
             Keyboard.dismiss()
-            setNotice('Settings are not implemented yet.')
+            void newConversation()
           }}
         >
-          <Text style={styles.headerIcon}>⚙</Text>
+          <Svg height={24} viewBox="0 0 24 24" width={24}>
+            <Path
+              d="M13 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 3l5 5M10 14l-1 4 4-1L22 8l-5-5z"
+              fill="none"
+              stroke="#111111"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+            />
+          </Svg>
         </Pressable>
       </View>
       <View ref={chatRegionRef} style={[styles.chat, { marginBottom: keyboardInset }]}>
@@ -378,49 +450,112 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
           status={chat.status}
           hasEarlierMessages={false}
           isLoadingEarlier={false}
-          disabled={gatePending || clearPending}
+          disabled={gatePending}
           onChangeDraft={setDraft}
           onSubmit={() => void submit()}
           onStop={stop}
           onLoadEarlier={() => undefined}
           messageActions={chat.messageActions}
-          onMessageAction={chat.onMessageAction}
           onLinkPress={() => undefined}
           composerVariant="ios"
+          themeOverride={IOS_CHAT_THEME}
           minHeight={36}
           maxHeight={132}
           capabilities={{ stop: false }}
           placeholder="Ask anything"
           renderAboveComposer={() =>
-            notice ? (
-              <View style={styles.notice}>
-                <Text accessibilityRole="alert" style={styles.noticeText}>
-                  {notice}
-                </Text>
+            notice || editSourceId ? (
+              <View>
+                {notice ? (
+                  <View style={styles.notice}>
+                    <Text accessibilityRole="alert" style={styles.noticeText}>
+                      {notice}
+                    </Text>
+                  </View>
+                ) : null}
+                {editSourceId ? (
+                  <View style={styles.editRow}>
+                    <Text style={styles.editRowLabel}>Edit and resend</Text>
+                    <Pressable
+                      accessibilityLabel="Cancel edit and resend"
+                      accessibilityRole="button"
+                      onPress={cancelEdit}
+                      style={styles.editCancel}
+                    >
+                      <Text style={styles.editCancelText}>×</Text>
+                    </Pressable>
+                  </View>
+                ) : null}
               </View>
             ) : null
           }
+          renderEmptyState={() => (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyTitle}>Start a conversation</Text>
+              <Text style={styles.emptySubtitle}>Your messages will appear here.</Text>
+            </View>
+          )}
+          renderMessage={renderMessage}
+          renderSend={renderSend}
         />
       </View>
       {historyOpen ? (
         <View style={styles.drawer}>
-          <Pressable accessibilityRole="button" onPress={() => setHistoryOpen(false)}>
-            <Text style={styles.headerIcon}>Close</Text>
-          </Pressable>
-          <Pressable accessibilityRole="button" onPress={() => void newConversation()}>
-            <Text style={styles.headerIcon}>New conversation</Text>
-          </Pressable>
-          {entries.map((entry) => (
+          <View style={styles.drawerHeader}>
+            <Text style={styles.drawerTitle}>Chats</Text>
             <Pressable
-              key={entry.id}
+              accessibilityLabel="Close conversations"
               accessibilityRole="button"
-              onPress={() => void openConversation(entry.id)}
+              onPress={() => setHistoryOpen(false)}
+              style={styles.drawerClose}
             >
-              <Text numberOfLines={1} style={styles.entry}>
-                {entry.title || 'Untitled conversation'}
-              </Text>
+              <Text style={styles.drawerCloseGlyph}>×</Text>
             </Pressable>
-          ))}
+          </View>
+          <Pressable
+            accessibilityLabel="New chat"
+            accessibilityRole="button"
+            onPress={() => void newConversation()}
+            style={styles.newChatRow}
+          >
+            <Svg height={24} viewBox="0 0 24 24" width={24}>
+              <Path
+                d="M13 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 3l5 5M10 14l-1 4 4-1L22 8l-5-5z"
+                fill="none"
+                stroke="#111111"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+              />
+            </Svg>
+            <Text style={styles.newChatLabel}>New chat</Text>
+          </Pressable>
+          <Text style={styles.recentHeading}>Recent</Text>
+          <View style={styles.drawerList}>
+            {entries.slice(0, 5).map((entry) => (
+              <Pressable
+                key={entry.id}
+                accessibilityLabel={entry.title || 'Untitled conversation'}
+                accessibilityRole="button"
+                accessibilityState={{ selected: entry.id === conversationIdRef.current }}
+                onPress={() => void openConversation(entry.id)}
+                style={[styles.entry, entry.id === conversationIdRef.current && styles.entrySelected]}
+              >
+                <Text numberOfLines={1} style={styles.entryText}>
+                  {entry.title || 'Untitled conversation'}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+          <Pressable
+            accessibilityLabel="Settings"
+            accessibilityRole="button"
+            onPress={() => setNotice('Settings are not implemented yet.')}
+            style={styles.drawerSettings}
+          >
+            <Text style={styles.drawerSettingsGlyph}>⚙</Text>
+            <Text style={styles.drawerSettingsLabel}>Settings</Text>
+          </Pressable>
         </View>
       ) : null}
     </View>
@@ -456,10 +591,9 @@ const styles = StyleSheet.create({
     height: 44,
     maxWidth: 208,
     paddingHorizontal: 16,
+    width: 208,
   },
   modelLabel: { color: '#111111', flexShrink: 1, fontSize: 17, lineHeight: 22 },
-  modelChevron: { alignItems: 'center', height: 22, justifyContent: 'center', width: 16 },
-  modelChevronGlyph: { color: '#007aff', fontSize: 16, lineHeight: 16 },
   chat: { flex: 1 },
   notice: {
     backgroundColor: '#fff1f0',
@@ -469,19 +603,47 @@ const styles = StyleSheet.create({
     padding: 12,
   },
   noticeText: { color: '#c62828', fontSize: 13, lineHeight: 18 },
+  emptyState: { alignItems: 'flex-start', flex: 1, justifyContent: 'center', paddingHorizontal: 40 },
+  emptyTitle: { color: '#111111', fontSize: 22, fontWeight: '500', lineHeight: 28 },
+  emptySubtitle: { color: '#6b6b70', fontSize: 17, lineHeight: 22, marginTop: 4 },
+  userMessage: { alignSelf: 'flex-end', marginTop: 12, maxWidth: '72%' },
+  assistantMessage: { alignSelf: 'stretch', marginTop: 12 },
+  userBubble: { backgroundColor: '#e9e9ed', borderRadius: 22, paddingHorizontal: 14, paddingVertical: 10 },
+  messageText: { color: '#111111', fontSize: 17, lineHeight: 22 },
+  editMessage: { alignItems: 'center', alignSelf: 'flex-end', height: 44, justifyContent: 'center', marginTop: 4, width: 44 },
+  editMessageSelected: { backgroundColor: '#eaf3ff', borderRadius: 22 },
+  editRow: { alignItems: 'center', backgroundColor: '#fafafa', borderColor: '#d1d1d6', borderRadius: 12, borderWidth: 1, flexDirection: 'row', height: 44, justifyContent: 'space-between', marginHorizontal: 12, marginTop: 8, paddingLeft: 16, paddingRight: 4 },
+  editRowLabel: { color: '#6b6b70', fontSize: 15, fontWeight: '600', lineHeight: 20 },
+  editCancel: { alignItems: 'center', height: 36, justifyContent: 'center', width: 36 },
+  editCancelText: { color: '#111111', fontSize: 32, fontWeight: '300', lineHeight: 32 },
+  sendButton: { alignItems: 'center', borderRadius: 22, height: 44, justifyContent: 'center', width: 44 },
+  sendEnabled: { backgroundColor: '#007aff' },
+  sendDisabled: { backgroundColor: '#e5e5ea' },
   drawer: {
     backgroundColor: '#ffffff',
     bottom: 0,
     left: 0,
-    padding: 16,
     position: 'absolute',
     top: 0,
-    width: '85%',
+    width: '100%',
   },
+  drawerHeader: { alignItems: 'center', flexDirection: 'row', height: 56, justifyContent: 'space-between', paddingLeft: 20, paddingRight: 16 },
+  drawerTitle: { color: '#111111', fontSize: 28, fontWeight: '700', lineHeight: 34 },
+  drawerClose: { alignItems: 'center', height: 44, justifyContent: 'center', width: 44 },
+  drawerCloseGlyph: { color: '#111111', fontSize: 32, fontWeight: '300', lineHeight: 32 },
+  newChatRow: { alignItems: 'center', backgroundColor: '#f2f2f7', borderRadius: 28, flexDirection: 'row', gap: 12, height: 56, marginHorizontal: 16, paddingHorizontal: 16 },
+  newChatLabel: { color: '#111111', fontSize: 17, lineHeight: 22 },
+  recentHeading: { color: '#6b6b70', fontSize: 15, fontWeight: '600', lineHeight: 20, marginLeft: 16, marginTop: 24 },
+  drawerList: { paddingHorizontal: 16, paddingTop: 8 },
   entry: {
-    borderBottomColor: '#e2e8f0',
-    borderBottomWidth: 1,
-    color: '#0f172a',
-    paddingVertical: 12,
+    borderRadius: 14,
+    minHeight: 52,
+    paddingHorizontal: 12,
+    paddingVertical: 14,
   },
+  entrySelected: { backgroundColor: '#e9e9ed' },
+  entryText: { color: '#111111', fontSize: 17, lineHeight: 22 },
+  drawerSettings: { alignItems: 'center', borderTopColor: '#d1d1d6', borderTopWidth: 1, bottom: 0, flexDirection: 'row', gap: 12, height: 56, left: 0, paddingHorizontal: 16, position: 'absolute', right: 0 },
+  drawerSettingsGlyph: { color: '#111111', fontSize: 24, lineHeight: 28 },
+  drawerSettingsLabel: { color: '#111111', fontSize: 17, lineHeight: 22 },
 })
