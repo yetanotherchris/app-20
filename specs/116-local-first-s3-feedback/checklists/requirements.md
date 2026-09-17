@@ -19,5 +19,5 @@
 
 ## Feature Readiness
 
-- [x] Local-save success, remote failure, retry, mutation, and removal paths are covered.
+- [x] Local-save success, remote failure, retry, mutation, interruption recovery, and removal paths are covered.
 - [x] Data-loss and duplicate-send constraints are explicit.

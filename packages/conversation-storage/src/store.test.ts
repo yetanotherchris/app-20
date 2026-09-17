@@ -168,6 +168,44 @@ describe('clear', () => {
   })
 })
 
+describe('mutations', () => {
+  it('renames a conversation and keeps the title in its manifest entry', async () => {
+    const port = createInMemoryConversationPort()
+    const store = createConversationStore(port)
+    await store.save(sampleConversation())
+
+    const renamed = await store.rename('c1', '  Renamed conversation  ')
+
+    expect(renamed.title).toBe('Renamed conversation')
+    expect((await store.list()).entries[0]?.title).toBe('Renamed conversation')
+    const loaded = await store.read('c1')
+    expect(loaded.kind).toBe('ok')
+    if (loaded.kind === 'ok') expect(loaded.conversation.title).toBe('Renamed conversation')
+  })
+
+  it('rejects invalid conversation titles without changing the conversation', async () => {
+    const store = createConversationStore(createInMemoryConversationPort())
+    await store.save(sampleConversation())
+
+    await expect(store.rename('c1', ' ')).rejects.toThrow('between 1 and 80')
+
+    const loaded = await store.read('c1')
+    expect(loaded.kind).toBe('ok')
+    if (loaded.kind === 'ok') expect(loaded.conversation.title).toBe('Title')
+  })
+
+  it('deletes the conversation file and manifest entry', async () => {
+    const port = createInMemoryConversationPort()
+    const store = createConversationStore(port)
+    await store.save(sampleConversation())
+
+    await store.delete('c1')
+
+    expect(port.files.has('c1.json')).toBe(false)
+    expect((await store.list()).entries).toEqual([])
+  })
+})
+
 describe('list', () => {
   it('treats a missing manifest as an empty history and repairs orphans', async () => {
     const port = createInMemoryConversationPort({

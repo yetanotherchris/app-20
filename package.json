@@ -49,5 +49,8 @@
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.18.0",
     "vitest": "^5.0.0"
+  },
+  "dependencies": {
+    "expo-dev-client": "~57.0.19"
   }
 }
