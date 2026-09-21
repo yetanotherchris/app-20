@@ -405,16 +405,25 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
         text: 'Delete',
         onPress: () => {
           setMutationPending(true)
-          void storeRef.current
-            .delete(entry.id)
-            .then(async () => {
+          void (async () => {
+            try {
+              const isActiveConversation = entry.id === conversationIdRef.current
+              // Finish the active save before deleting it. A later flush would recreate the deleted file.
+              if (isActiveConversation && !(await autosave.flush())) {
+                setHistoryError('The conversation could not be saved before deletion.')
+                return
+              }
+              await storeRef.current.delete(entry.id)
               await mirrorLocalFile(entry.fileName, null)
               await mirrorManifest()
-              if (entry.id === conversationIdRef.current) await newConversation()
+              if (isActiveConversation) await newConversation(false)
               await refreshHistory()
-            })
-            .catch(() => setHistoryError('The conversation was not deleted.'))
-            .finally(() => setMutationPending(false))
+            } catch {
+              setHistoryError('The conversation was not deleted.')
+            } finally {
+              setMutationPending(false)
+            }
+          })()
         },
       },
     ])
@@ -437,8 +446,8 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
     setHistoryOpen(false)
   }
 
-  async function newConversation(): Promise<void> {
-    if (!(await autosave.flush())) return
+  async function newConversation(saveCurrent = true): Promise<void> {
+    if (saveCurrent && !(await autosave.flush())) return
     rememberConversationUiState()
     controllerRef.current?.abort()
     conversationIdRef.current = createId('conversation')
@@ -520,6 +529,31 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
       )
     },
     [hasProviderKey],
+  )
+
+  const renderScrollToLatest = useCallback(
+    ({ label, onPress }: { label: string; onPress: () => void }) => (
+      <Pressable
+        accessibilityLabel={label}
+        accessibilityRole="button"
+        onPress={onPress}
+        style={styles.scrollToLatest}
+        testID="chat.scroll-to-latest"
+      >
+        <Svg height={20} viewBox="0 0 24 24" width={20}>
+          <Path
+            d="M12 5v14m-6-6 6 6 6-6"
+            fill="none"
+            stroke="#111111"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+          />
+        </Svg>
+        <Text style={styles.scrollToLatestLabel}>{label}</Text>
+      </Pressable>
+    ),
+    [],
   )
 
   return (
@@ -668,6 +702,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
           )}
           renderMessage={renderMessage}
           renderSend={renderSend}
+          renderScrollToLatest={renderScrollToLatest}
         />
       </View>
       {historyOpen ? (
@@ -897,6 +932,16 @@ const styles = StyleSheet.create({
   },
   sendEnabled: { backgroundColor: '#007aff' },
   sendDisabled: { backgroundColor: '#e5e5ea' },
+  scrollToLatest: {
+    alignItems: 'center',
+    backgroundColor: '#e5e5ea',
+    borderRadius: 22,
+    flexDirection: 'row',
+    gap: 6,
+    minHeight: 44,
+    paddingHorizontal: 16,
+  },
+  scrollToLatestLabel: { color: '#111111', fontSize: 15, fontWeight: '600', lineHeight: 20 },
   drawer: {
     backgroundColor: '#ffffff',
     bottom: 0,
