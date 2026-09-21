@@ -49,7 +49,7 @@ Product and engineering contributors can determine the required appearance and s
 ## Assumptions
 
 - The guide applies to application-owned screens and controls. Operating-system-owned dialogs, menus, keyboards, and permissions retain their native presentation.
-- The guide establishes the target visual language. Existing screens may be brought into alignment in separate implementation features.
+- The guide establishes the target visual language. Existing screens may be brought into alignment in separate implementation features, except for the latest-control alignment included in this feature.
 - The existing iOS chat visual specification contains valid design decisions that will be consolidated into the application guide where they are shared across platforms.
 
 ## Scope
@@ -60,9 +60,10 @@ Product and engineering contributors can determine the required appearance and s
 - Semantic design rules and reusable interface patterns.
 - Platform-specific guidance where native conventions require a variation.
 - Accessibility and interactive-state requirements for the shared visual language.
+- Initial alignment of the existing latest control with the guide: a 44-point grouped circular control with a border, a centered down-arrow icon, and an accessible label.
 
 ### Out of Scope
 
-- Rebuilding existing application screens as part of writing the guide.
+- Rebuilding existing application screens other than the initial latest-control alignment.
 - Defining the visual presentation of third-party or operating-system-owned surfaces.
 - Adding product capabilities or changing existing interaction flows.
