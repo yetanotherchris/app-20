@@ -1,18 +1,24 @@
 import type { S3Config, SettingsSnapshot } from '../secrets/secretService'
+import type { SettingsPatch } from './settingsImport'
 
 export type SettingsField =
-  | 'apiKey'
-  | 'bucket'
-  | 'region'
-  | 'accessKeyId'
-  | 'secretAccessKey'
-  | 'endpoint'
+  'apiKey' | 'bucket' | 'region' | 'accessKeyId' | 'secretAccessKey' | 'endpoint'
 
 export type SettingsErrors = Partial<Record<SettingsField, string>>
 
 export interface ValidatedSettings {
   apiKey: string
   s3: S3Config | null
+}
+
+export function mergeSettingsPatch(
+  snapshot: SettingsSnapshot,
+  patch: SettingsPatch,
+): SettingsSnapshot {
+  return {
+    apiKey: patch.apiKey ?? snapshot.apiKey,
+    s3: { ...snapshot.s3, ...patch.s3 },
+  }
 }
 
 function trimSettings(snapshot: SettingsSnapshot): SettingsSnapshot {
@@ -42,7 +48,8 @@ export function validateSettings(snapshot: SettingsSnapshot): {
 } {
   const value = trimSettings(snapshot)
   const s3Values = Object.values(value.s3)
-  if (s3Values.every((entry) => entry === '')) return { errors: {}, value: { apiKey: value.apiKey, s3: null } }
+  if (s3Values.every((entry) => entry === ''))
+    return { errors: {}, value: { apiKey: value.apiKey, s3: null } }
 
   const errors: SettingsErrors = {}
   if (value.s3.bucket === '') errors.bucket = 'Enter a bucket.'

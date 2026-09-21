@@ -158,7 +158,8 @@ export function createConversationStore(port: ConversationFilePort): Conversatio
     const loaded = await read(id)
     if (loaded.kind !== 'ok') throw new Error('Conversation is unavailable')
 
-    const renamed = { ...loaded.conversation, title: trimmedTitle, updatedAt: new Date().toISOString() }
+    // Renaming changes presentation, not message activity. Keep its list position stable.
+    const renamed = { ...loaded.conversation, title: trimmedTitle }
     await save(renamed)
     return renamed
   }

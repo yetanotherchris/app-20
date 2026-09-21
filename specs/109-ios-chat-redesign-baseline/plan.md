@@ -18,6 +18,13 @@ Replace the early iOS shell with a native React Native composition root that pre
 
 **Target Platform**: iOS, iPhone 16 portrait reference frame with adaptive safe areas, keyboard, widths, and Dynamic Type.
 
+## Constitution Check
+
+- Process isolation and the Electron preload boundary are unaffected because this work is confined to the Expo application and shared persistence package.
+- Conversation persistence continues to use the existing same-directory temporary-file and rename operation. Rename now preserves activity time so a title-only mutation does not reorder history.
+- Credentials remain in Expo SecureStore. Imported values are parsed before they are merged into the displayed draft or persisted, and no status text includes a secret value.
+- The iOS implementation has unit coverage for storage and settings parsing. Native state validation remains required because Playwright Electron tests cannot exercise Expo surfaces.
+
 ## Project Structure
 
 ```text
@@ -47,15 +54,15 @@ packages/conversation-storage/src/
 
 ## State Allocation and Verification
 
-| Owner | States | Verification |
-| --- | --- | --- |
-| Chat shell and composer | 01-07, 27, 30 | Empty, multiline, pending, failure, model menu, long draft, and missing-key checks |
-| History management | 08-15, 26, 29 | Five-row ordering, native actions, mutation recovery, Dynamic Type |
-| Settings and credentials | 16-20, 25, 28, 34 | Autosave, validation, retries, masking and remasking |
-| Settings import | 21-24 | Picker lifecycle, atomic parse failure, merge and persisted success |
-| Edit and resend | 31 | Source selection, parked draft, append-only resend and failure recovery |
-| Latest-message control | 32-33 | Threshold hysteresis, keyboard placement, anchors, explicit return |
-| S3 mirror feedback | 35 | Local save before remote failure and retry without provider request |
+| Owner                    | States            | Verification                                                                       |
+| ------------------------ | ----------------- | ---------------------------------------------------------------------------------- |
+| Chat shell and composer  | 01-07, 27, 30     | Empty, multiline, pending, failure, model menu, long draft, and missing-key checks |
+| History management       | 08-15, 26, 29     | Five-row ordering, native actions, mutation recovery, Dynamic Type                 |
+| Settings and credentials | 16-20, 25, 28, 34 | Autosave, validation, retries, masking and remasking                               |
+| Settings import          | 21-24             | Picker lifecycle, atomic parse failure, merge and persisted success                |
+| Edit and resend          | 31                | Source selection, parked draft, append-only resend and failure recovery            |
+| Latest-message control   | 32-33             | Threshold hysteresis, keyboard placement, anchors, explicit return                 |
+| S3 mirror feedback       | 35                | Local save before remote failure and retry without provider request                |
 
 ## Security and Data Integrity
 
@@ -67,8 +74,8 @@ packages/conversation-storage/src/
 
 ## Complexity Tracking
 
-| Decision | Why it is needed | Simpler alternative rejected |
-| --- | --- | --- |
-| Local `app-20-llmchat` package integration | The released component API does not expose the required native composer, edit-action, and transcript behavior. The iOS app must test against the implementation used for this redesign. | Reimplementing assistant rendering in the iOS host would duplicate and diverge from the shared renderer. |
-| Separate draft and saved settings snapshots | Partial S3 entries must survive editing without replacing the last complete S3 configuration. | Writing each field directly to SecureStore could activate incomplete credentials or discard a valid configuration. |
-| Targeted mirror queue | Rename/delete and retry must mirror completed local mutations without rerunning a provider request. | Reusing the full reconciliation pass cannot represent deletions safely or order individual conversation revisions. |
+| Decision                                    | Why it is needed                                                                                                                                                                        | Simpler alternative rejected                                                                                       |
+| ------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Local `app-20-llmchat` package integration  | The released component API does not expose the required native composer, edit-action, and transcript behavior. The iOS app must test against the implementation used for this redesign. | Reimplementing assistant rendering in the iOS host would duplicate and diverge from the shared renderer.           |
+| Separate draft and saved settings snapshots | Partial S3 entries must survive editing without replacing the last complete S3 configuration.                                                                                           | Writing each field directly to SecureStore could activate incomplete credentials or discard a valid configuration. |
+| Targeted mirror queue                       | Rename/delete and retry must mirror completed local mutations without rerunning a provider request.                                                                                     | Reusing the full reconciliation pass cannot represent deletions safely or order individual conversation revisions. |
