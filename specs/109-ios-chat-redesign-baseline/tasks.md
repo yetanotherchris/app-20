@@ -31,3 +31,9 @@
 - [ ] T018 Run typecheck, lint, and tests in both repositories.
 - [ ] T019 Perform and record native acceptance checks for states 01-35 at required widths and Dynamic Type.
 - [ ] T020 Archive 109 and its completed implementation specifications in the implementation PR.
+
+## Verification Blockers
+
+- T018 remains open for `../app-20-llmchat`: its TypeScript check passes, but its lint script has no ESLint dependency or configuration and its Vitest suite requires undeclared `@testing-library/react`.
+- T019 remains open: EAS Simulator is unavailable for the authenticated Expo account, and this Windows environment has no local iOS simulator.
+- T020 remains open until T018 and T019 are resolved and an implementation PR can be opened.
