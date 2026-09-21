@@ -14,6 +14,7 @@ import {
   useChatSession,
   type ChatOperation,
   type ChatSessionControls,
+  type LLMChatScrollToLatestProps,
   type Message,
   type ThemeInput,
 } from 'app-20-llmchat'
@@ -383,6 +384,30 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
     [],
   )
 
+  const renderScrollToLatest = useCallback(
+    ({ label, onPress }: LLMChatScrollToLatestProps) => (
+      <Pressable
+        accessibilityLabel={label}
+        accessibilityRole="button"
+        onPress={onPress}
+        style={styles.scrollToLatest}
+        testID="chat.scroll-to-latest"
+      >
+        <Svg height={22} viewBox="0 0 24 24" width={22}>
+          <Path
+            d="m6 9 6 6 6-6"
+            fill="none"
+            stroke="#111111"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+          />
+        </Svg>
+      </Pressable>
+    ),
+    [],
+  )
+
   return (
     <View style={styles.screen}>
       <View style={styles.header}>
@@ -497,6 +522,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
           )}
           renderMessage={renderMessage}
           renderSend={renderSend}
+          renderScrollToLatest={renderScrollToLatest}
         />
       </View>
       {historyOpen ? (
@@ -619,6 +645,20 @@ const styles = StyleSheet.create({
   sendButton: { alignItems: 'center', borderRadius: 22, height: 44, justifyContent: 'center', width: 44 },
   sendEnabled: { backgroundColor: '#007aff' },
   sendDisabled: { backgroundColor: '#e5e5ea' },
+  scrollToLatest: {
+    alignItems: 'center',
+    backgroundColor: '#f2f2f7',
+    borderColor: '#d1d1d6',
+    borderRadius: 22,
+    borderWidth: 1,
+    height: 44,
+    justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { height: 2, width: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    width: 44,
+  },
   drawer: {
     backgroundColor: '#ffffff',
     bottom: 0,
