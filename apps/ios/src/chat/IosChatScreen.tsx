@@ -13,6 +13,7 @@ import {
 import { AUTOMATIC_MODEL, createOpenRouterProvider } from '@app-20/ai-provider'
 import {
   createConversationStore,
+  MANIFEST_FILE_NAME,
   type Conversation,
   type ManifestEntry,
 } from '@app-20/conversation-storage'
@@ -30,6 +31,12 @@ interface AppStateSource {
 
 interface IosChatScreenProps {
   appState: AppStateSource
+}
+
+interface ConversationUiState {
+  draft: string
+  editSourceId: string | null
+  parkedDraft: string | null
 }
 
 const IOS_CHAT_THEME = {
@@ -66,16 +73,21 @@ function createId(prefix: string): string {
 
 export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Element {
   const secretsRef = useRef(createSecretService())
-  const storeRef = useRef(createConversationStore(createConversationFilePort()))
+  const filePortRef = useRef(createConversationFilePort())
+  const storeRef = useRef(createConversationStore(filePortRef.current))
   const conversationIdRef = useRef(createId('conversation'))
   const createdAtRef = useRef(new Date().toISOString())
   const baseRef = useRef<Conversation | null>(null)
   const messagesRef = useRef<readonly Message[]>([])
   const draftRef = useRef('')
   const parkedDraftRef = useRef<string | null>(null)
+  const editSourceRef = useRef<string | null>(null)
+  const conversationUiStateRef = useRef(new Map<string, ConversationUiState>())
   const controllerRef = useRef<AbortController | null>(null)
   const controlsRef = useRef<ChatSessionControls | null>(null)
   const sessionGenerationRef = useRef(0)
+  const mirrorRevisionRef = useRef(0)
+  const resendPendingRef = useRef(false)
   const [draft, setDraftState] = useState('')
   const [editSourceId, setEditSourceId] = useState<string | null>(null)
   const [modelName, setModelName] = useState('Openrouter Auto')
@@ -93,16 +105,47 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
 
   const syncRef = useRef<ReturnType<typeof createSyncService> | null>(null)
   if (!syncRef.current) {
-    syncRef.current = createSyncService(
-      createConversationFilePort(),
-      secretsRef.current,
-      (state) => {
-        if (state === 'error') setS3SaveFailed(true)
-        if (state === 'idle' || state === 'disabled') setS3SaveFailed(false)
-      },
-    )
+    syncRef.current = createSyncService(filePortRef.current, secretsRef.current, (state) => {
+      if (state === 'error') setS3SaveFailed(true)
+      if (state === 'idle' || state === 'disabled') setS3SaveFailed(false)
+    })
   }
   const sync = syncRef.current
+
+  function rememberConversationUiState(): void {
+    conversationUiStateRef.current.set(conversationIdRef.current, {
+      draft: draftRef.current,
+      editSourceId: editSourceRef.current,
+      parkedDraft: parkedDraftRef.current,
+    })
+  }
+
+  function setEditSource(id: string | null): void {
+    editSourceRef.current = id
+    setEditSourceId(id)
+  }
+
+  function restoreConversationUiState(id: string, fallbackDraft: string): void {
+    const saved = conversationUiStateRef.current.get(id)
+    const state = saved ?? { draft: fallbackDraft, editSourceId: null, parkedDraft: null }
+    draftRef.current = state.draft
+    parkedDraftRef.current = state.parkedDraft
+    setDraftState(state.draft)
+    setEditSource(state.editSourceId)
+  }
+
+  async function mirrorLocalFile(name: string, content: string | null): Promise<void> {
+    if (!(await secretsRef.current.getS3Config())) return
+    mirrorRevisionRef.current += 1
+    await sync.schedule({ content, name, revision: mirrorRevisionRef.current })
+  }
+
+  async function mirrorManifest(): Promise<void> {
+    await mirrorLocalFile(
+      MANIFEST_FILE_NAME,
+      await filePortRef.current.readText(MANIFEST_FILE_NAME),
+    )
+  }
 
   const autosaveRef = useRef<AutosaveQueue<Conversation> | null>(null)
   if (!autosaveRef.current) {
@@ -119,9 +162,10 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
           baseRef.current,
         ),
       saveSnapshot: async (conversation) => {
-        await storeRef.current.save(conversation)
+        const result = await storeRef.current.save(conversation)
         baseRef.current = conversation
-        sync.schedule()
+        await mirrorLocalFile(result.fileName, await filePortRef.current.readText(result.fileName))
+        await mirrorManifest()
       },
       onFailure: () => setNotice('Conversation save failed. Your current text is still available.'),
     })
@@ -169,8 +213,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
     createdAtRef.current = conversation.createdAt
     chat.replaceMessages(fromConversation(conversation))
     // Loading a draft must not schedule a write merely because state changed.
-    draftRef.current = conversation.draft ?? ''
-    setDraftState(conversation.draft ?? '')
+    restoreConversationUiState(conversation.id, conversation.draft ?? '')
   })
 
   useEffect(() => {
@@ -236,25 +279,36 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
     (value: string): void => {
       draftRef.current = value
       setDraftState(value)
+      rememberConversationUiState()
       autosave.scheduleDraftSave()
     },
     [autosave],
   )
 
+  useEffect(() => {
+    if (chat.status !== 'idle' || !resendPendingRef.current) return
+    resendPendingRef.current = false
+    const restoredDraft = parkedDraftRef.current ?? ''
+    parkedDraftRef.current = null
+    setEditSource(null)
+    setDraft(restoredDraft)
+  }, [chat.status, setDraft])
+
   const startEdit = useCallback(
     (message: Message): void => {
       if (chat.status !== 'idle') return
-      if (editSourceId === null) parkedDraftRef.current = draftRef.current
-      setEditSourceId(message.id)
+      if (editSourceRef.current === null) parkedDraftRef.current = draftRef.current
+      setEditSource(message.id)
       setDraft(message.contentParts.map((part) => part.text).join(''))
     },
-    [chat.status, editSourceId, setDraft],
+    [chat.status, setDraft],
   )
 
   const cancelEdit = useCallback((): void => {
-    setEditSourceId(null)
-    setDraft(parkedDraftRef.current ?? '')
+    const restoredDraft = parkedDraftRef.current ?? ''
     parkedDraftRef.current = null
+    setEditSource(null)
+    setDraft(restoredDraft)
   }, [setDraft])
 
   async function submit(): Promise<void> {
@@ -266,6 +320,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
         setSettingsOpen(true)
         return
       }
+      resendPendingRef.current = editSourceRef.current !== null
       chat.submit(draftRef.current.trim())
       autosave.cancelDraftTimer()
       setDraft('')
@@ -324,7 +379,14 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
             setMutationPending(true)
             void storeRef.current
               .rename(entry.id, title)
-              .then(refreshHistory)
+              .then(async () => {
+                await mirrorLocalFile(
+                  entry.fileName,
+                  await filePortRef.current.readText(entry.fileName),
+                )
+                await mirrorManifest()
+                await refreshHistory()
+              })
               .catch(() => setHistoryError('The conversation was not renamed.'))
               .finally(() => setMutationPending(false))
           },
@@ -346,6 +408,8 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
           void storeRef.current
             .delete(entry.id)
             .then(async () => {
+              await mirrorLocalFile(entry.fileName, null)
+              await mirrorManifest()
               if (entry.id === conversationIdRef.current) await newConversation()
               await refreshHistory()
             })
@@ -358,6 +422,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
 
   async function openConversation(id: string): Promise<void> {
     if (!(await autosave.flush())) return
+    rememberConversationUiState()
     const result = await storeRef.current.read(id)
     if (result.kind !== 'ok') {
       setNotice('The selected conversation is unavailable.')
@@ -368,18 +433,20 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
     conversationIdRef.current = result.conversation.id
     createdAtRef.current = result.conversation.createdAt
     chat.replaceMessages(fromConversation(result.conversation))
-    draftRef.current = result.conversation.draft ?? ''
-    setDraftState(result.conversation.draft ?? '')
+    restoreConversationUiState(result.conversation.id, result.conversation.draft ?? '')
     setHistoryOpen(false)
   }
 
   async function newConversation(): Promise<void> {
     if (!(await autosave.flush())) return
+    rememberConversationUiState()
     controllerRef.current?.abort()
     conversationIdRef.current = createId('conversation')
     createdAtRef.current = new Date().toISOString()
     baseRef.current = null
     chat.replaceMessages([])
+    setEditSource(null)
+    parkedDraftRef.current = null
     setDraft('')
     setHistoryOpen(false)
   }
@@ -698,7 +765,13 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
         service={secretsRef.current}
         visible={settingsOpen}
         onClose={() => setSettingsOpen(false)}
-        onSaved={() => void secretsRef.current.hasProviderKey().then(setHasProviderKey)}
+        onSaved={() => {
+          void (async () => {
+            setHasProviderKey(await secretsRef.current.hasProviderKey())
+            if (!(await secretsRef.current.getS3Config())) await sync.clear()
+            else await sync.run()
+          })()
+        }}
       />
     </View>
   )

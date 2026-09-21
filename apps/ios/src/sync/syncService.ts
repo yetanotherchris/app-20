@@ -1,80 +1,38 @@
-import { syncOnce, type SyncState } from '@app-20/sync'
 import type { ConversationFilePort } from '@app-20/conversation-storage'
-import type { SecretService } from '../secrets/secretService'
 import { createS3Remote } from './s3Remote'
+import type { SecretService } from '../secrets/secretService'
+import { MirrorQueue, type MirrorOperation, type MirrorQueueState } from './mirrorQueue'
+import { createMirrorQueueStorage } from './mirrorQueueFile'
 
 export interface SyncService {
-  state(): SyncState
-  schedule(): void
+  state(): MirrorQueueState
+  schedule(operation: MirrorOperation): Promise<void>
   run(): Promise<void>
   clear(): Promise<void>
 }
 
 export function createSyncService(
-  local: ConversationFilePort,
+  _local: ConversationFilePort,
   secrets: SecretService,
-  onState: (state: SyncState) => void,
+  onState: (state: MirrorQueueState) => void,
 ): SyncService {
-  let current: SyncState = 'disabled'
-  let pending = false
-  let activeRun: Promise<void> | null = null
-  let clearing = false
-
-  function setState(state: SyncState): void {
-    current = state
-    onState(state)
-  }
-
-  async function runOnce(): Promise<void> {
-    const config = await secrets.getS3Config()
-    if (!config) {
-      setState('disabled')
-      return
-    }
-    setState('syncing')
-    try {
-      await syncOnce(local, createS3Remote(config))
-      setState('idle')
-    } catch {
-      setState('error')
-    }
-  }
-
-  function run(): Promise<void> {
-    if (clearing) return Promise.resolve()
-    if (!activeRun) activeRun = runOnce().finally(() => (activeRun = null))
-    return activeRun
-  }
-
-  async function clear(): Promise<void> {
-    clearing = true
-    try {
-      if (activeRun) await activeRun
+  let current: MirrorQueueState = 'disabled'
+  const queue = new MirrorQueue(
+    createMirrorQueueStorage(),
+    async () => {
       const config = await secrets.getS3Config()
-      if (!config) return
-      setState('syncing')
-      const remote = createS3Remote(config)
-      await Promise.all((await remote.listNames()).map((name) => remote.deleteText(name)))
-      setState('idle')
-    } catch (error) {
-      setState('error')
-      throw error
-    } finally {
-      clearing = false
-    }
-  }
+      return config ? createS3Remote(config) : null
+    },
+    (state) => {
+      current = state
+      onState(state)
+    },
+  )
 
   return {
     state: () => current,
-    schedule() {
-      if (pending) return
-      pending = true
-      setState('pending')
-      void run().finally(() => {
-        pending = false
-      })
-    },
-    run,
-    clear,
+    schedule: (operation) => queue.schedule(operation),
+    run: () => queue.run(),
+    clear: () => queue.clear(),
   }
 }

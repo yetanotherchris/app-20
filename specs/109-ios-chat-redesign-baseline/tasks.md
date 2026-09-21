@@ -6,7 +6,7 @@
 - [x] T002 Preserve explicit conversation titles through iOS autosave conversion and add tests in `apps/ios/src/chat`.
 - [x] T003 Replace import-only secret access with protected settings snapshot read/write APIs and tests in `apps/ios/src/secrets`.
 - [x] T004 Add pure settings validation, serialized autosave, and import parsing modules with unit tests in `apps/ios/src/settings`.
-- [ ] T005 Add a revision-aware local-first S3 mirror queue with retry and tests in `apps/ios/src/sync`.
+- [x] T005 Add a revision-aware local-first S3 mirror queue with retry and tests in `apps/ios/src/sync`.
 
 ## Phase 2: Shared Chat Component
 
@@ -21,9 +21,9 @@
 - [x] T011 Implement the full-screen history drawer, five-row list states, native rename/delete flows, and Settings entry.
 - [x] T012 Implement the Settings sheet, secret visibility lifecycle, keyboard focus scrolling, status and retry behavior.
 - [x] T013 Connect document picker import lifecycle to the Settings draft and persistence pipeline.
-- [ ] T014 Implement per-conversation edit-and-resend state and append-only resend behavior.
+- [x] T014 Implement per-conversation edit-and-resend state and append-only resend behavior.
 - [x] T015 Connect the latest-message control to composer-stack placement, keyboard layout, modal visibility, and transcript state.
-- [ ] T016 Replace generic sync status with local-first destination failure banner and explicit remote retry.
+- [x] T016 Replace generic sync status with local-first destination failure banner and explicit remote retry.
 
 ## Phase 4: Verification
 
