@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "main": "index.ts",
   "scripts": {
-    "start": "expo start",
-    "ios": "expo start --ios",
-    "build:ios": "npx eas-cli build --platform ios --profile preview",
+    "start": "expo start --dev-client",
+    "ios": "expo start --ios --dev-client",
+    "build:ios": "npx eas-cli build --platform ios --profile development",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
@@ -16,14 +16,16 @@
     "@app-20/sync": "*",
     "@aws-sdk/client-s3": "^3.1131.0",
     "app-20-llmchat": "github:yetanotherchris/app-20-llmchat#8d65421",
-    "expo": "^57.0.22",
+    "expo": "~57.0.24",
+    "expo-dev-client": "~57.0.19",
     "expo-document-picker": "~57.0.2",
     "expo-file-system": "~57.0.7",
     "expo-secure-store": "~57.0.4",
     "react": "19.2.3",
     "react-native": "^0.86.0",
     "react-native-safe-area-context": "~5.7.0",
-    "react-native-svg": "15.15.4"
+    "react-native-svg": "15.15.4",
+    "react-native-web": "^0.21.2"
   },
   "devDependencies": {
     "@types/react": "^19.0.0",
