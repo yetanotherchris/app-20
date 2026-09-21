@@ -18,6 +18,7 @@
     "dev:electron": "npm run dev --workspace apps/electron",
     "dev:ios": "npm run start --workspace @app-20/ios",
     "build:ios": "npm run --workspace @app-20/ios build:ios",
+    "build:ios:preview": "npm run --workspace @app-20/ios build:preview",
     "build:web": "npm run build --workspace apps/web",
     "docs:dev": "npm run dev --workspace @app-20/component-docs",
     "docs:build": "npm run build --workspace @app-20/component-docs",
@@ -49,8 +50,5 @@
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.18.0",
     "vitest": "^5.0.0"
-  },
-  "dependencies": {
-    "expo-dev-client": "~57.0.19"
   }
 }
