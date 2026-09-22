@@ -641,7 +641,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
           composerVariant="ios"
           themeOverride={IOS_CHAT_THEME}
           minHeight={36}
-          maxHeight={132}
+          maxHeight={242}
           capabilities={{ stop: false }}
           placeholder="Ask anything"
           renderAboveComposer={() =>
