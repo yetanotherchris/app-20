@@ -66,8 +66,8 @@ One outer rounded rectangle contains TWO VERTICAL ROWS. Text is above the send a
 
 - Outer x=12, width=W−24 (369 at target), radius28, border1, fill composer. Default minimum height112.
 - Top padding16. Text left/right inset16: x=28 globally, width337. Text baseline follows 17/22 body metrics; placeholder exactly **Ask anything**. Clear native default TextInput padding; set padding0. At one line allocate a minimum36pt text region.
-- Text region height `T=max(36,min(measuredTextHeight, maxTextHeight))`; default `maxTextHeight=132` (six 22pt lines). Gap4 below text region.
-- Action row height44, horizontal inset12; only send, aligned to the right. Bottom padding12. Thus outer height=`16+T+4+44+12 = T+76`: 112 one line, 142 three 22pt lines, 208 six lines. 
+- Text region height `T=max(36,min(measuredTextHeight, maxTextHeight))`; the iOS composer uses `maxTextHeight=242` (eleven 22pt lines), supporting ten Return presses before the input scrolls internally. Gap4 below text region.
+- Action row height44, horizontal inset12; only send, aligned to the right. Bottom padding12. Thus outer height=`16+T+4+44+12 = T+76`: 112 one line, 142 three 22pt lines, 318 eleven lines.
 - Send diameter44, radius22, arrow-up glyph22 centered; global x=W−68=325, y=outerBottom−56. No additional enclosing square. Enabled blue/white; disabled disabledFill/disabledInk. Entire circle is touch target. Never shrink it for long text.
 - Keyboard closed: outer bottom=H−safeBottom−12=806; default top694. Keyboard open: outer bottom=keyboardTop−8; illustrative keyboardTop516 → bottom508 and default top396. Use actual keyboard frame, not 336 hardcoded height.
 - Parent footer fills background through safe bottom. It is a sibling of transcript, not absolutely superimposed on messages. Banner lives above composer, 8pt gap, x12; its height grows from wrapped text, with 12pt padding and radius12. Banner never overlays text/input.

@@ -1,0 +1,8 @@
+{
+  "embeddingProvider": "ollama",
+  "embeddingModel": "embeddinggemma",
+  "scope": "project",
+  "indexing": {
+    "watchFiles": true
+  }
+}

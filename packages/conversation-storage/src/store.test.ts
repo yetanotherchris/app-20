@@ -164,7 +164,11 @@ describe('clear', () => {
 
     await store.clear()
 
-    expect([...port.files.keys()].sort()).toEqual(['nested/c2.json', 'nested\\c3.json', 'notes.txt'])
+    expect([...port.files.keys()].sort()).toEqual([
+      'nested/c2.json',
+      'nested\\c3.json',
+      'notes.txt',
+    ])
   })
 })
 
@@ -172,11 +176,13 @@ describe('mutations', () => {
   it('renames a conversation and keeps the title in its manifest entry', async () => {
     const port = createInMemoryConversationPort()
     const store = createConversationStore(port)
-    await store.save(sampleConversation())
+    const original = sampleConversation()
+    await store.save(original)
 
     const renamed = await store.rename('c1', '  Renamed conversation  ')
 
     expect(renamed.title).toBe('Renamed conversation')
+    expect(renamed.updatedAt).toBe(original.updatedAt)
     expect((await store.list()).entries[0]?.title).toBe('Renamed conversation')
     const loaded = await store.read('c1')
     expect(loaded.kind).toBe('ok')
