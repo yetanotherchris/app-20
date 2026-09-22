@@ -162,6 +162,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
           baseRef.current,
         ),
       saveSnapshot: async (conversation) => {
+        if (!conversation.messages.some((message) => message.role === 'user')) return
         const result = await storeRef.current.save(conversation)
         baseRef.current = conversation
         await mirrorLocalFile(result.fileName, await filePortRef.current.readText(result.fileName))
@@ -647,7 +648,10 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
                   <Pressable
                     accessibilityLabel="Add API key in Settings"
                     accessibilityRole="button"
-                    onPress={() => setSettingsOpen(true)}
+                    onPress={() => {
+                      Keyboard.dismiss()
+                      setSettingsOpen(true)
+                    }}
                     style={styles.setupNotice}
                   >
                     <Text style={styles.setupNoticeGlyph}>⚙</Text>
@@ -777,7 +781,9 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
                   onPress={() => conversationActions(entry)}
                   style={styles.entryActions}
                 >
-                  <Text style={styles.entryActionsText}>•••</Text>
+                  <Svg height={24} viewBox="0 0 24 24" width={24}>
+                    <Path d="M5 12h.01M12 12h.01M19 12h.01" stroke="#6b6b70" strokeWidth={4} />
+                  </Svg>
                 </Pressable>
               </View>
             ))}
@@ -786,6 +792,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
             accessibilityLabel="Settings"
             accessibilityRole="button"
             onPress={() => {
+              Keyboard.dismiss()
               setHistoryOpen(false)
               setSettingsOpen(true)
             }}
@@ -990,7 +997,6 @@ const styles = StyleSheet.create({
   entrySelected: { backgroundColor: '#e9e9ed' },
   entryOpen: { flex: 1, justifyContent: 'center', minHeight: 52, paddingVertical: 14 },
   entryActions: { alignItems: 'center', height: 44, justifyContent: 'center', width: 44 },
-  entryActionsText: { color: '#6b6b70', fontSize: 17 },
   entryText: { color: '#111111', fontSize: 17, lineHeight: 22 },
   emptyHistory: { color: '#6b6b70', fontSize: 17, marginTop: 12, textAlign: 'center' },
   historyError: { minHeight: 44, padding: 12 },
