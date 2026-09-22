@@ -96,21 +96,23 @@ A developer reviews a failed or incomplete automated run. The agent provides the
 
 - **FR-001**: The system MUST let a coding agent initiate an iOS UI acceptance run from a defined set of acceptance criteria and an identified app workspace.
 - **FR-002**: The system MUST let the agent start a new iOS test session or attach to a reachable existing session before it performs UI interactions.
-- **FR-003**: The system MUST determine and report whether the available iOS test app can exercise the current source changes before evaluating acceptance criteria.
-- **FR-004**: The system MUST reuse an eligible iOS test app for source-only changes and MUST identify when a replacement app is required.
-- **FR-005**: The system MUST let the agent perform the taps, text entry, scrolling, navigation, and other user interactions required by an acceptance run.
-- **FR-006**: The system MUST capture an accessibility representation and a visual image of the app at each assessment point required by the acceptance criteria.
-- **FR-007**: The system MUST make captured evidence available to the agent during the same run so it can determine the next action.
-- **FR-008**: The system MUST let the agent revise the app and repeat failed acceptance steps until all criteria pass, a configured iteration limit is reached, or an external dependency blocks progress.
-- **FR-009**: The system MUST report each criterion as passed, failed, or inconclusive and MUST not report an overall pass when any criterion is failed or inconclusive.
-- **FR-010**: The system MUST retain the run's interaction history, evidence references, outcome for each criterion, and relevant runtime diagnostics in a developer-readable report.
-- **FR-011**: The system MUST report an unavailable simulator, app, development server, build, or evidence capture capability as a blocking condition with the action needed to resume.
-- **FR-012**: The system MUST provide project guidance for stable, accessible UI identifiers and descriptions so agents can reliably locate and assess important controls.
-- **FR-013**: The system MUST support a primary exploratory feedback loop and MAY support separately defined deterministic acceptance flows without changing the primary loop's reporting requirements.
+- **FR-003**: Before evaluating acceptance criteria, the system MUST determine and report whether the available iOS test app is installed and reachable, can receive the current source changes, and has the required native capabilities and app configuration for the acceptance run.
+- **FR-004**: The system MUST reuse an eligible iOS test app for a source-only change. A source-only change does not modify the app's native capabilities, app configuration, or installed dependency set.
+- **FR-005**: The system MUST require a replacement iOS test app when a change modifies the app's native capabilities, app configuration, or installed dependency set, and MUST identify the change category that required replacement.
+- **FR-006**: The system MUST let the agent perform the taps, text entry, scrolling, navigation, and other user interactions required by an acceptance run.
+- **FR-007**: The system MUST capture an accessibility representation and a visual image of the app at each assessment point required by the acceptance criteria.
+- **FR-008**: The system MUST make captured evidence available to the agent during the same run so it can determine the next action.
+- **FR-009**: The system MUST let the agent revise the app and repeat failed acceptance steps until all criteria pass, a configured iteration limit is reached, or an external dependency blocks progress.
+- **FR-010**: The system MUST require every acceptance run to state its iteration limit before the first interaction. The final report MUST state the limit, the number of completed iterations, and whether the limit ended the run.
+- **FR-011**: The system MUST report each criterion as passed, failed, or inconclusive and MUST not report an overall pass when any criterion is failed or inconclusive.
+- **FR-012**: The system MUST retain the run's interaction history, evidence references, outcome for each criterion, and relevant runtime diagnostics in a developer-readable report.
+- **FR-013**: The system MUST report an unavailable simulator, app, development server, build, or evidence capture capability as a blocking condition with the action needed to resume.
+- **FR-014**: The system MUST provide project guidance for stable, accessible UI identifiers and descriptions so agents can reliably locate and assess important controls.
+- **FR-015**: The system MUST support a primary exploratory feedback loop and MAY support separately defined deterministic acceptance flows without changing the primary loop's reporting requirements.
 
 ### Key Entities
 
-- **Acceptance Run**: One evaluation attempt containing its target criteria, app revision, session state, interaction history, and outcome.
+- **Acceptance Run**: One evaluation attempt containing its target criteria, app revision, session state, iteration limit, interaction history, and outcome.
 - **Acceptance Criterion**: A verifiable expected user-visible outcome and the evidence required to assess it.
 - **Test App**: An installed iOS application instance with eligibility information that determines whether it can test the current source changes.
 - **Observation**: A timestamped accessibility representation, visual image, or runtime diagnostic captured during a run.
@@ -131,6 +133,7 @@ A developer reviews a failed or incomplete automated run. The agent provides the
 - The primary development workstation runs Windows and has no locally hosted iOS simulator.
 - iOS is the only mobile target in scope for this feature. Android testing and Android-specific requirements are excluded.
 - A cloud-provided iOS simulator app can be obtained, installed, and reused when it remains eligible for the source changes under test.
+- The developer or acceptance-run definition sets the iteration limit before the run begins.
 - A developer supplies observable acceptance criteria and retains responsibility for human exploratory testing of less obvious defects.
 - Testable app screens expose stable identifiers and accessible descriptions for controls and meaningful UI states.
 - Build capacity is limited relative to test-run capacity; the workflow favors reuse of eligible test apps over replacement builds.
