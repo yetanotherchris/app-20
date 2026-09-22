@@ -164,3 +164,6 @@ Thumbs.db
 *.swp
 .vscode/
 .idea/
+
+# https://github.com/Helweg/open-codebase-index
+.opencode/index/

@@ -344,3 +344,37 @@ AGENTS.md                         This file
 - After creating or editing a PR description, retrieve it with `gh api "repos/{owner}/{repo}/pulls/{number}" --jq '.body'` and confirm its headings, bullets, blank lines, and final attribution render as actual Markdown rather than literal escape sequences.
   Correct formatting before reporting the PR as ready.
 - Once merged, the next spec branch is created from the updated `main`.
+
+## Persistent Codebase Context
+
+This is optional:
+
+This project uses [`open-codebase-index`](https://github.com/Helweg/open-codebase-index) to maintain a local, incrementally updated index of source code and Spec Kit documents. OpenCode should query this index before using grep or scanning directories, retrieving only the relevant code, specifications, and architectural decisions.
+
+Local semantic embeddings are generated with Ollama and do not require a dedicated GPU:
+
+Add it to opencode.json (e.g. `C:\Users\myname\.config\opencode\opencode.json`)
+```bash
+{
+  "plugin": ["open-codebase-index"]
+}
+```
+
+```bash
+ollama pull embeddinggemma
+```
+
+Configure inside the repository `.opencode/codebase-index.json`:
+
+```json
+{
+  "embeddingProvider": "ollama",
+  "embeddingModel": "embeddinggemma:300m-qat-q4_0",
+  "scope": "project",
+  "indexing": {
+    "watchFiles": true
+  }
+}
+```
+
+After starting Ollama, restart OpenCode and run `/status`, followed by `/index`. Keep durable architectural decisions in Spec Kit summaries or `docs/decisions/` so they can be retrieved without loading the entire specification history.
