@@ -38,6 +38,7 @@ The user manages a conversation from its native action menu.
 - **FR-007**: Rename MUST trim surrounding whitespace and accept one through 80 characters. Delete MUST require the native destructive confirmation.
 - **FR-008**: At accessibility text sizes, titles MUST wrap without a line cap, rows MUST grow, the list MUST scroll, and the footer MUST remain reachable.
 - **FR-009**: The drawer MUST not include search, metadata rows, swipe actions, account controls, or a clear-all action.
+- **FR-010**: The Settings footer label MUST show the installed native build number as a short `b`-prefixed value and announce that number to assistive technology.
 
 ## Success Criteria
 

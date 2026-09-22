@@ -11,7 +11,7 @@
 
 The user writes and sends a message using the designed two-row composer.
 
-**Independent Test**: Type one line, multiple lines, and more than six lines. Confirm the composer dimensions, enabled states, keyboard position, and send recovery match states 01-06 and 27.
+**Independent Test**: Type one line, multiple lines, and more than eleven lines. Confirm the composer dimensions, enabled states, keyboard position, internal scrolling at the cap, and send recovery match states 01-06 and 27.
 
 **Acceptance Scenarios**:
 
@@ -42,7 +42,7 @@ The user retains a draft when no provider key is configured and can enter setup 
 ### Functional Requirements
 
 - **FR-001**: The chat root MUST use the header, color, typography, safe-area, and responsive-layout rules in visual-spec.md sections 2, 3, and 5.
-- **FR-002**: The composer MUST be one rounded outer rectangle with text above a right-aligned 44-point Send action. It MUST follow the exact geometry and six-line cap in visual-spec.md section 6.
+- **FR-002**: The composer MUST be one rounded outer rectangle with text above a right-aligned 44-point Send action. It MUST follow the exact geometry and eleven-line cap in visual-spec.md section 6.
 - **FR-003**: The composer MUST dock to the actual software keyboard frame with an 8-point gap and use no competing keyboard-avoidance owner.
 - **FR-004**: Whitespace-only drafts, missing provider keys, unavailable models, and pending sends MUST disable Send. A pending send makes the input read-only but preserves keyboard and focus state.
 - **FR-005**: Failed sends MUST retain the draft, remove the pending duplicate, report an inline error, and retry through Send using the existing idempotent request semantics.
@@ -50,6 +50,7 @@ The user retains a draft when no provider key is configured and can enter setup 
 - **FR-007**: The header MUST have a Conversations control, centered model capsule, and Settings control. It MUST NOT render the former overflow menu, sync-status text, Clear conversations action, Import S3 action, or app-level keyboard-dismissal control.
 - **FR-008**: The model label MUST be exactly `Openrouter Auto` and additional configured entries, if any, MUST be presented in the same native menu.
 - **FR-009**: The chat MUST provide all accessibility names, states, minimum 44-point targets, Dynamic Type adaptation, and Reduce Motion behavior assigned to the header and composer in visual-spec.md sections 5, 6, and 17.
+- **FR-010**: Tapping unoccupied transcript or empty-state space MUST dismiss the keyboard without changing the draft.
 
 ## Success Criteria
 
