@@ -8,6 +8,32 @@
 
 **Input**: User description: "Enable an AI coding agent to change an iOS mobile app, run it on a reusable simulator build, inspect it through visual and accessibility evidence, verify acceptance criteria, and iterate until the criteria pass."
 
+## Overview & Goals
+
+This feature provides a closed feedback loop for an AI coding agent and a human developer to verify iOS mobile UI changes without requiring routine manual device testing. The agent changes the app, runs the required interactions, observes the resulting UI, evaluates acceptance criteria, corrects failures, and produces evidence for the final result.
+
+The primary user is a coding agent operating under a developer's direction. The developer supplies the acceptance criteria, reviews the resulting report, and performs human exploratory testing for defects that automated visual and accessibility evidence cannot reveal reliably.
+
+The feature aims to make routine iOS UI acceptance verification repeatable from a Windows workstation, minimize replacement simulator app builds, and prevent incomplete or unobservable runs from being reported as passed.
+
+## Architecture
+
+The system consists of five collaborating parts:
+
+- **Coding Agent**: Changes the app, initiates runs, interprets observations, makes corrective changes, and reports the outcome.
+- **App Workspace and Development Service**: Supplies the current app source changes to an eligible test app.
+- **iOS Test App and Simulator Session**: Runs the app and receives the user interactions required by an acceptance run. The session is hosted remotely because the primary workstation cannot host an iOS simulator.
+- **Device Control and Observation Service**: Performs UI interactions and returns accessibility representations, visual images, runtime diagnostics, and other run evidence to the coding agent.
+- **Build and Distribution Service**: Produces replacement iOS test apps when the existing app cannot exercise the current source changes.
+
+The feedback loop is: define acceptance criteria, determine test-app eligibility, start or attach to a simulator session, perform interactions, capture observations, evaluate each criterion, correct failed criteria when possible, repeat, and publish a final report. A run stops with a pass only when every criterion passes. It stops as failed or inconclusive when a criterion cannot pass, evidence is missing, a dependency is unavailable, or the iteration limit is reached.
+
+## Integration Boundaries
+
+The coding agent needs controlled access to the app workspace, development service, device-control capability, simulator session, and collected evidence. The project must expose stable accessible identifiers and descriptions for controls and meaningful states that acceptance criteria require the agent to find or evaluate.
+
+The primary loop is exploratory and evidence-driven. Separately authored deterministic flows may validate stable paths, but they do not replace the agent's evidence-based evaluation or final reporting. Concrete selections for device control, development delivery, cloud simulator builds, optional deterministic flows, and coding-agent integration are planning decisions.
+
 ## User Scenarios & Testing *(mandatory)*
 
 ### User Story 1 - Complete an iOS Acceptance Loop (Priority: P1)
