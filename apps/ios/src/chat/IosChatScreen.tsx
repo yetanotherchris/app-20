@@ -564,7 +564,10 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
           accessibilityRole="button"
           accessibilityLabel="Open conversations"
           style={styles.headerButton}
-          onPress={() => void refreshHistory().then(() => setHistoryOpen(true))}
+          onPress={() => {
+            Keyboard.dismiss()
+            void refreshHistory().then(() => setHistoryOpen(true))
+          }}
         >
           <Text style={styles.headerIcon}>☰</Text>
         </Pressable>
