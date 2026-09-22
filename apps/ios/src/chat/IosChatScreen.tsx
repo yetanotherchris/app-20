@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
 import { ActionSheetIOS, Alert, Keyboard, Pressable, StyleSheet, Text, View } from 'react-native'
+import Constants from 'expo-constants'
 import Svg, { Path } from 'react-native-svg'
 import {
   LLMChat,
@@ -66,6 +67,8 @@ const IOS_CHAT_THEME = {
     messageTextSize: 17,
   },
 } satisfies ThemeInput
+
+const BUILD_NUMBER = Constants.platform?.ios?.buildNumber ?? 'dev'
 
 function createId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`
@@ -702,10 +705,10 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
             ) : null
           }
           renderEmptyState={() => (
-            <View style={styles.emptyState}>
+            <Pressable onPress={Keyboard.dismiss} style={styles.emptyState} testID="chat.empty-state">
               <Text style={styles.emptyTitle}>Start a conversation</Text>
               <Text style={styles.emptySubtitle}>Your messages will appear here.</Text>
-            </View>
+            </Pressable>
           )}
           renderMessage={renderMessage}
           renderSend={renderSend}
@@ -792,7 +795,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
             ))}
           </View>
           <Pressable
-            accessibilityLabel="Settings"
+            accessibilityLabel={`Settings, build ${BUILD_NUMBER}`}
             accessibilityRole="button"
             onPress={() => {
               Keyboard.dismiss()
@@ -802,7 +805,9 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
             style={styles.drawerSettings}
           >
             <Text style={styles.drawerSettingsGlyph}>⚙</Text>
-            <Text style={styles.drawerSettingsLabel}>Settings</Text>
+            <Text style={styles.drawerSettingsLabel}>
+              Settings <Text style={styles.drawerBuildNumber}>b{BUILD_NUMBER}</Text>
+            </Text>
           </Pressable>
         </View>
       ) : null}
@@ -1018,4 +1023,5 @@ const styles = StyleSheet.create({
   },
   drawerSettingsGlyph: { color: '#111111', fontSize: 24, lineHeight: 28 },
   drawerSettingsLabel: { color: '#111111', fontSize: 17, lineHeight: 22 },
+  drawerBuildNumber: { color: '#6b6b70', fontSize: 13, fontVariant: ['tabular-nums'], lineHeight: 18 },
 })

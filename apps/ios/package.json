@@ -19,6 +19,7 @@
     "@aws-sdk/client-s3": "^3.1131.0",
     "app-20-llmchat": "1.0.70",
     "expo": "^57.0.22",
+    "expo-constants": "~57.0.19",
     "expo-document-picker": "~57.0.2",
     "expo-file-system": "~57.0.7",
     "expo-secure-store": "~57.0.4",
