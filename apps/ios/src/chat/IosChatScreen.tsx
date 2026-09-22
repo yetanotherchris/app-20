@@ -8,6 +8,7 @@ import {
   useChatSession,
   type ChatOperation,
   type ChatSessionControls,
+  type LLMChatScrollToLatestProps,
   type Message,
   type ThemeInput,
 } from 'app-20-llmchat'
@@ -536,7 +537,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
   )
 
   const renderScrollToLatest = useCallback(
-    ({ label, onPress }: { label: string; onPress: () => void }) => (
+    ({ label, onPress }: LLMChatScrollToLatestProps) => (
       <Pressable
         accessibilityLabel={label}
         accessibilityRole="button"
@@ -544,9 +545,9 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
         style={styles.scrollToLatest}
         testID="chat.scroll-to-latest"
       >
-        <Svg height={20} viewBox="0 0 24 24" width={20}>
+        <Svg height={22} viewBox="0 0 24 24" width={22}>
           <Path
-            d="M12 5v14m-6-6 6 6 6-6"
+            d="m6 9 6 6 6-6"
             fill="none"
             stroke="#111111"
             strokeLinecap="round"
@@ -554,7 +555,6 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
             strokeWidth={2}
           />
         </Svg>
-        <Text style={styles.scrollToLatestLabel}>{label}</Text>
       </Pressable>
     ),
     [],
@@ -949,14 +949,18 @@ const styles = StyleSheet.create({
   sendDisabled: { backgroundColor: '#e5e5ea' },
   scrollToLatest: {
     alignItems: 'center',
-    backgroundColor: '#e5e5ea',
+    backgroundColor: '#f2f2f7',
+    borderColor: '#d1d1d6',
     borderRadius: 22,
-    flexDirection: 'row',
-    gap: 6,
-    minHeight: 44,
-    paddingHorizontal: 16,
+    borderWidth: 1,
+    height: 44,
+    justifyContent: 'center',
+    shadowColor: '#000000',
+    shadowOffset: { height: 2, width: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    width: 44,
   },
-  scrollToLatestLabel: { color: '#111111', fontSize: 15, fontWeight: '600', lineHeight: 20 },
   drawer: {
     backgroundColor: '#ffffff',
     bottom: 0,

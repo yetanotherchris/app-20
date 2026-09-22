@@ -92,7 +92,7 @@ Transcript uses existing scroll behavior, with trailing padding68pt to keep the 
 
 ## Scroll to latest — appearance and scenarios
 
-A floating gray control, radius22, background #E5E5EA, with a dark down-arrow and label. Accessible label “Scroll to latest message”. It is horizontally centered above the complete composer stack (including edit/status/error rows), not above keyboard directly. It floats over transcript; transcript reserves68pt trailing padding so message controls can be reached without obstruction. No unread counter, badges or new-message functionality.
+A floating44×44 grouped (#F2F2F7) circle, radius22, border1 #D1D1D6, shadow black .10 offset(0,2) blur8; down-arrow22 #111111 centered. Accessible label “Scroll to latest message”. It is horizontally centered at x=(W−44)/2. Its bottom is12pt above the TOP of the complete composer stack (including edit/status/error rows), not above keyboard directly. It floats over transcript; transcript reserves68pt trailing padding so message controls can be reached without obstruction. Hit-testing is limited to the circle. No unread counter, text pill, badges or new-message functionality.
 
 Calculate distance `d=max(0, contentHeight − viewportHeight − offsetY)` in normalized non-inverted coordinates, including transcript padding. Show if d>80pt, hide if d≤40pt; retain previous visibility between40 and80 to avoid flicker. Don't show while list is empty, initial loading, non-scrollable, obscured by modal, or before initial position restoration. If an inverted list is retained, normalize its offset to equivalent distance rather than reusing the formula blindly. Content/viewport changes must recompute distance, not just scroll events.
 
