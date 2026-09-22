@@ -5,8 +5,10 @@
   "main": "index.ts",
   "scripts": {
     "start": "expo start",
+    "start:dev": "expo start --dev-client",
     "ios": "expo start --ios",
     "build:ios": "npx eas-cli build --platform ios --profile preview",
+    "build:ios:dev": "npx eas-cli build --platform ios --profile development",
     "typecheck": "tsc --noEmit",
     "test": "vitest run"
   },
