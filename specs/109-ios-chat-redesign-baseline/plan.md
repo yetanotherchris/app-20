@@ -10,7 +10,7 @@ Replace the early iOS shell with a native React Native composition root that pre
 
 **Language/Version**: TypeScript 6, React 19, React Native 0.86, Expo SDK 57
 
-**Primary Dependencies**: Expo, Expo SecureStore, Expo DocumentPicker, React Native Safe Area Context, `app-20-llmchat`, `@app-20/conversation-storage`, `@app-20/sync`
+**Primary Dependencies**: Expo, Expo Constants, Expo SecureStore, Expo DocumentPicker, React Native Safe Area Context, `app-20-llmchat`, `@app-20/conversation-storage`, `@app-20/sync`
 
 **Storage**: One JSON conversation file plus manifest in the iOS sandbox. API and S3 credentials in Expo SecureStore.
 
@@ -79,3 +79,4 @@ packages/conversation-storage/src/
 | Local `app-20-llmchat` package integration  | The released component API does not expose the required native composer, edit-action, and transcript behavior. The iOS app must test against the implementation used for this redesign. | Reimplementing assistant rendering in the iOS host would duplicate and diverge from the shared renderer.           |
 | Separate draft and saved settings snapshots | Partial S3 entries must survive editing without replacing the last complete S3 configuration.                                                                                           | Writing each field directly to SecureStore could activate incomplete credentials or discard a valid configuration. |
 | Targeted mirror queue                       | Rename/delete and retry must mirror completed local mutations without rerunning a provider request.                                                                                     | Reusing the full reconciliation pass cannot represent deletions safely or order individual conversation revisions. |
+| EAS-managed build numbers                   | The Settings footer identifies the installed binary by its native build number. Development and preview profiles increment the remote iOS build number for each new binary.              | A hardcoded application version cannot distinguish successive internal builds.                                   |
