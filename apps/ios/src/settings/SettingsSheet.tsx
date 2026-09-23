@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import {
   ActivityIndicator,
+  AppState,
   Modal,
   Pressable,
   ScrollView,
@@ -47,6 +48,7 @@ export function SettingsSheet({
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latestDraft = useRef(draft)
   const saving = useRef<Promise<void> | null>(null)
+  const hydrated = useRef(false)
 
   const save = useEffectEvent(async (value: SettingsSnapshot) => {
     const result = validateSettings(value)
@@ -84,6 +86,10 @@ export function SettingsSheet({
       setRevealed(null)
       return
     }
+    // Hydrate from protected storage once. A reopen resumes the retained draft
+    // instead of discarding an unsaved or failed write (FR-009).
+    if (hydrated.current) return
+    hydrated.current = true
     void service.readSettings().then((value) => {
       latestDraft.current = value
       setDraft(value)
@@ -95,6 +101,15 @@ export function SettingsSheet({
       if (timer.current) clearTimeout(timer.current)
     }
   }, [service, visible])
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      // A revealed secret is masked whenever the app leaves the foreground
+      // (FR-012).
+      if (state !== 'active') setRevealed(null)
+    })
+    return () => subscription.remove()
+  }, [])
 
   function update(next: SettingsSnapshot): void {
     latestDraft.current = next
@@ -180,7 +195,11 @@ export function SettingsSheet({
             <Text style={styles.error}>Not saved. Retry</Text>
           </Pressable>
         ) : null}
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          automaticallyAdjustKeyboardInsets
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+        >
           <Pressable
             accessibilityLabel="Import from JSON file"
             accessibilityRole="button"
@@ -203,7 +222,9 @@ export function SettingsSheet({
                 autoCorrect={false}
                 onBlur={() => void save(latestDraft.current)}
                 onChangeText={(apiKey) => update({ ...draft, apiKey })}
+                onSubmitEditing={() => void save(latestDraft.current)}
                 placeholder="Enter API key"
+                returnKeyType="done"
                 secureTextEntry={revealed !== 'apiKey'}
                 style={styles.input}
                 value={draft.apiKey}
@@ -236,6 +257,7 @@ export function SettingsSheet({
               placeholder="Enter bucket name"
               value={draft.s3.bucket}
               error={errors.bucket}
+              onBlur={() => void save(latestDraft.current)}
               onChangeText={(bucket) => update({ ...draft, s3: { ...draft.s3, bucket } })}
             />
             <SettingInput
@@ -243,6 +265,7 @@ export function SettingsSheet({
               placeholder="Enter region (e.g. eu-west-1)"
               value={draft.s3.region}
               error={errors.region}
+              onBlur={() => void save(latestDraft.current)}
               onChangeText={(region) => update({ ...draft, s3: { ...draft.s3, region } })}
             />
             <SettingInput
@@ -250,6 +273,7 @@ export function SettingsSheet({
               placeholder="Enter access key ID"
               value={draft.s3.accessKeyId}
               error={errors.accessKeyId}
+              onBlur={() => void save(latestDraft.current)}
               onChangeText={(accessKeyId) => update({ ...draft, s3: { ...draft.s3, accessKeyId } })}
             />
             <Text style={styles.label}>Secret access key</Text>
@@ -261,7 +285,9 @@ export function SettingsSheet({
                 onChangeText={(secretAccessKey) =>
                   update({ ...draft, s3: { ...draft.s3, secretAccessKey } })
                 }
+                onSubmitEditing={() => void save(latestDraft.current)}
                 placeholder="Enter secret access key"
+                returnKeyType="done"
                 secureTextEntry={revealed !== 'secretAccessKey'}
                 style={styles.input}
                 value={draft.s3.secretAccessKey}
@@ -294,6 +320,7 @@ export function SettingsSheet({
               placeholder="Enter S3 endpoint URL"
               value={draft.s3.endpoint}
               error={errors.endpoint}
+              onBlur={() => void save(latestDraft.current)}
               onChangeText={(endpoint) => update({ ...draft, s3: { ...draft.s3, endpoint } })}
             />
           </View>
@@ -311,12 +338,14 @@ function SettingInput({
   placeholder,
   value,
   error,
+  onBlur,
   onChangeText,
 }: {
   label: string
   placeholder: string
   value: string
   error?: string
+  onBlur?(): void
   onChangeText(value: string): void
 }): React.JSX.Element {
   return (
@@ -325,7 +354,9 @@ function SettingInput({
       <TextInput
         autoCapitalize="none"
         autoCorrect={false}
+        onBlur={onBlur}
         onChangeText={onChangeText}
+        returnKeyType="done"
         placeholder={placeholder}
         style={[styles.input, error ? styles.inputError : null]}
         value={value}

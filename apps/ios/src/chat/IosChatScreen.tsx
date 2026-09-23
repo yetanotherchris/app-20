@@ -1,7 +1,19 @@
 import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
-import { ActionSheetIOS, Alert, Keyboard, Pressable, StyleSheet, Text, View } from 'react-native'
+import {
+  AccessibilityInfo,
+  ActionSheetIOS,
+  ActivityIndicator,
+  Alert,
+  Keyboard,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native'
 import Constants from 'expo-constants'
 import Svg, { Path } from 'react-native-svg'
+import { Picker } from '@expo/ui'
 import {
   LLMChat,
   ContentRenderer,
@@ -92,6 +104,13 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
   const sessionGenerationRef = useRef(0)
   const mirrorRevisionRef = useRef(0)
   const resendPendingRef = useRef(false)
+  const submitPendingRef = useRef<{
+    beforeIds: Set<string>
+    text: string
+    wasEditing: boolean
+  } | null>(null)
+  const composerFocusRequestRef = useRef(0)
+  const [composerFocusRequest, setComposerFocusRequest] = useState(0)
   const [draft, setDraftState] = useState('')
   const [editSourceId, setEditSourceId] = useState<string | null>(null)
   const [modelName, setModelName] = useState('Openrouter Auto')
@@ -99,6 +118,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
   const [entries, setEntries] = useState<readonly ManifestEntry[]>([])
   const [historyOpen, setHistoryOpen] = useState(false)
   const [historyError, setHistoryError] = useState<string | null>(null)
+  const [historyLoading, setHistoryLoading] = useState(false)
   const [mutationPending, setMutationPending] = useState(false)
   const [s3SaveFailed, setS3SaveFailed] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -246,21 +266,28 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
 
   useEffect(() => {
     void secretsRef.current.hasProviderKey().then(setHasProviderKey)
-  }, [])
+    // Resume pending remote operations recorded before termination when a
+    // complete S3 configuration is available (FR-021).
+    void (async () => {
+      if (await secretsRef.current.getS3Config()) await sync.run()
+    })()
+  }, [sync])
 
   useEffect(() => {
-    const show = Keyboard.addListener('keyboardDidShow', (event) => {
+    // Track the live keyboard frame, including interactive dismissal, with a
+    // single keyboard owner for the chat region (FR-005).
+    const change = Keyboard.addListener('keyboardWillChangeFrame', (event) => {
       requestAnimationFrame(() => {
         chatRegionRef.current?.measureInWindow((_x, top, _width, height) => {
           setKeyboardInset(Math.max(0, top + height - event.endCoordinates.screenY))
         })
       })
     })
-    const hide = Keyboard.addListener('keyboardDidHide', () => {
+    const hide = Keyboard.addListener('keyboardWillHide', () => {
       setKeyboardInset(0)
     })
     return () => {
-      show.remove()
+      change.remove()
       hide.remove()
     }
   }, [])
@@ -290,14 +317,42 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
     [autosave],
   )
 
+  function requestComposerFocus(): void {
+    composerFocusRequestRef.current += 1
+    setComposerFocusRequest(composerFocusRequestRef.current)
+  }
+
   useEffect(() => {
     if (chat.status !== 'idle' || !resendPendingRef.current) return
     resendPendingRef.current = false
-    const restoredDraft = parkedDraftRef.current ?? ''
-    parkedDraftRef.current = null
-    setEditSource(null)
-    setDraft(restoredDraft)
-  }, [chat.status, setDraft])
+    const pending = submitPendingRef.current
+    submitPendingRef.current = null
+    if (!pending) return
+    const added = chat.messages.filter((message) => !pending.beforeIds.has(message.id))
+    const response = added.at(-1)
+    const failed = response?.status === 'error'
+
+    if (pending.wasEditing) {
+      if (failed) {
+        // A failed resend keeps edit mode and the edited text (FR-016).
+        return
+      }
+      const restoredDraft = parkedDraftRef.current ?? ''
+      parkedDraftRef.current = null
+      setEditSource(null)
+      setDraft(restoredDraft)
+      return
+    }
+
+    if (failed) {
+      // Roll back the pending duplicate pair and restore the submitted draft
+      // so Send can retry without a duplicated user message (FR-002).
+      const ids = new Set(added.map((message) => message.id))
+      chat.replaceMessages(chat.messages.filter((message) => !ids.has(message.id)))
+      setDraft(pending.text)
+      requestComposerFocus()
+    }
+  }, [chat, setDraft])
 
   const startEdit = useCallback(
     (message: Message): void => {
@@ -305,6 +360,8 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
       if (editSourceRef.current === null) parkedDraftRef.current = draftRef.current
       setEditSource(message.id)
       setDraft(message.contentParts.map((part) => part.text).join(''))
+      requestComposerFocus()
+      AccessibilityInfo.announceForAccessibility('Edit and resend')
     },
     [chat.status, setDraft],
   )
@@ -325,8 +382,14 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
         setSettingsOpen(true)
         return
       }
-      resendPendingRef.current = editSourceRef.current !== null
-      chat.submit(draftRef.current.trim())
+      const text = draftRef.current.trim()
+      const wasEditing = editSourceRef.current !== null
+      // Record the pre-submit message ids so a failure can remove exactly the
+      // pending pair (FR-002, FR-003).
+      const beforeIds = new Set(messagesRef.current.map((message) => message.id))
+      resendPendingRef.current = true
+      submitPendingRef.current = { beforeIds, text, wasEditing }
+      chat.submit(text)
       autosave.cancelDraftTimer()
       setDraft('')
     } finally {
@@ -341,12 +404,15 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
   }
 
   async function refreshHistory(): Promise<void> {
+    setHistoryLoading(true)
     try {
       const result = await storeRef.current.list()
       setEntries(result.entries.slice(0, 5))
       setHistoryError(null)
     } catch {
       setHistoryError('Conversations could not be loaded.')
+    } finally {
+      setHistoryLoading(false)
     }
   }
 
@@ -367,39 +433,48 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
   }
 
   function renameConversation(entry: ManifestEntry): void {
-    Alert.prompt(
-      'Rename conversation',
-      undefined,
-      [
-        { style: 'cancel', text: 'Cancel' },
-        {
-          text: 'Save',
-          onPress: (title?: string) => {
-            if (!title || title.trim().length === 0 || title.trim().length > 80) {
-              setHistoryError(
-                title?.trim().length === 0 ? 'Enter a name.' : 'Use 80 characters or fewer.',
-              )
-              return
-            }
-            setMutationPending(true)
-            void storeRef.current
-              .rename(entry.id, title)
-              .then(async () => {
-                await mirrorLocalFile(
-                  entry.fileName,
-                  await filePortRef.current.readText(entry.fileName),
-                )
-                await mirrorManifest()
-                await refreshHistory()
-              })
-              .catch(() => setHistoryError('The conversation was not renamed.'))
-              .finally(() => setMutationPending(false))
+    const presentAlert = (message?: string): void => {
+      Alert.prompt(
+        'Rename conversation',
+        message,
+        [
+          { style: 'cancel', text: 'Cancel' },
+          {
+            text: 'Save',
+            onPress: (title?: string) => {
+              const trimmed = title?.trim() ?? ''
+              // Native Alert.prompt cannot disable Save, so an invalid title
+              // re-presents the same alert with the applicable message and no
+              // value is saved (FR-008).
+              if (trimmed.length === 0) {
+                presentAlert('Enter a name.')
+                return
+              }
+              if (trimmed.length > 80) {
+                presentAlert('Use 80 characters or fewer.')
+                return
+              }
+              setMutationPending(true)
+              void storeRef.current
+                .rename(entry.id, trimmed)
+                .then(async () => {
+                  await mirrorLocalFile(
+                    entry.fileName,
+                    await filePortRef.current.readText(entry.fileName),
+                  )
+                  await mirrorManifest()
+                  await refreshHistory()
+                })
+                .catch(() => setHistoryError('The conversation was not renamed.'))
+                .finally(() => setMutationPending(false))
+            },
           },
-        },
-      ],
-      'plain-text',
-      entry.title,
-    )
+        ],
+        'plain-text',
+        entry.title,
+      )
+    }
+    presentAlert()
   }
 
   function confirmDeleteConversation(entry: ManifestEntry): void {
@@ -574,50 +649,28 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
         >
           <Text style={styles.headerIcon}>☰</Text>
         </Pressable>
-        <Pressable
-          accessibilityLabel={`Choose model, ${modelName}`}
-          accessibilityRole="button"
-          onPress={() => {
-            Keyboard.dismiss()
-            ActionSheetIOS.showActionSheetWithOptions(
-              {
-                cancelButtonIndex: 1,
-                options: ['Openrouter Auto', 'Cancel'],
-                title: 'Choose model',
-              },
-              (index) => {
-                if (index === 0) setModelName('Openrouter Auto')
-              },
-            )
-          }}
-          style={styles.modelPicker}
-        >
-          <Text numberOfLines={1} style={styles.modelLabel}>
-            {modelName}
-          </Text>
-          <Svg height={16} viewBox="0 0 24 24" width={16}>
-            <Path
-              d="m6 9 6 6 6-6"
-              fill="none"
-              stroke="#111111"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-            />
-          </Svg>
-        </Pressable>
+        <View style={styles.modelPicker}>
+          <Picker
+            appearance="menu"
+            onValueChange={(value) => setModelName(String(value))}
+            selectedValue={modelName}
+            testID="chat.model-picker"
+          >
+            <Picker.Item label="Openrouter Auto" value="Openrouter Auto" />
+          </Picker>
+        </View>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="New chat"
+          accessibilityLabel="Open settings"
           style={styles.headerButton}
           onPress={() => {
             Keyboard.dismiss()
-            void newConversation()
+            setSettingsOpen(true)
           }}
         >
           <Svg height={24} viewBox="0 0 24 24" width={24}>
             <Path
-              d="M13 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 3l5 5M10 14l-1 4 4-1L22 8l-5-5z"
+              d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm7-3.5a7 7 0 0 0-.1-1.2l2-1.5-2-3.5-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.5 2 1.5a7 7 0 0 0 0 2.4l-2 1.5 2 3.5 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.5-2-1.5c.1-.4.1-.8.1-1.2Z"
               fill="none"
               stroke="#111111"
               strokeLinecap="round"
@@ -634,7 +687,13 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
           status={chat.status}
           hasEarlierMessages={false}
           isLoadingEarlier={false}
-          disabled={gatePending}
+          disabled={gatePending || !hasProviderKey}
+          readOnly={chat.status !== 'idle'}
+          followThreshold={40}
+          scrollToLatestShowThreshold={80}
+          listTrailingPadding={68}
+          scrollToLatestAnnouncement="Latest message"
+          composerFocusRequest={composerFocusRequest}
           onChangeDraft={setDraft}
           onSubmit={() => void submit()}
           onStop={stop}
@@ -705,7 +764,11 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
             ) : null
           }
           renderEmptyState={() => (
-            <Pressable onPress={Keyboard.dismiss} style={styles.emptyState} testID="chat.empty-state">
+            <Pressable
+              onPress={Keyboard.dismiss}
+              style={styles.emptyState}
+              testID="chat.empty-state"
+            >
               <Text style={styles.emptyTitle}>Start a conversation</Text>
               <Text style={styles.emptySubtitle}>Your messages will appear here.</Text>
             </Pressable>
@@ -747,8 +810,14 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
             <Text style={styles.newChatLabel}>New chat</Text>
           </Pressable>
           <Text style={styles.recentHeading}>Recent</Text>
-          <View style={styles.drawerList}>
-            {historyError ? (
+          <ScrollView contentContainerStyle={styles.drawerList} style={styles.drawerScroll}>
+            {historyLoading ? (
+              <View style={styles.drawerLoading}>
+                <ActivityIndicator color="#6b6b70" size="small" />
+                <Text style={styles.drawerLoadingLabel}>Loading conversations…</Text>
+              </View>
+            ) : null}
+            {!historyLoading && historyError ? (
               <Pressable
                 accessibilityLabel="Retry loading conversations"
                 accessibilityRole="button"
@@ -758,7 +827,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
                 <Text style={styles.noticeText}>{historyError}</Text>
               </Pressable>
             ) : null}
-            {!historyError && entries.length === 0 ? (
+            {!historyLoading && !historyError && entries.length === 0 ? (
               <Text style={styles.emptyHistory}>No conversations yet</Text>
             ) : null}
             {entries.map((entry) => (
@@ -776,9 +845,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
                   onPress={() => void openConversation(entry.id)}
                   style={styles.entryOpen}
                 >
-                  <Text numberOfLines={1} style={styles.entryText}>
-                    {entry.title || 'Untitled conversation'}
-                  </Text>
+                  <Text style={styles.entryText}>{entry.title || 'Untitled conversation'}</Text>
                 </Pressable>
                 <Pressable
                   accessibilityLabel={`Conversation actions, ${entry.title || 'Untitled conversation'}`}
@@ -793,7 +860,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
                 </Pressable>
               </View>
             ))}
-          </View>
+          </ScrollView>
           <Pressable
             accessibilityLabel={`Settings, build ${BUILD_NUMBER}`}
             accessibilityRole="button"
@@ -999,7 +1066,10 @@ const styles = StyleSheet.create({
     marginLeft: 16,
     marginTop: 24,
   },
-  drawerList: { paddingHorizontal: 16, paddingTop: 8 },
+  drawerList: { paddingBottom: 16, paddingHorizontal: 16, paddingTop: 8 },
+  drawerScroll: { flex: 1 },
+  drawerLoading: { alignItems: 'center', gap: 8, paddingVertical: 24 },
+  drawerLoadingLabel: { color: '#6b6b70', fontSize: 13, lineHeight: 18 },
   entry: {
     borderRadius: 14,
     flexDirection: 'row',
@@ -1016,16 +1086,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderTopColor: '#d1d1d6',
     borderTopWidth: 1,
-    bottom: 0,
     flexDirection: 'row',
     gap: 12,
-    height: 56,
-    left: 0,
+    minHeight: 56,
     paddingHorizontal: 16,
-    position: 'absolute',
-    right: 0,
   },
   drawerSettingsGlyph: { color: '#111111', fontSize: 24, lineHeight: 28 },
   drawerSettingsLabel: { color: '#111111', fontSize: 17, lineHeight: 22 },
-  drawerBuildNumber: { color: '#6b6b70', fontSize: 13, fontVariant: ['tabular-nums'], lineHeight: 18 },
+  drawerBuildNumber: {
+    color: '#6b6b70',
+    fontSize: 13,
+    fontVariant: ['tabular-nums'],
+    lineHeight: 18,
+  },
 })
