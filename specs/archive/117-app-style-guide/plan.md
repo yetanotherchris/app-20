@@ -11,3 +11,7 @@ The initial implementation alignment is limited to the existing latest control. 
 ## Verification approach
 
 Review the guide against FR-001 through FR-009 and confirm that the latest-control scope is consistent across `spec.md`, this plan, and the guide. Run `git diff --check` for whitespace errors.
+
+## Decision log
+
+- 2026-09-23: The implementation PR (#37) merged without moving this completed spec to `specs/archive/`. This documentation-only corrective PR archives the existing artifacts. No feature behavior changes.
