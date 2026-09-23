@@ -83,4 +83,5 @@ packages/conversation-storage/src/
 
 ## Decision log
 
+- 2026-09-23: The user directed archival before native acceptance validation is available. T019 remains open and records the unverified states; archival does not claim that validation passed.
 - 2026-09-23: Native acceptance checks cannot be performed in the current Windows environment. Windows has no supported local iOS simulator, and no iOS device is available. The feature retains this outstanding requirement until an iOS validation environment exists.
