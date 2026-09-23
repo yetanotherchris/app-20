@@ -15,3 +15,7 @@
 
 - [x] T006 Review the completed guide against FR-001 through FR-009 and confirm uncovered interface changes require a guide amendment before acceptance.
 - [x] T007 Run `git diff --check` and verify that it reports no whitespace errors.
+
+## Phase 4: Archive correction
+
+- [x] T008 Move the completed spec artifacts to `specs/archive/117-app-style-guide/` and mark the specification as archived.
