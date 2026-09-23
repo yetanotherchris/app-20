@@ -18,7 +18,7 @@
     "@app-20/sync": "*",
     "@aws-sdk/client-s3": "^3.1131.0",
     "@expo/ui": "~57.0.19",
-    "app-20-llmchat": "github:yetanotherchris/app-20-llmchat#fffad3f41b30186804fab7dcc0935f5102c941c7",
+    "app-20-llmchat": "1.0.80",
     "expo": "~57.0.24",
     "expo-constants": "~57.0.19",
     "expo-dev-client": "~57.0.19",
