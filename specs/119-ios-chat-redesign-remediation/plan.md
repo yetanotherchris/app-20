@@ -12,7 +12,7 @@ Correct the iOS chat redesign defects that remain after specifications 109 throu
 
 **Language/Version**: TypeScript 6, React 19, React Native 0.86, Expo SDK 57
 
-**Primary Dependencies**: Expo, `@expo/ui` (new, SDK 57), Expo Constants, Expo SecureStore, Expo DocumentPicker, Expo FileSystem, `app-20-llmchat` (updated), `@app-20/conversation-storage`, `@app-20/sync`, `@aws-sdk/client-s3`
+**Primary Dependencies**: Expo, `@expo/ui` (new, SDK 57), Expo Constants, Expo SecureStore, Expo DocumentPicker, Expo FileSystem, `app-20-llmchat` (pinned to `3b73b67` until registry publishing is available), `@app-20/conversation-storage`, `@app-20/sync`, `@aws-sdk/client-s3`
 
 **Storage**: One JSON conversation file plus a JSON manifest in the iOS sandbox; credentials in Expo SecureStore; pending remote operations in `sync/mirror-queue.json`
 
@@ -28,7 +28,7 @@ Correct the iOS chat redesign defects that remain after specifications 109 throu
 
 ## Constitution Check
 
-*GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
+_GATE: Must pass before Phase 0 research. Re-check after Phase 1 design._
 
 - **I. Process Isolation**: Unaffected. The work is confined to the Expo app, the shared component, and workspace packages; no Electron preload or IPC surface changes.
 - **II. Path Trust**: Unaffected. Conversation file access stays behind `ConversationFilePort` with its existing name allowlist and atomic temp-file-then-rename write.
@@ -84,9 +84,9 @@ packages/conversation-storage/src/   # unchanged (rename already preserves updat
 
 ## Complexity Tracking
 
-| Violation | Why Needed | Simpler Alternative Rejected Because |
-|-----------|------------|-------------------------------------|
-| Cross-repository component change | FR-017, FR-018, and FR-019 live in the shared transcript. No available component version implements 80/40 hysteresis or the trailing space. | Implementing the transcript in `apps/ios` would duplicate and diverge from the shared renderer that spec 109 deliberately reused. |
-| `@expo/ui` dependency | FR-004 requires a native menu with a visibly selected entry. React Native's `ActionSheetIOS` cannot mark a selected option. | Hand-writing a Swift module cannot be compiled or verified in this environment and risks breaking the EAS build. |
-| `Alert.prompt` validation approximation | FR-008 requires validation inside the native rename flow. `Alert.prompt` cannot disable its Save button. | A hand-written Swift alert module is unverifiable here; the approximation never saves an invalid title and keeps the message in a native alert. |
-| Opt-in component props instead of new defaults | FR-017/FR-018 are iOS design rules; changing shared defaults would alter desktop behavior, which is out of scope. | Changing the component defaults to 40/80 would change the Electron and web chat surfaces without a desktop spec. |
+| Violation                                      | Why Needed                                                                                                                                  | Simpler Alternative Rejected Because                                                                                                            |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| Cross-repository component change              | FR-017, FR-018, and FR-019 live in the shared transcript. No available component version implements 80/40 hysteresis or the trailing space. | Implementing the transcript in `apps/ios` would duplicate and diverge from the shared renderer that spec 109 deliberately reused.               |
+| `@expo/ui` dependency                          | FR-004 requires a native menu with a visibly selected entry. React Native's `ActionSheetIOS` cannot mark a selected option.                 | Hand-writing a Swift module cannot be compiled or verified in this environment and risks breaking the EAS build.                                |
+| `Alert.prompt` validation approximation        | FR-008 requires validation inside the native rename flow. `Alert.prompt` cannot disable its Save button.                                    | A hand-written Swift alert module is unverifiable here; the approximation never saves an invalid title and keeps the message in a native alert. |
+| Opt-in component props instead of new defaults | FR-017/FR-018 are iOS design rules; changing shared defaults would alter desktop behavior, which is out of scope.                           | Changing the component defaults to 40/80 would change the Electron and web chat surfaces without a desktop spec.                                |

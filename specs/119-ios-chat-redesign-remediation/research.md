@@ -103,3 +103,11 @@ Phase 0 decisions. Each entry states the decision, why it was chosen, and the al
 **Decision**: FR-025 native acceptance for states 01-35 is recorded as blocked in `tasks.md` and the PR, matching spec 109's T019. No state is claimed as passed without evidence.
 
 **Rationale**: This environment is Windows with no iOS simulator or device, and EAS Simulator was unavailable for the account (spec 109 verification record). Claiming a pass would be false.
+
+## R14: Composer autogrowth is pinned to the shared-component fix commit
+
+**Decision**: Pin `app-20-llmchat` to commit `3b73b67` until its package release is available from the registry.
+
+**Rationale**: The component's native multiline input relies on a content-size callback that can arrive after layout. The fix establishes the minimum height from explicit newline count immediately and keeps measured wrapping behavior. The commit is pushed and reproducible, while publishing `1.0.81` from this environment was rejected by the registry.
+
+**Alternatives considered**: Editing the installed dependency would not survive CI or EAS builds. Deferring the app fix until registry publishing would leave the reported Return-key defect unresolved. Both rejected.

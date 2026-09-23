@@ -66,8 +66,12 @@ export function SettingsSheet({
     try {
       await next
       if (latestDraft.current === value) {
-        setStatus('saved')
-        setImportStatus((current) => (current ? `${current}. Saved.` : current))
+        if (result.value) {
+          setStatus('saved')
+          setImportStatus((current) => (current ? `${current}. Saved.` : current))
+        } else {
+          setStatus('idle')
+        }
       }
       onSaved()
     } catch {
@@ -136,18 +140,17 @@ export function SettingsSheet({
       }
       setRevealed(null)
       const next = mergeSettingsPatch(latestDraft.current, parsed.patch)
-      // Validate the merged candidate before it changes the displayed draft. A
-      // syntactically incomplete S3 group is allowed and stays a draft; only a
-      // merged candidate that cannot be saved is rejected (FR-013).
+      // A valid partial S3 group remains in the draft until the required
+      // fields are supplied. The complete saved group remains unchanged.
       const merged = validateSettings(next)
-      if (merged.value === null && Object.keys(merged.errors).length > 0) {
-        setErrors(merged.errors)
-        setImportStatus(`Imported ${asset.name}. Complete S3 Keys to save.`)
-        return
-      }
       latestDraft.current = next
       setDraft(next)
-      setImportStatus(`Imported ${asset.name}`)
+      setErrors(merged.errors)
+      setImportStatus(
+        merged.value
+          ? `Imported ${asset.name}`
+          : `Imported ${asset.name}. Complete S3 Keys to save.`,
+      )
       await save(next)
     } catch {
       setImportStatus('The selected file could not be read.')
@@ -366,6 +369,7 @@ function SettingInput({
         autoCorrect={false}
         onBlur={onBlur}
         onChangeText={onChangeText}
+        onSubmitEditing={onBlur}
         returnKeyType="done"
         placeholder={placeholder}
         style={[styles.input, error ? styles.inputError : null]}

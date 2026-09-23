@@ -80,7 +80,7 @@ A developer can verify all affected states on a supported iOS device environment
 - **FR-001**: The implementation MUST preserve the beta scope and the visual, interaction, accessibility, and state rules in `specs/ios-chat-design/visual-spec.md` and `state-index.md`.
 - **FR-002**: A failed ordinary send MUST remove its pending duplicate, restore the submitted draft and prior focus state, and permit retry through Send without altering prior messages.
 - **FR-003**: A pending send MUST make the composer read-only while retaining its keyboard and focus state, and MUST disable every edit-and-resend action.
-- **FR-004**: The chat header MUST provide the defined Conversations control, model selector, and Settings control. The selected model entry MUST be visibly selected in its menu.
+- **FR-004**: The chat header MUST provide the defined Conversations control, model selector, and New chat control. Settings MUST remain in the history drawer footer. The selected model entry MUST be visibly selected in its menu.
 - **FR-005**: The composer and transcript MUST track actual keyboard-frame changes, including interactive dismissal, and dock with the defined gap without conflicting layout adjustments.
 - **FR-006**: Conversation ordering MUST use last-message activity only. Draft edits, opening, and renaming a conversation MUST NOT change that order.
 - **FR-007**: The history drawer MUST provide its defined loading, empty, error, retry, scrolling, footer-reachability, and accessibility-text-size behavior.

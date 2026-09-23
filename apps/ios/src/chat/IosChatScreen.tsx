@@ -12,7 +12,7 @@ import {
   View,
 } from 'react-native'
 import Constants from 'expo-constants'
-import Svg, { Path } from 'react-native-svg'
+import Svg, { Circle, Path } from 'react-native-svg'
 import { Host, Picker } from '@expo/ui'
 import {
   LLMChat,
@@ -111,6 +111,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
     wasEditing: boolean
   } | null>(null)
   const composerFocusRequestRef = useRef(0)
+  const longPressConversationRef = useRef<string | null>(null)
   const [composerFocusRequest, setComposerFocusRequest] = useState(0)
   const [draft, setDraftState] = useState('')
   const [editSourceId, setEditSourceId] = useState<string | null>(null)
@@ -664,7 +665,15 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
             void refreshHistory()
           }}
         >
-          <Text style={styles.headerIcon}>☰</Text>
+          <Svg height={24} viewBox="0 0 24 24" width={24}>
+            <Path
+              d="M5 9h14M5 15h14"
+              fill="none"
+              stroke="#111111"
+              strokeLinecap="round"
+              strokeWidth={2}
+            />
+          </Svg>
         </Pressable>
         <View style={styles.modelPicker}>
           <Host matchContents style={styles.modelPickerHost}>
@@ -680,16 +689,16 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
         </View>
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Open settings"
+          accessibilityLabel="New chat"
           style={styles.headerButton}
           onPress={() => {
             Keyboard.dismiss()
-            setSettingsOpen(true)
+            void newConversation()
           }}
         >
           <Svg height={24} viewBox="0 0 24 24" width={24}>
             <Path
-              d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm7-3.5a7 7 0 0 0-.1-1.2l2-1.5-2-3.5-2.4 1a7 7 0 0 0-2-1.2L14 3h-4l-.5 2.6a7 7 0 0 0-2 1.2l-2.4-1-2 3.5 2 1.5a7 7 0 0 0 0 2.4l-2 1.5 2 3.5 2.4-1a7 7 0 0 0 2 1.2L10 21h4l.5-2.6a7 7 0 0 0 2-1.2l2.4 1 2-3.5-2-1.5c.1-.4.1-.8.1-1.2Z"
+              d="M13 5H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8M16 3l5 5M10 14l-1 4 4-1L22 8l-5-5z"
               fill="none"
               stroke="#111111"
               strokeLinecap="round"
@@ -868,7 +877,17 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
                   accessibilityLabel={entry.title || 'Untitled conversation'}
                   accessibilityRole="button"
                   accessibilityState={{ selected: entry.id === conversationIdRef.current }}
-                  onPress={() => void openConversation(entry.id)}
+                  onLongPress={() => {
+                    longPressConversationRef.current = entry.id
+                    conversationActions(entry)
+                  }}
+                  onPress={() => {
+                    if (longPressConversationRef.current === entry.id) {
+                      longPressConversationRef.current = null
+                      return
+                    }
+                    void openConversation(entry.id)
+                  }}
                   style={styles.entryOpen}
                 >
                   <Text style={styles.entryText}>{entry.title || 'Untitled conversation'}</Text>
@@ -881,7 +900,9 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
                   style={styles.entryActions}
                 >
                   <Svg height={24} viewBox="0 0 24 24" width={24}>
-                    <Path d="M5 12h.01M12 12h.01M19 12h.01" stroke="#6b6b70" strokeWidth={4} />
+                    <Circle cx={5} cy={12} fill="#6b6b70" r={2} />
+                    <Circle cx={12} cy={12} fill="#6b6b70" r={2} />
+                    <Circle cx={19} cy={12} fill="#6b6b70" r={2} />
                   </Svg>
                 </Pressable>
               </View>
@@ -939,7 +960,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 44,
   },
-  headerIcon: { color: '#111111', fontSize: 24, lineHeight: 28 },
   modelPicker: {
     alignItems: 'center',
     backgroundColor: '#f2f2f7',

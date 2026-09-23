@@ -24,7 +24,7 @@
 
 ## Phase 4: History
 
-- [x] T014 Replace the header New chat control with a Settings control (FR-004).
+- [x] T014 Restore the header New chat control and keep Settings in the history drawer footer (FR-004).
 - [x] T015 Render the model selector as a native `@expo/ui` menu with the selected entry checked (FR-004).
 - [x] T016 Add drawer loading state, make the list scrollable, move the Settings footer out of absolute positioning, and allow title wrap at accessibility text sizes (FR-007).
 - [x] T017 Re-present the rename alert with the validation message on invalid input (FR-008).
@@ -53,6 +53,7 @@
 - [x] T028 Record native acceptance for states 01-35 (FR-025) as blocked with the environment reason. Do not mark any state passed without evidence.
 - [x] T029 Archive `118-agent-device-acceptance`: `git mv` to `specs/archive/` and set `**Status**` to `Archived`.
 - [x] T030 Open the PR with the review-required headings and attribution.
+- [x] T031 Pin the shared composer newline-growth fix at `3b73b67` after registry publication was unavailable.
 
 ## Verification record
 
@@ -61,6 +62,7 @@
 - T027 completed together with T006.
 - T028 is blocked: native acceptance for states 01-35 requires an iOS build on macOS or a device. This environment is Windows with no local iOS simulator or device, and EAS Simulator was unavailable for the account (spec 109 verification record). No state is recorded as passed.
 - T029 completed: PR opened.
+- Post-fix verification: `npm run test --workspace @app-20/ios` (30 tests), `npm run typecheck --workspace @app-20/ios`, `npm run lint`, `npm run typecheck`, `npm run test` (270 tests), and `npm run test:e2e` (71 tests) passed. The shared component's composer test, typecheck, lint, and build passed before it was pinned at `3b73b67`.
 
 ## Review remediation
 
@@ -75,5 +77,3 @@ Five agent-based reviews were run against PR #44. Every critical and major findi
 - FR-015 the edit action accessibility label includes a source excerpt.
 - FR-024 adds `sendRecovery.test.ts` and import, ordering, and mirror coverage.
 - Minor: settings writes chain past a failed write; an active rename updates the in-memory base; import rejects unicode-escaped and inherited-name duplicates and bounds scanner depth; the merged import candidate is validated before the draft changes.
-
-
