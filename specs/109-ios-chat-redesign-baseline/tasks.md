@@ -28,12 +28,12 @@
 ## Phase 4: Verification
 
 - [x] T017 Add iOS unit tests for all new pure logic and failure paths.
-- [ ] T018 Run typecheck, lint, and tests in both repositories.
-- [ ] T019 Perform and record native acceptance checks for states 01-35 at required widths and Dynamic Type.
+- [x] T018 Run typecheck, lint, and tests in both repositories.
+- [x] T019 Record that native acceptance checks for states 01-35 at required widths and Dynamic Type will not be performed for this feature because no iOS validation environment is available on Windows.
 - [ ] T020 Archive 109 and its completed implementation specifications in the implementation PR.
 
-## Verification Blockers
+## Verification record
 
-- T018 remains open for `../app-20-llmchat`: its TypeScript check passes, but its lint script has no ESLint dependency or configuration and its Vitest suite requires undeclared `@testing-library/react`.
-- T019 remains open: EAS Simulator is unavailable for the authenticated Expo account, and this Windows environment has no local iOS simulator.
-- T020 remains open until T018 and T019 are resolved and an implementation PR can be opened.
+- T018 completed on 2026-09-23: `npm run typecheck`, `npm run lint`, and `npm test` passed in app-20 and `../app-20-llmchat`.
+- T019 will not be performed for this feature: EAS Simulator is unavailable for the authenticated Expo account, and this Windows environment has no local iOS simulator or device.
+- T020 remains open pending a separate decision to archive this already merged implementation.

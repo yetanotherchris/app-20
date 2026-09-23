@@ -80,3 +80,7 @@ packages/conversation-storage/src/
 | Separate draft and saved settings snapshots | Partial S3 entries must survive editing without replacing the last complete S3 configuration.                                                                                           | Writing each field directly to SecureStore could activate incomplete credentials or discard a valid configuration. |
 | Targeted mirror queue                       | Rename/delete and retry must mirror completed local mutations without rerunning a provider request.                                                                                     | Reusing the full reconciliation pass cannot represent deletions safely or order individual conversation revisions. |
 | EAS-managed build numbers                   | The Settings footer identifies the installed binary by its native build number. Development and preview profiles increment the remote iOS build number for each new binary.              | A hardcoded application version cannot distinguish successive internal builds.                                   |
+
+## Decision log
+
+- 2026-09-23: Native acceptance checks are not performed for this feature. Windows has no supported local iOS simulator, and no iOS device is available. Device-level acceptance is deferred to a separate feature when an iOS validation environment exists.
