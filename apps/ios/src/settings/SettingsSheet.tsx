@@ -60,7 +60,8 @@ export function SettingsSheet({
       if (result.value) await service.saveS3Config(result.value.s3)
     }
     const previous = saving.current ?? Promise.resolve()
-    const next = previous.then(operation)
+    // A failed write must not block a later chained write (FR-009).
+    const next = previous.catch(() => undefined).then(operation)
     saving.current = next
     try {
       await next
@@ -135,6 +136,15 @@ export function SettingsSheet({
       }
       setRevealed(null)
       const next = mergeSettingsPatch(latestDraft.current, parsed.patch)
+      // Validate the merged candidate before it changes the displayed draft. A
+      // syntactically incomplete S3 group is allowed and stays a draft; only a
+      // merged candidate that cannot be saved is rejected (FR-013).
+      const merged = validateSettings(next)
+      if (merged.value === null && Object.keys(merged.errors).length > 0) {
+        setErrors(merged.errors)
+        setImportStatus(`Imported ${asset.name}. Complete S3 Keys to save.`)
+        return
+      }
       latestDraft.current = next
       setDraft(next)
       setImportStatus(`Imported ${asset.name}`)

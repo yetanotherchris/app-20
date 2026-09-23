@@ -42,6 +42,33 @@ describe('parseSettingsImport', () => {
     expect(result.ok).toBe(false)
   })
 
+  it('rejects a duplicate name written with a unicode escape (FR-014)', () => {
+    const result = parseSettingsImport('settings.json', '{"apiKey":"one","api\\u004bey":"two"}')
+    expect(result).toEqual({
+      ok: false,
+      error: 'The file contains the duplicate setting "apiKey".',
+    })
+  })
+
+  it('rejects a duplicate empty-string property name (FR-014)', () => {
+    const result = parseSettingsImport('settings.json', '{"":1,"":2}')
+    expect(result).toEqual({
+      ok: false,
+      error: 'The file contains the duplicate setting "".',
+    })
+  })
+
+  it('rejects an inherited object property name as unknown (FR-014)', () => {
+    expect(parseSettingsImport('settings.txt', '__proto__=x')).toEqual({
+      ok: false,
+      error: 'The file contains an unknown setting.',
+    })
+    expect(parseSettingsImport('settings.txt', 'constructor=x')).toEqual({
+      ok: false,
+      error: 'The file contains an unknown setting.',
+    })
+  })
+
   it('rejects an invalid provided bucket or region (FR-013)', () => {
     expect(parseSettingsImport('settings.json', '{"s3":{"bucket":"BAD BUCKET"}}')).toEqual({
       ok: false,

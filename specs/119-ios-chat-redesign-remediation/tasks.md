@@ -56,9 +56,24 @@
 
 ## Verification record
 
-- T006 completed: `../app-20-llmchat` branch `spec-119-ios-chat-redesign-remediation` pushed at `fffad3f41b30186804fab7dcc0935f5102c941c7`. `lint`, `typecheck`, `test` (223 tests), and `build` passed there before the push.
-- T026 completed: in app-20, `npm run lint`, `npm run typecheck`, and `npm run test` (262 tests) passed. `npm run test:e2e` result recorded in the PR.
+- T006 completed: `../app-20-llmchat` branch `spec-119-ios-chat-redesign-remediation` pushed at `fffad3f41b30186804fab7dcc0935f5102c941c7`, merged as `22aa15c`, and published as `1.0.80`. `apps/ios` now depends on `1.0.80` from the registry.
+- T026 completed: in app-20, `npm run lint`, `npm run typecheck`, and `npm run test` (270 tests) passed. `npm run test:e2e` passed with 71 tests.
 - T027 completed together with T006.
 - T028 is blocked: native acceptance for states 01-35 requires an iOS build on macOS or a device. This environment is Windows with no local iOS simulator or device, and EAS Simulator was unavailable for the account (spec 109 verification record). No state is recorded as passed.
-- T029 pending until the PR is opened.
+- T029 completed: PR opened.
+
+## Review remediation
+
+Five agent-based reviews were run against PR #44. Every critical and major finding was fixed:
+
+- FR-016 failed resend now restores the edited text and refocuses the composer.
+- FR-004 model selector is wrapped in the `@expo/ui` `Host`.
+- FR-002 failed-send retry works; the shared component clears its duplicate-submit guard when the host replaces the controlled value (`../app-20-llmchat` PR #9, republished).
+- FR-005 keyboard inset is measured on an un-inset wrapper, so interactive dismissal no longer oscillates.
+- FR-007 the drawer opens before loading, so its loading state is reachable.
+- FR-019 the chat is hidden from accessibility traversal while a modal is open, and the latest control animates a nearby jump with a Reduce Motion immediate jump and drag interrupt.
+- FR-015 the edit action accessibility label includes a source excerpt.
+- FR-024 adds `sendRecovery.test.ts` and import, ordering, and mirror coverage.
+- Minor: settings writes chain past a failed write; an active rename updates the in-memory base; import rejects unicode-escaped and inherited-name duplicates and bounds scanner depth; the merged import candidate is validated before the draft changes.
+
 

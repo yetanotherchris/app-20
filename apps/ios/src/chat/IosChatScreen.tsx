@@ -13,7 +13,7 @@ import {
 } from 'react-native'
 import Constants from 'expo-constants'
 import Svg, { Path } from 'react-native-svg'
-import { Picker } from '@expo/ui'
+import { Host, Picker } from '@expo/ui'
 import {
   LLMChat,
   ContentRenderer,
@@ -37,6 +37,7 @@ import { createSecretService } from '../secrets/secretService'
 import { SettingsSheet } from '../settings/SettingsSheet'
 import { AutosaveQueue } from './autosaveQueue'
 import { fromConversation, toConversation, toProviderMessages } from './conversation'
+import { classifySettlement } from './sendRecovery'
 import { createSyncService } from '../sync/syncService'
 
 interface AppStateSource {
@@ -328,26 +329,26 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
     const pending = submitPendingRef.current
     submitPendingRef.current = null
     if (!pending) return
-    const added = chat.messages.filter((message) => !pending.beforeIds.has(message.id))
-    const response = added.at(-1)
-    const failed = response?.status === 'error'
+    const settlement = classifySettlement(pending, chat.messages)
 
-    if (pending.wasEditing) {
-      if (failed) {
-        // A failed resend keeps edit mode and the edited text (FR-016).
-        return
-      }
+    if (settlement.kind === 'resend-failed') {
+      // A failed resend keeps edit mode and the edited text (FR-016). The
+      // submit cleared the composer, so restore the edited text and focus.
+      setDraft(pending.text)
+      requestComposerFocus()
+      return
+    }
+    if (settlement.kind === 'resend-succeeded') {
       const restoredDraft = parkedDraftRef.current ?? ''
       parkedDraftRef.current = null
       setEditSource(null)
       setDraft(restoredDraft)
       return
     }
-
-    if (failed) {
+    if (settlement.kind === 'send-failed') {
       // Roll back the pending duplicate pair and restore the submitted draft
       // so Send can retry without a duplicated user message (FR-002).
-      const ids = new Set(added.map((message) => message.id))
+      const ids = new Set(settlement.removedIds)
       chat.replaceMessages(chat.messages.filter((message) => !ids.has(message.id)))
       setDraft(pending.text)
       requestComposerFocus()
@@ -457,7 +458,10 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
               setMutationPending(true)
               void storeRef.current
                 .rename(entry.id, trimmed)
-                .then(async () => {
+                .then(async (renamed) => {
+                  // Keep the active base in sync so a later autosave does not
+                  // rebuild the title from the pre-rename value (FR-008).
+                  if (entry.id === conversationIdRef.current) baseRef.current = renamed
                   await mirrorLocalFile(
                     entry.fileName,
                     await filePortRef.current.readText(entry.fileName),
@@ -544,6 +548,12 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
     (message: Message) => {
       const isUser = message.role === 'user'
       const isBusy = chat.status !== 'idle'
+      const sourceExcerpt = message.contentParts
+        .map((part) => part.text)
+        .join('')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 80)
       return (
         <View style={isUser ? styles.userMessage : styles.assistantMessage}>
           <View style={isUser ? styles.userBubble : undefined}>
@@ -555,7 +565,11 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
           </View>
           {isUser ? (
             <Pressable
-              accessibilityLabel="Edit and resend message"
+              accessibilityLabel={
+                sourceExcerpt
+                  ? `Edit and resend message: ${sourceExcerpt}`
+                  : 'Edit and resend message'
+              }
               accessibilityRole="button"
               accessibilityState={{ disabled: isBusy, selected: editSourceId === message.id }}
               disabled={isBusy}
@@ -644,20 +658,25 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
           style={styles.headerButton}
           onPress={() => {
             Keyboard.dismiss()
-            void refreshHistory().then(() => setHistoryOpen(true))
+            // Open first so the drawer's loading state is visible while the
+            // list loads (FR-007).
+            setHistoryOpen(true)
+            void refreshHistory()
           }}
         >
           <Text style={styles.headerIcon}>☰</Text>
         </Pressable>
         <View style={styles.modelPicker}>
-          <Picker
-            appearance="menu"
-            onValueChange={(value) => setModelName(String(value))}
-            selectedValue={modelName}
-            testID="chat.model-picker"
-          >
-            <Picker.Item label="Openrouter Auto" value="Openrouter Auto" />
-          </Picker>
+          <Host matchContents style={styles.modelPickerHost}>
+            <Picker
+              appearance="menu"
+              onValueChange={(value) => setModelName(String(value))}
+              selectedValue={modelName}
+              testID="chat.model-picker"
+            >
+              <Picker.Item label="Openrouter Auto" value="Openrouter Auto" />
+            </Picker>
+          </Host>
         </View>
         <Pressable
           accessibilityRole="button"
@@ -680,103 +699,110 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
           </Svg>
         </Pressable>
       </View>
-      <View ref={chatRegionRef} style={[styles.chat, { marginBottom: keyboardInset }]}>
-        <LLMChat.Root
-          messages={chat.messages}
-          draft={draft}
-          status={chat.status}
-          hasEarlierMessages={false}
-          isLoadingEarlier={false}
-          disabled={gatePending || !hasProviderKey}
-          readOnly={chat.status !== 'idle'}
-          followThreshold={40}
-          scrollToLatestShowThreshold={80}
-          listTrailingPadding={68}
-          scrollToLatestAnnouncement="Latest message"
-          composerFocusRequest={composerFocusRequest}
-          onChangeDraft={setDraft}
-          onSubmit={() => void submit()}
-          onStop={stop}
-          onLoadEarlier={() => undefined}
-          messageActions={chat.messageActions}
-          onLinkPress={() => undefined}
-          composerVariant="ios"
-          themeOverride={IOS_CHAT_THEME}
-          minHeight={36}
-          maxHeight={242}
-          capabilities={{ stop: false }}
-          placeholder="Ask anything"
-          renderAboveComposer={() =>
-            notice || editSourceId || s3SaveFailed || (!hasProviderKey && draft.trim() !== '') ? (
-              <View>
-                {!hasProviderKey && draft.trim() !== '' ? (
-                  <Pressable
-                    accessibilityLabel="Add API key in Settings"
-                    accessibilityRole="button"
-                    onPress={() => {
-                      Keyboard.dismiss()
-                      setSettingsOpen(true)
-                    }}
-                    style={styles.setupNotice}
-                  >
-                    <Text style={styles.setupNoticeGlyph}>⚙</Text>
-                    <Text style={styles.setupNoticeText}>
-                      Add your API key in Settings to send messages.
-                    </Text>
-                  </Pressable>
-                ) : null}
-                {s3SaveFailed ? (
-                  <View style={styles.s3Notice}>
-                    <Text accessibilityRole="alert" style={styles.s3NoticeText}>
-                      Saved on this device. Couldn’t save to S3.
-                    </Text>
+      <View
+        accessibilityElementsHidden={historyOpen || settingsOpen}
+        importantForAccessibility={historyOpen || settingsOpen ? 'no-hide-descendants' : 'auto'}
+        ref={chatRegionRef}
+        style={styles.chatRegion}
+      >
+        <View style={[styles.chat, { marginBottom: keyboardInset }]}>
+          <LLMChat.Root
+            messages={chat.messages}
+            draft={draft}
+            status={chat.status}
+            hasEarlierMessages={false}
+            isLoadingEarlier={false}
+            disabled={gatePending || !hasProviderKey}
+            readOnly={chat.status !== 'idle'}
+            followThreshold={40}
+            scrollToLatestShowThreshold={80}
+            listTrailingPadding={68}
+            scrollToLatestAnnouncement="Latest message"
+            composerFocusRequest={composerFocusRequest}
+            onChangeDraft={setDraft}
+            onSubmit={() => void submit()}
+            onStop={stop}
+            onLoadEarlier={() => undefined}
+            messageActions={chat.messageActions}
+            onLinkPress={() => undefined}
+            composerVariant="ios"
+            themeOverride={IOS_CHAT_THEME}
+            minHeight={36}
+            maxHeight={242}
+            capabilities={{ stop: false }}
+            placeholder="Ask anything"
+            renderAboveComposer={() =>
+              notice || editSourceId || s3SaveFailed || (!hasProviderKey && draft.trim() !== '') ? (
+                <View>
+                  {!hasProviderKey && draft.trim() !== '' ? (
                     <Pressable
-                      accessibilityLabel="Retry saving to S3"
+                      accessibilityLabel="Add API key in Settings"
                       accessibilityRole="button"
-                      onPress={() => void sync.run()}
-                      style={styles.s3Retry}
+                      onPress={() => {
+                        Keyboard.dismiss()
+                        setSettingsOpen(true)
+                      }}
+                      style={styles.setupNotice}
                     >
-                      <Text style={styles.s3RetryText}>↻</Text>
+                      <Text style={styles.setupNoticeGlyph}>⚙</Text>
+                      <Text style={styles.setupNoticeText}>
+                        Add your API key in Settings to send messages.
+                      </Text>
                     </Pressable>
-                  </View>
-                ) : null}
-                {notice ? (
-                  <View style={styles.notice}>
-                    <Text accessibilityRole="alert" style={styles.noticeText}>
-                      {notice}
-                    </Text>
-                  </View>
-                ) : null}
-                {editSourceId ? (
-                  <View style={styles.editRow}>
-                    <Text style={styles.editRowLabel}>Edit and resend</Text>
-                    <Pressable
-                      accessibilityLabel="Cancel edit and resend"
-                      accessibilityRole="button"
-                      onPress={cancelEdit}
-                      style={styles.editCancel}
-                    >
-                      <Text style={styles.editCancelText}>×</Text>
-                    </Pressable>
-                  </View>
-                ) : null}
-              </View>
-            ) : null
-          }
-          renderEmptyState={() => (
-            <Pressable
-              onPress={Keyboard.dismiss}
-              style={styles.emptyState}
-              testID="chat.empty-state"
-            >
-              <Text style={styles.emptyTitle}>Start a conversation</Text>
-              <Text style={styles.emptySubtitle}>Your messages will appear here.</Text>
-            </Pressable>
-          )}
-          renderMessage={renderMessage}
-          renderSend={renderSend}
-          renderScrollToLatest={renderScrollToLatest}
-        />
+                  ) : null}
+                  {s3SaveFailed ? (
+                    <View style={styles.s3Notice}>
+                      <Text accessibilityRole="alert" style={styles.s3NoticeText}>
+                        Saved on this device. Couldn’t save to S3.
+                      </Text>
+                      <Pressable
+                        accessibilityLabel="Retry saving to S3"
+                        accessibilityRole="button"
+                        onPress={() => void sync.run()}
+                        style={styles.s3Retry}
+                      >
+                        <Text style={styles.s3RetryText}>↻</Text>
+                      </Pressable>
+                    </View>
+                  ) : null}
+                  {notice ? (
+                    <View style={styles.notice}>
+                      <Text accessibilityRole="alert" style={styles.noticeText}>
+                        {notice}
+                      </Text>
+                    </View>
+                  ) : null}
+                  {editSourceId ? (
+                    <View style={styles.editRow}>
+                      <Text style={styles.editRowLabel}>Edit and resend</Text>
+                      <Pressable
+                        accessibilityLabel="Cancel edit and resend"
+                        accessibilityRole="button"
+                        onPress={cancelEdit}
+                        style={styles.editCancel}
+                      >
+                        <Text style={styles.editCancelText}>×</Text>
+                      </Pressable>
+                    </View>
+                  ) : null}
+                </View>
+              ) : null
+            }
+            renderEmptyState={() => (
+              <Pressable
+                onPress={Keyboard.dismiss}
+                style={styles.emptyState}
+                testID="chat.empty-state"
+              >
+                <Text style={styles.emptyTitle}>Start a conversation</Text>
+                <Text style={styles.emptySubtitle}>Your messages will appear here.</Text>
+              </Pressable>
+            )}
+            renderMessage={renderMessage}
+            renderSend={renderSend}
+            renderScrollToLatest={renderScrollToLatest}
+          />
+        </View>
       </View>
       {historyOpen ? (
         <View style={styles.drawer}>
@@ -926,7 +952,9 @@ const styles = StyleSheet.create({
     width: 208,
   },
   modelLabel: { color: '#111111', flexShrink: 1, fontSize: 17, lineHeight: 22 },
+  modelPickerHost: { alignItems: 'center', justifyContent: 'center' },
   chat: { flex: 1 },
+  chatRegion: { flex: 1 },
   notice: {
     backgroundColor: '#fff1f0',
     borderRadius: 12,

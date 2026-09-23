@@ -8,25 +8,58 @@ export interface SettingsPatch {
 export type SettingsImportResult = { ok: true; patch: SettingsPatch } | { ok: false; error: string }
 
 const MAX_BYTES = 1024 * 1024
+const MAX_JSON_DEPTH = 64
 const S3_BUCKET_PATTERN = /^[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]$/
 const S3_REGION_PATTERN = /^[a-z0-9-]+$/
-const TEXT_KEYS: Record<string, keyof SettingsSnapshot['s3'] | 'apiKey'> = {
-  API_KEY: 'apiKey',
-  S3_BUCKET: 'bucket',
-  S3_REGION: 'region',
-  S3_ACCESS_KEY_ID: 'accessKeyId',
-  S3_SECRET_ACCESS_KEY: 'secretAccessKey',
-  S3_ENDPOINT: 'endpoint',
-}
+const TEXT_KEYS: Record<string, keyof SettingsSnapshot['s3'] | 'apiKey'> = Object.assign(
+  Object.create(null) as Record<string, keyof SettingsSnapshot['s3'] | 'apiKey'>,
+  {
+    API_KEY: 'apiKey',
+    S3_BUCKET: 'bucket',
+    S3_REGION: 'region',
+    S3_ACCESS_KEY_ID: 'accessKeyId',
+    S3_SECRET_ACCESS_KEY: 'secretAccessKey',
+    S3_ENDPOINT: 'endpoint',
+  },
+)
 
 function invalid(error: string): SettingsImportResult {
   return { ok: false, error }
 }
 
+/** Decodes one JSON string character starting at `index`, advancing it past the escape. */
+function readJsonChar(raw: string, index: number): { value: string; next: number } {
+  const char = raw[index]!
+  if (char !== '\\') return { value: char, next: index + 1 }
+  const escape = raw[index + 1]
+  switch (escape) {
+    case 'u': {
+      const hex = raw.slice(index + 2, index + 6)
+      if (/^[0-9a-fA-F]{4}$/.test(hex)) {
+        return { value: String.fromCharCode(parseInt(hex, 16)), next: index + 6 }
+      }
+      return { value: 'u', next: index + 2 }
+    }
+    case 'n':
+      return { value: '\n', next: index + 2 }
+    case 't':
+      return { value: '\t', next: index + 2 }
+    case 'r':
+      return { value: '\r', next: index + 2 }
+    case 'b':
+      return { value: '\b', next: index + 2 }
+    case 'f':
+      return { value: '\f', next: index + 2 }
+    default:
+      return { value: escape ?? '', next: index + 2 }
+  }
+}
+
 /**
  * JSON.parse keeps the last value for a duplicate name, so a duplicate key must
- * be detected before parsing. This scans string-by-string and tracks object
- * depth, returning the property names seen at the current depth (FR-014).
+ * be detected before parsing. This scans string-by-string, decodes escapes so
+ * `\u0061piKey` matches `apiKey`, tracks object depth, and returns the duplicate
+ * property name or null (FR-014).
  */
 function findDuplicateJsonName(raw: string): string | null {
   let index = 0
@@ -34,17 +67,12 @@ function findDuplicateJsonName(raw: string): string | null {
   while (index < raw.length) {
     const char = raw[index]
     if (char === '"') {
-      const start = index
       index += 1
       let value = ''
       while (index < raw.length && raw[index] !== '"') {
-        if (raw[index] === '\\') {
-          index += 1
-          value += raw[index] ?? ''
-        } else {
-          value += raw[index]
-        }
-        index += 1
+        const read = readJsonChar(raw, index)
+        value += read.value
+        index = read.next
       }
       index += 1
       let lookahead = index
@@ -54,10 +82,10 @@ function findDuplicateJsonName(raw: string): string | null {
         if (names.has(value)) return value
         names.add(value)
       }
-      void start
       continue
     }
     if (char === '{') {
+      if (stack.length >= MAX_JSON_DEPTH) return null
       stack.push(new Set())
     } else if (char === '}') {
       stack.pop()
@@ -91,7 +119,7 @@ function invalidProvidedValue(s3: Partial<SettingsSnapshot['s3']>): string | nul
 
 function parseJson(raw: string): SettingsImportResult {
   const duplicate = findDuplicateJsonName(raw)
-  if (duplicate) return invalid(`The file contains the duplicate setting "${duplicate}".`)
+  if (duplicate !== null) return invalid(`The file contains the duplicate setting "${duplicate}".`)
   try {
     const value: unknown = JSON.parse(raw)
     if (!value || typeof value !== 'object' || Array.isArray(value))
