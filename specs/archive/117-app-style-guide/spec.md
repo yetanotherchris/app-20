@@ -2,7 +2,7 @@
 
 **Feature Branch**: `spec-117-app-style-guide`
 **Created**: 2026-09-21
-**Status**: Draft
+**Status**: Archived
 
 ## User Scenarios & Testing
 
