@@ -2,7 +2,7 @@
 
 **Feature Branch**: `spec-109-ios-chat-redesign`
 **Created**: 2026-09-13
-**Status**: Planned
+**Status**: Archived
 **Depends on**: [112 iOS Settings and Credentials](../112-ios-settings-credentials/spec.md)
 
 ## User Scenarios & Testing

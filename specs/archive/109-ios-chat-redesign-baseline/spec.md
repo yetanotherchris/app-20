@@ -2,7 +2,7 @@
 
 **Feature Branch**: `spec-109-ios-chat-redesign`
 **Created**: 2026-09-13
-**Status**: Planned
+**Status**: Archived
 **Input**: `specs/ios-chat-design/` design package
 
 ## Purpose

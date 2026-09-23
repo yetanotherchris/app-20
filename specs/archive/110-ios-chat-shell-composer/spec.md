@@ -2,7 +2,7 @@
 
 **Feature Branch**: `spec-109-ios-chat-redesign`
 **Created**: 2026-09-13
-**Status**: Planned
+**Status**: Archived
 **Depends on**: [109 iOS Chat Redesign Baseline](../109-ios-chat-redesign-baseline/spec.md)
 
 ## User Scenarios & Testing

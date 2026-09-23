@@ -2,7 +2,7 @@
 
 **Feature Branch**: `spec-109-ios-chat-redesign`
 **Created**: 2026-09-13
-**Status**: Planned
+**Status**: Archived
 **Depends on**: [110 iOS Chat Shell and Composer](../110-ios-chat-shell-composer/spec.md)
 
 ## User Scenarios & Testing
