@@ -55,6 +55,16 @@
 - [x] T030 Open the PR with the review-required headings and attribution.
 - [x] T031 Pin the shared composer newline-growth fix at `3b73b67` after registry publication was unavailable.
 
+## Phase 9: Audit Remediation
+
+- [ ] T032 Make mirror revisions monotonic across application restart and add the persisted-queue supersession test (FR-022).
+- [ ] T033 Implement import loading, interaction locking, and success status only after persistence completes; add SettingsSheet recovery tests (FR-009, FR-013, FR-014, FR-024).
+- [ ] T034 Keep focused Settings fields and helpers 16 points above the keyboard, use the URL keyboard for Endpoint, and add coverage (FR-011).
+- [ ] T035 Correct the drawer safe-area footer, keyboard-open composer gap, history retry icon, and Dynamic Type layouts (FR-001, FR-005, FR-007).
+- [ ] T036 Replace the rename validation approximation with a native flow that disables invalid Save actions (FR-008).
+- [ ] T037 Add one blocked or evidenced acceptance record for each required design state (01-35) (FR-025).
+- [ ] T038 Define and implement app-specific e2e commands and iOS interaction coverage; do not route iOS work through Electron Playwright tests (FR-024).
+
 ## Verification record
 
 - T006 completed: `../app-20-llmchat` branch `spec-119-ios-chat-redesign-remediation` pushed at `fffad3f41b30186804fab7dcc0935f5102c941c7`, merged as `22aa15c`, and published as `1.0.80`. `apps/ios` now depends on `1.0.80` from the registry.
