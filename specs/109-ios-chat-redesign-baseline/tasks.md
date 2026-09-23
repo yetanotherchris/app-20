@@ -29,11 +29,13 @@
 
 - [x] T017 Add iOS unit tests for all new pure logic and failure paths.
 - [x] T018 Run typecheck, lint, and tests in both repositories.
-- [x] T019 Record that native acceptance checks for states 01-35 at required widths and Dynamic Type will not be performed for this feature because no iOS validation environment is available on Windows.
+- [ ] T019 Perform and record native acceptance checks for states 01-35 at required widths and Dynamic Type. Not performed in the current Windows environment because no iOS validation environment is available.
 - [ ] T020 Archive 109 and its completed implementation specifications in the implementation PR.
+- [x] T021 Run `npm run test:e2e` and record the result.
 
 ## Verification record
 
 - T018 completed on 2026-09-23: `npm run typecheck`, `npm run lint`, and `npm test` passed in app-20 and `../app-20-llmchat`.
-- T019 will not be performed for this feature: EAS Simulator is unavailable for the authenticated Expo account, and this Windows environment has no local iOS simulator or device.
-- T020 remains open pending a separate decision to archive this already merged implementation.
+- T019 is not complete: EAS Simulator is unavailable for the authenticated Expo account, and this Windows environment has no local iOS simulator or device.
+- T021 completed on 2026-09-23: `npm run test:e2e` passed with 71 Electron Playwright tests.
+- T020 remains open because the native acceptance requirement is incomplete.

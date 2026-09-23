@@ -83,4 +83,4 @@ packages/conversation-storage/src/
 
 ## Decision log
 
-- 2026-09-23: Native acceptance checks are not performed for this feature. Windows has no supported local iOS simulator, and no iOS device is available. Device-level acceptance is deferred to a separate feature when an iOS validation environment exists.
+- 2026-09-23: Native acceptance checks cannot be performed in the current Windows environment. Windows has no supported local iOS simulator, and no iOS device is available. The feature retains this outstanding requirement until an iOS validation environment exists.
