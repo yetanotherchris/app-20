@@ -10,7 +10,9 @@ import {
   StyleSheet,
   Text,
   View,
+  useWindowDimensions,
 } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Constants from 'expo-constants'
 import Svg, { Circle, Path } from 'react-native-svg'
 import { Host, Picker } from '@expo/ui'
@@ -39,6 +41,7 @@ import { AutosaveQueue } from './autosaveQueue'
 import { fromConversation, toConversation, toProviderMessages } from './conversation'
 import { classifySettlement } from './sendRecovery'
 import { createSyncService } from '../sync/syncService'
+import NativeRenameAlert from '../../modules/native-rename-alert'
 
 interface AppStateSource {
   addEventListener(type: 'change', listener: (state: AppStateStatus) => void): { remove(): void }
@@ -89,6 +92,8 @@ function createId(prefix: string): string {
 }
 
 export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Element {
+  const safeAreaInsets = useSafeAreaInsets()
+  const { fontScale } = useWindowDimensions()
   const secretsRef = useRef(createSecretService())
   const filePortRef = useRef(createConversationFilePort())
   const storeRef = useRef(createConversationStore(filePortRef.current))
@@ -435,51 +440,22 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
   }
 
   function renameConversation(entry: ManifestEntry): void {
-    const presentAlert = (message?: string): void => {
-      Alert.prompt(
-        'Rename conversation',
-        message,
-        [
-          { style: 'cancel', text: 'Cancel' },
-          {
-            text: 'Save',
-            onPress: (title?: string) => {
-              const trimmed = title?.trim() ?? ''
-              // Native Alert.prompt cannot disable Save, so an invalid title
-              // re-presents the same alert with the applicable message and no
-              // value is saved (FR-008).
-              if (trimmed.length === 0) {
-                presentAlert('Enter a name.')
-                return
-              }
-              if (trimmed.length > 80) {
-                presentAlert('Use 80 characters or fewer.')
-                return
-              }
-              setMutationPending(true)
-              void storeRef.current
-                .rename(entry.id, trimmed)
-                .then(async (renamed) => {
-                  // Keep the active base in sync so a later autosave does not
-                  // rebuild the title from the pre-rename value (FR-008).
-                  if (entry.id === conversationIdRef.current) baseRef.current = renamed
-                  await mirrorLocalFile(
-                    entry.fileName,
-                    await filePortRef.current.readText(entry.fileName),
-                  )
-                  await mirrorManifest()
-                  await refreshHistory()
-                })
-                .catch(() => setHistoryError('The conversation was not renamed.'))
-                .finally(() => setMutationPending(false))
-            },
-          },
-        ],
-        'plain-text',
-        entry.title,
-      )
-    }
-    presentAlert()
+    void NativeRenameAlert.prompt(entry.title)
+      .then((title) => {
+        if (title === null) return
+        setMutationPending(true)
+        return storeRef.current
+          .rename(entry.id, title)
+          .then(async (renamed) => {
+            // Keep the active base in sync so a later autosave does not rebuild the title from the pre-rename value.
+            if (entry.id === conversationIdRef.current) baseRef.current = renamed
+            await mirrorLocalFile(entry.fileName, await filePortRef.current.readText(entry.fileName))
+            await mirrorManifest()
+            await refreshHistory()
+          })
+          .finally(() => setMutationPending(false))
+      })
+      .catch(() => setHistoryError('The conversation was not renamed.'))
   }
 
   function confirmDeleteConversation(entry: ManifestEntry): void {
@@ -652,7 +628,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
+      <View style={[styles.header, fontScale >= 1.3 && styles.headerLarge]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Open conversations"
@@ -675,7 +651,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
             />
           </Svg>
         </Pressable>
-        <View style={styles.modelPicker}>
+        <View style={[styles.modelPicker, fontScale >= 1.3 && styles.modelPickerLarge]}>
           <Host matchContents style={styles.modelPickerHost}>
             <Picker
               appearance="menu"
@@ -735,7 +711,13 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
             messageActions={chat.messageActions}
             onLinkPress={() => undefined}
             composerVariant="ios"
-            themeOverride={IOS_CHAT_THEME}
+            themeOverride={{
+              ...IOS_CHAT_THEME,
+              spacing: {
+                ...IOS_CHAT_THEME.spacing,
+                composerBottomGap: keyboardInset > 0 ? 8 : 12,
+              },
+            }}
             minHeight={36}
             maxHeight={242}
             capabilities={{ stop: false }}
@@ -860,6 +842,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
                 style={styles.historyError}
               >
                 <Text style={styles.noticeText}>{historyError}</Text>
+                <Text style={styles.historyRetryGlyph}>↻</Text>
               </Pressable>
             ) : null}
             {!historyLoading && !historyError && entries.length === 0 ? (
@@ -916,7 +899,10 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
               setHistoryOpen(false)
               setSettingsOpen(true)
             }}
-            style={styles.drawerSettings}
+            style={[
+              styles.drawerSettings,
+              { minHeight: 56 + safeAreaInsets.bottom, paddingBottom: safeAreaInsets.bottom },
+            ]}
           >
             <Text style={styles.drawerSettingsGlyph}>⚙</Text>
             <Text style={styles.drawerSettingsLabel}>
@@ -950,6 +936,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 6,
   },
+  headerLarge: { minHeight: 64 },
   headerButton: {
     alignItems: 'center',
     backgroundColor: '#ffffff',
@@ -971,6 +958,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     width: 208,
   },
+  modelPickerLarge: { flexShrink: 1 },
   modelLabel: { color: '#111111', flexShrink: 1, fontSize: 17, lineHeight: 22 },
   modelPickerHost: { alignItems: 'center', justifyContent: 'center' },
   chat: { flex: 1 },
@@ -1129,7 +1117,14 @@ const styles = StyleSheet.create({
   entryActions: { alignItems: 'center', height: 44, justifyContent: 'center', width: 44 },
   entryText: { color: '#111111', fontSize: 17, lineHeight: 22 },
   emptyHistory: { color: '#6b6b70', fontSize: 17, marginTop: 12, textAlign: 'center' },
-  historyError: { minHeight: 44, padding: 12 },
+  historyError: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    minHeight: 44,
+    padding: 12,
+  },
+  historyRetryGlyph: { color: '#c62828', fontSize: 24, lineHeight: 28 },
   drawerSettings: {
     alignItems: 'center',
     borderTopColor: '#d1d1d6',

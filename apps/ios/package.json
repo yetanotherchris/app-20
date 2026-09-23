@@ -10,7 +10,8 @@
     "build:ios:dev": "npx eas-cli build --platform ios --profile development",
     "build:preview": "npx eas-cli build --platform ios --profile preview",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:e2e": "maestro test ../../tests/e2e/ios"
   },
   "dependencies": {
     "@app-20/ai-provider": "*",

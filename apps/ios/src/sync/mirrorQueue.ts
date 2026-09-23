@@ -28,8 +28,10 @@ export class MirrorQueue {
   async schedule(operation: MirrorOperation): Promise<void> {
     await this.load()
     const existing = this.operations.get(operation.name)
-    if (existing && existing.revision > operation.revision) return
-    this.operations.set(operation.name, operation)
+    // Host counters restart with the app. A pending operation therefore defines
+    // the next revision floor for its destination after relaunch.
+    const revision = Math.max(operation.revision, (existing?.revision ?? 0) + 1)
+    this.operations.set(operation.name, { ...operation, revision })
     await this.persist()
     this.onState('pending')
     void this.run()

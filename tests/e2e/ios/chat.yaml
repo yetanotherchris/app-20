@@ -1,0 +1,12 @@
+appId: com.app20.chat
+---
+- launchApp:
+    clearState: true
+- assertVisible: New chat
+- tapOn: New chat
+- assertVisible: New chat
+- tapOn: Settings
+- assertVisible: Endpoint URL
+- tapOn: Import settings
+- assertVisible: Cancel
+- tapOn: Cancel

@@ -21,10 +21,11 @@ Run in this repository:
 npm run lint
 npm run typecheck
 npm run test
-npm run test:e2e
+npm run test:e2e:electron
+npm run test:e2e:ios
 ```
 
-`test:e2e` builds the Electron app and runs Playwright. It does not exercise Expo surfaces.
+`test:e2e:electron` builds the Electron app and runs Playwright. `test:e2e:ios` runs Maestro against an installed iOS development build. The commands do not run each other's application.
 
 Run in the component repository:
 

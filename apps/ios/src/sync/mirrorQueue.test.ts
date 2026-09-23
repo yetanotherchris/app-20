@@ -83,6 +83,24 @@ describe('MirrorQueue', () => {
     expect(queueStorage.values).toEqual([])
   })
 
+  it('supersedes a persisted operation after the host restarts (FR-022)', async () => {
+    const queueStorage = storage([{ name: 'c.json', revision: 8, content: 'stale' }])
+    const remote = {
+      deleteText: vi.fn(),
+      listNames: vi.fn(),
+      readText: vi.fn(),
+      writeText: vi.fn(),
+    }
+    const queue = new MirrorQueue(queueStorage, async () => remote, vi.fn())
+
+    // A fresh host starts its local counter at one, below the persisted value.
+    await queue.schedule({ name: 'c.json', revision: 1, content: 'newest' })
+    await queue.run()
+
+    expect(remote.writeText).toHaveBeenCalledWith('c.json', 'newest')
+    expect(queueStorage.values).toEqual([])
+  })
+
   it('does not run remote work when a complete configuration is absent', async () => {
     const queueStorage = storage([{ name: 'c.json', revision: 1, content: 'content' }])
     const queue = new MirrorQueue(queueStorage, async () => null, vi.fn())

@@ -57,13 +57,13 @@
 
 ## Phase 9: Audit Remediation
 
-- [ ] T032 Make mirror revisions monotonic across application restart and add the persisted-queue supersession test (FR-022).
+- [x] T032 Make mirror revisions monotonic across application restart and add the persisted-queue supersession test (FR-022).
 - [ ] T033 Implement import loading, interaction locking, and success status only after persistence completes; add SettingsSheet recovery tests (FR-009, FR-013, FR-014, FR-024).
 - [ ] T034 Keep focused Settings fields and helpers 16 points above the keyboard, use the URL keyboard for Endpoint, and add coverage (FR-011).
 - [ ] T035 Correct the drawer safe-area footer, keyboard-open composer gap, history retry icon, and Dynamic Type layouts (FR-001, FR-005, FR-007).
 - [ ] T036 Replace the rename validation approximation with a native flow that disables invalid Save actions (FR-008).
-- [ ] T037 Add one blocked or evidenced acceptance record for each required design state (01-35) (FR-025).
-- [ ] T038 Define and implement app-specific e2e commands and iOS interaction coverage; do not route iOS work through Electron Playwright tests (FR-024).
+- [x] T037 Add one blocked or evidenced acceptance record for each required design state (01-35) (FR-025). See `acceptance-records.md`.
+- [ ] T038 Define and implement app-specific e2e commands and iOS interaction coverage; do not route iOS work through Electron Playwright tests (FR-024). Initial Maestro coverage is at `tests/e2e/ios/chat.yaml`; execution remains blocked pending a native device runner.
 
 ## Verification record
 

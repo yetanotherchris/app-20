@@ -7,7 +7,8 @@
     "build": "electron-vite build",
     "dev": "electron-vite dev",
     "preview": "electron-vite preview",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test:e2e": "npm run build && npx playwright test --config ../../playwright.config.ts"
   },
   "dependencies": {
     "@app-20/ai-provider": "^0.1.0",
