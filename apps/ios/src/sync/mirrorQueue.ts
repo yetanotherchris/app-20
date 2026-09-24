@@ -28,8 +28,10 @@ export class MirrorQueue {
   async schedule(operation: MirrorOperation): Promise<void> {
     await this.load()
     const existing = this.operations.get(operation.name)
-    if (existing && existing.revision > operation.revision) return
-    this.operations.set(operation.name, operation)
+    // Host counters restart with the app. A pending operation therefore defines
+    // the next revision floor for its destination after relaunch.
+    const revision = Math.max(operation.revision, (existing?.revision ?? 0) + 1)
+    this.operations.set(operation.name, { ...operation, revision })
     await this.persist()
     this.onState('pending')
     void this.run()
@@ -73,18 +75,27 @@ export class MirrorQueue {
     }
     this.onState('syncing')
     try {
-      for (const operation of [...this.operations.values()].sort(
-        (a, b) => a.revision - b.revision,
-      )) {
-        if (operation.content === null) await remote.deleteText(operation.name)
-        else await remote.writeText(operation.name, operation.content)
-        if (this.operations.get(operation.name)?.revision === operation.revision) {
-          this.operations.delete(operation.name)
-          await this.persist()
+      // Drain until empty. Each pass re-reads the pending set, so a newer
+      // revision that arrives while a send is in flight supersedes the older
+      // one and is delivered without waiting for an unrelated user action
+      // (spec 119 FR-022).
+      while (true) {
+        const pending = [...this.operations.values()].sort((a, b) => a.revision - b.revision)
+        if (pending.length === 0) break
+        for (const operation of pending) {
+          if (operation.content === null) await remote.deleteText(operation.name)
+          else await remote.writeText(operation.name, operation.content)
+          const current = this.operations.get(operation.name)
+          if (current?.revision === operation.revision) {
+            this.operations.delete(operation.name)
+            await this.persist()
+          }
         }
       }
-      this.onState(this.operations.size === 0 ? 'idle' : 'pending')
+      this.onState('idle')
     } catch {
+      // Pending operations stay persisted so an explicit retry or the next
+      // resume can deliver them (FR-020).
       this.onState('error')
     }
   }

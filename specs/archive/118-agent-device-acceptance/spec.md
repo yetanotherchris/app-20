@@ -4,7 +4,7 @@
 
 **Created**: 2026-09-22
 
-**Status**: Draft
+**Status**: Archived
 
 **Input**: User description: "Enable an AI coding agent to change an iOS mobile app, run it on a reusable simulator build, inspect it through visual and accessibility evidence, verify acceptance criteria, and iterate until the criteria pass."
 

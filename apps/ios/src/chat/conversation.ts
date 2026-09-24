@@ -23,6 +23,12 @@ function isRenderable(
   return message.role !== 'tool'
 }
 
+function newestActivity(value: ConversationDraft, base: Conversation | null): string {
+  const timestamps = value.messages.map((message) => message.createdAt)
+  const newest = timestamps.length > 0 ? timestamps.reduce((a, b) => (a > b ? a : b)) : undefined
+  return newest ?? base?.updatedAt ?? value.createdAt
+}
+
 export function toConversation(value: ConversationDraft, base: Conversation | null): Conversation {
   const previous = new Map(base?.messages.map((message) => [message.id, message]))
   const messages = value.messages.map((message) => {
@@ -38,10 +44,15 @@ export function toConversation(value: ConversationDraft, base: Conversation | nu
   })
   return {
     id: value.id,
-    title: base?.title || messages.find((message) => message.role === 'user')?.content.slice(0, 80) || '',
+    title:
+      base?.title ||
+      messages.find((message) => message.role === 'user')?.content.slice(0, 80) ||
+      '',
     model: value.model,
     createdAt: base?.createdAt ?? value.createdAt,
-    updatedAt: new Date().toISOString(),
+    // Ordering follows message activity only, so a draft edit or rename does
+    // not reorder history (spec 119 FR-006).
+    updatedAt: newestActivity(value, base),
     draft: value.draft,
     messages,
   }

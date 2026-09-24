@@ -1,7 +1,21 @@
-import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
-import { ActionSheetIOS, Alert, Keyboard, Pressable, StyleSheet, Text, View } from 'react-native'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import {
+  AccessibilityInfo,
+  ActionSheetIOS,
+  ActivityIndicator,
+  Alert,
+  Keyboard,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import Constants from 'expo-constants'
-import Svg, { Path } from 'react-native-svg'
+import Svg, { Circle, Path } from 'react-native-svg'
+import { Host, Picker } from '@expo/ui'
 import {
   LLMChat,
   ContentRenderer,
@@ -25,7 +39,9 @@ import { createSecretService } from '../secrets/secretService'
 import { SettingsSheet } from '../settings/SettingsSheet'
 import { AutosaveQueue } from './autosaveQueue'
 import { fromConversation, toConversation, toProviderMessages } from './conversation'
+import { classifySettlement } from './sendRecovery'
 import { createSyncService } from '../sync/syncService'
+import NativeRenameAlert from '../../modules/native-rename-alert'
 
 interface AppStateSource {
   addEventListener(type: 'change', listener: (state: AppStateStatus) => void): { remove(): void }
@@ -75,7 +91,13 @@ function createId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
 
+function drawerTitle(title: string): string {
+  return title.replace(/\s+/g, ' ').trim() || 'Untitled conversation'
+}
+
 export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Element {
+  const safeAreaInsets = useSafeAreaInsets()
+  const { fontScale } = useWindowDimensions()
   const secretsRef = useRef(createSecretService())
   const filePortRef = useRef(createConversationFilePort())
   const storeRef = useRef(createConversationStore(filePortRef.current))
@@ -92,6 +114,14 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
   const sessionGenerationRef = useRef(0)
   const mirrorRevisionRef = useRef(0)
   const resendPendingRef = useRef(false)
+  const submitPendingRef = useRef<{
+    beforeIds: Set<string>
+    text: string
+    wasEditing: boolean
+  } | null>(null)
+  const composerFocusRequestRef = useRef(0)
+  const longPressConversationRef = useRef<string | null>(null)
+  const [composerFocusRequest, setComposerFocusRequest] = useState(0)
   const [draft, setDraftState] = useState('')
   const [editSourceId, setEditSourceId] = useState<string | null>(null)
   const [modelName, setModelName] = useState('Openrouter Auto')
@@ -99,6 +129,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
   const [entries, setEntries] = useState<readonly ManifestEntry[]>([])
   const [historyOpen, setHistoryOpen] = useState(false)
   const [historyError, setHistoryError] = useState<string | null>(null)
+  const [historyLoading, setHistoryLoading] = useState(false)
   const [mutationPending, setMutationPending] = useState(false)
   const [s3SaveFailed, setS3SaveFailed] = useState(false)
   const [settingsOpen, setSettingsOpen] = useState(false)
@@ -212,55 +243,42 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
   })
   messagesRef.current = chat.messages
 
-  const applyRestoredConversation = useEffectEvent((conversation: Conversation) => {
-    baseRef.current = conversation
-    conversationIdRef.current = conversation.id
-    createdAtRef.current = conversation.createdAt
-    chat.replaceMessages(fromConversation(conversation))
-    // Loading a draft must not schedule a write merely because state changed.
-    restoreConversationUiState(conversation.id, conversation.draft ?? '')
-  })
-
   useEffect(() => {
     let cancelled = false
     void (async () => {
       const listed = await storeRef.current.list()
       if (cancelled) return
       setEntries(listed.entries)
-
-      for (const entry of listed.entries) {
-        if (cancelled || messagesRef.current.length > 0 || draftRef.current.length > 0) return
-        const result = await storeRef.current.read(entry.id)
-        if (result.kind === 'ok') {
-          if (!cancelled && messagesRef.current.length === 0 && draftRef.current.length === 0) {
-            applyRestoredConversation(result.conversation)
-          }
-          return
-        }
-      }
     })()
     return () => {
       cancelled = true
     }
-  }, [applyRestoredConversation])
-
-  useEffect(() => {
-    void secretsRef.current.hasProviderKey().then(setHasProviderKey)
   }, [])
 
   useEffect(() => {
-    const show = Keyboard.addListener('keyboardDidShow', (event) => {
+    void secretsRef.current.hasProviderKey().then(setHasProviderKey)
+    // Resume pending remote operations recorded before termination when a
+    // complete S3 configuration is available (FR-021).
+    void (async () => {
+      if (await secretsRef.current.getS3Config()) await sync.run()
+    })()
+  }, [sync])
+
+  useEffect(() => {
+    // Track the live keyboard frame, including interactive dismissal, with a
+    // single keyboard owner for the chat region (FR-005).
+    const change = Keyboard.addListener('keyboardWillChangeFrame', (event) => {
       requestAnimationFrame(() => {
         chatRegionRef.current?.measureInWindow((_x, top, _width, height) => {
           setKeyboardInset(Math.max(0, top + height - event.endCoordinates.screenY))
         })
       })
     })
-    const hide = Keyboard.addListener('keyboardDidHide', () => {
+    const hide = Keyboard.addListener('keyboardWillHide', () => {
       setKeyboardInset(0)
     })
     return () => {
-      show.remove()
+      change.remove()
       hide.remove()
     }
   }, [])
@@ -290,14 +308,42 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
     [autosave],
   )
 
+  function requestComposerFocus(): void {
+    composerFocusRequestRef.current += 1
+    setComposerFocusRequest(composerFocusRequestRef.current)
+  }
+
   useEffect(() => {
     if (chat.status !== 'idle' || !resendPendingRef.current) return
     resendPendingRef.current = false
-    const restoredDraft = parkedDraftRef.current ?? ''
-    parkedDraftRef.current = null
-    setEditSource(null)
-    setDraft(restoredDraft)
-  }, [chat.status, setDraft])
+    const pending = submitPendingRef.current
+    submitPendingRef.current = null
+    if (!pending) return
+    const settlement = classifySettlement(pending, chat.messages)
+
+    if (settlement.kind === 'resend-failed') {
+      // A failed resend keeps edit mode and the edited text (FR-016). The
+      // submit cleared the composer, so restore the edited text and focus.
+      setDraft(pending.text)
+      requestComposerFocus()
+      return
+    }
+    if (settlement.kind === 'resend-succeeded') {
+      const restoredDraft = parkedDraftRef.current ?? ''
+      parkedDraftRef.current = null
+      setEditSource(null)
+      setDraft(restoredDraft)
+      return
+    }
+    if (settlement.kind === 'send-failed') {
+      // Roll back the pending duplicate pair and restore the submitted draft
+      // so Send can retry without a duplicated user message (FR-002).
+      const ids = new Set(settlement.removedIds)
+      chat.replaceMessages(chat.messages.filter((message) => !ids.has(message.id)))
+      setDraft(pending.text)
+      requestComposerFocus()
+    }
+  }, [chat, setDraft])
 
   const startEdit = useCallback(
     (message: Message): void => {
@@ -305,6 +351,8 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
       if (editSourceRef.current === null) parkedDraftRef.current = draftRef.current
       setEditSource(message.id)
       setDraft(message.contentParts.map((part) => part.text).join(''))
+      requestComposerFocus()
+      AccessibilityInfo.announceForAccessibility('Edit and resend')
     },
     [chat.status, setDraft],
   )
@@ -325,8 +373,14 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
         setSettingsOpen(true)
         return
       }
-      resendPendingRef.current = editSourceRef.current !== null
-      chat.submit(draftRef.current.trim())
+      const text = draftRef.current.trim()
+      const wasEditing = editSourceRef.current !== null
+      // Record the pre-submit message ids so a failure can remove exactly the
+      // pending pair (FR-002, FR-003).
+      const beforeIds = new Set(messagesRef.current.map((message) => message.id))
+      resendPendingRef.current = true
+      submitPendingRef.current = { beforeIds, text, wasEditing }
+      chat.submit(text)
       autosave.cancelDraftTimer()
       setDraft('')
     } finally {
@@ -341,12 +395,15 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
   }
 
   async function refreshHistory(): Promise<void> {
+    setHistoryLoading(true)
     try {
       const result = await storeRef.current.list()
       setEntries(result.entries.slice(0, 5))
       setHistoryError(null)
     } catch {
       setHistoryError('Conversations could not be loaded.')
+    } finally {
+      setHistoryLoading(false)
     }
   }
 
@@ -367,39 +424,22 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
   }
 
   function renameConversation(entry: ManifestEntry): void {
-    Alert.prompt(
-      'Rename conversation',
-      undefined,
-      [
-        { style: 'cancel', text: 'Cancel' },
-        {
-          text: 'Save',
-          onPress: (title?: string) => {
-            if (!title || title.trim().length === 0 || title.trim().length > 80) {
-              setHistoryError(
-                title?.trim().length === 0 ? 'Enter a name.' : 'Use 80 characters or fewer.',
-              )
-              return
-            }
-            setMutationPending(true)
-            void storeRef.current
-              .rename(entry.id, title)
-              .then(async () => {
-                await mirrorLocalFile(
-                  entry.fileName,
-                  await filePortRef.current.readText(entry.fileName),
-                )
-                await mirrorManifest()
-                await refreshHistory()
-              })
-              .catch(() => setHistoryError('The conversation was not renamed.'))
-              .finally(() => setMutationPending(false))
-          },
-        },
-      ],
-      'plain-text',
-      entry.title,
-    )
+    void NativeRenameAlert.prompt(entry.title)
+      .then((title) => {
+        if (title === null) return
+        setMutationPending(true)
+        return storeRef.current
+          .rename(entry.id, title)
+          .then(async (renamed) => {
+            // Keep the active base in sync so a later autosave does not rebuild the title from the pre-rename value.
+            if (entry.id === conversationIdRef.current) baseRef.current = renamed
+            await mirrorLocalFile(entry.fileName, await filePortRef.current.readText(entry.fileName))
+            await mirrorManifest()
+            await refreshHistory()
+          })
+          .finally(() => setMutationPending(false))
+      })
+      .catch(() => setHistoryError('The conversation was not renamed.'))
   }
 
   function confirmDeleteConversation(entry: ManifestEntry): void {
@@ -469,6 +509,12 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
     (message: Message) => {
       const isUser = message.role === 'user'
       const isBusy = chat.status !== 'idle'
+      const sourceExcerpt = message.contentParts
+        .map((part) => part.text)
+        .join('')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 80)
       return (
         <View style={isUser ? styles.userMessage : styles.assistantMessage}>
           <View style={isUser ? styles.userBubble : undefined}>
@@ -480,7 +526,11 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
           </View>
           {isUser ? (
             <Pressable
-              accessibilityLabel="Edit and resend message"
+              accessibilityLabel={
+                sourceExcerpt
+                  ? `Edit and resend message: ${sourceExcerpt}`
+                  : 'Edit and resend message'
+              }
               accessibilityRole="button"
               accessibilityState={{ disabled: isBusy, selected: editSourceId === message.id }}
               disabled={isBusy}
@@ -562,50 +612,41 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
 
   return (
     <View style={styles.screen}>
-      <View style={styles.header}>
+      <View style={[styles.header, fontScale >= 1.3 && styles.headerLarge]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Open conversations"
           style={styles.headerButton}
           onPress={() => {
             Keyboard.dismiss()
-            void refreshHistory().then(() => setHistoryOpen(true))
+            // Open first so the drawer's loading state is visible while the
+            // list loads (FR-007).
+            setHistoryOpen(true)
+            void refreshHistory()
           }}
         >
-          <Text style={styles.headerIcon}>☰</Text>
-        </Pressable>
-        <Pressable
-          accessibilityLabel={`Choose model, ${modelName}`}
-          accessibilityRole="button"
-          onPress={() => {
-            Keyboard.dismiss()
-            ActionSheetIOS.showActionSheetWithOptions(
-              {
-                cancelButtonIndex: 1,
-                options: ['Openrouter Auto', 'Cancel'],
-                title: 'Choose model',
-              },
-              (index) => {
-                if (index === 0) setModelName('Openrouter Auto')
-              },
-            )
-          }}
-          style={styles.modelPicker}
-        >
-          <Text numberOfLines={1} style={styles.modelLabel}>
-            {modelName}
-          </Text>
-          <Svg height={16} viewBox="0 0 24 24" width={16}>
+          <Svg height={24} viewBox="0 0 24 24" width={24}>
             <Path
-              d="m6 9 6 6 6-6"
+              d="M5 9h14M5 15h14"
               fill="none"
               stroke="#111111"
               strokeLinecap="round"
-              strokeLinejoin="round"
               strokeWidth={2}
             />
           </Svg>
         </Pressable>
+        <View style={[styles.modelPicker, fontScale >= 1.3 && styles.modelPickerLarge]}>
+          <Host matchContents style={styles.modelPickerHost}>
+            <Picker
+              appearance="menu"
+              onValueChange={(value) => setModelName(String(value))}
+              selectedValue={modelName}
+              testID="chat.model-picker"
+            >
+              <Picker.Item label="Openrouter Auto" value="Openrouter Auto" />
+            </Picker>
+          </Host>
+        </View>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="New chat"
@@ -627,93 +668,116 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
           </Svg>
         </Pressable>
       </View>
-      <View ref={chatRegionRef} style={[styles.chat, { marginBottom: keyboardInset }]}>
-        <LLMChat.Root
-          messages={chat.messages}
-          draft={draft}
-          status={chat.status}
-          hasEarlierMessages={false}
-          isLoadingEarlier={false}
-          disabled={gatePending}
-          onChangeDraft={setDraft}
-          onSubmit={() => void submit()}
-          onStop={stop}
-          onLoadEarlier={() => undefined}
-          messageActions={chat.messageActions}
-          onLinkPress={() => undefined}
-          composerVariant="ios"
-          themeOverride={IOS_CHAT_THEME}
-          minHeight={36}
-          maxHeight={242}
-          capabilities={{ stop: false }}
-          placeholder="Ask anything"
-          renderAboveComposer={() =>
-            notice || editSourceId || s3SaveFailed || (!hasProviderKey && draft.trim() !== '') ? (
-              <View>
-                {!hasProviderKey && draft.trim() !== '' ? (
-                  <Pressable
-                    accessibilityLabel="Add API key in Settings"
-                    accessibilityRole="button"
-                    onPress={() => {
-                      Keyboard.dismiss()
-                      setSettingsOpen(true)
-                    }}
-                    style={styles.setupNotice}
-                  >
-                    <Text style={styles.setupNoticeGlyph}>⚙</Text>
-                    <Text style={styles.setupNoticeText}>
-                      Add your API key in Settings to send messages.
-                    </Text>
-                  </Pressable>
-                ) : null}
-                {s3SaveFailed ? (
-                  <View style={styles.s3Notice}>
-                    <Text accessibilityRole="alert" style={styles.s3NoticeText}>
-                      Saved on this device. Couldn’t save to S3.
-                    </Text>
+      <View
+        accessibilityElementsHidden={historyOpen || settingsOpen}
+        importantForAccessibility={historyOpen || settingsOpen ? 'no-hide-descendants' : 'auto'}
+        ref={chatRegionRef}
+        style={styles.chatRegion}
+      >
+        <View style={[styles.chat, { marginBottom: keyboardInset }]}>
+          <LLMChat.Root
+            messages={chat.messages}
+            draft={draft}
+            status={chat.status}
+            hasEarlierMessages={false}
+            isLoadingEarlier={false}
+            disabled={gatePending || !hasProviderKey}
+            readOnly={chat.status !== 'idle'}
+            followThreshold={40}
+            scrollToLatestShowThreshold={80}
+            listTrailingPadding={68}
+            scrollToLatestAnnouncement="Latest message"
+            composerFocusRequest={composerFocusRequest}
+            onChangeDraft={setDraft}
+            onSubmit={() => void submit()}
+            onStop={stop}
+            onLoadEarlier={() => undefined}
+            messageActions={chat.messageActions}
+            onLinkPress={() => undefined}
+            composerVariant="ios"
+            themeOverride={{
+              ...IOS_CHAT_THEME,
+              spacing: {
+                ...IOS_CHAT_THEME.spacing,
+                composerBottomGap: keyboardInset > 0 ? 8 : 12,
+              },
+            }}
+            minHeight={36}
+            maxHeight={242}
+            capabilities={{ stop: false }}
+            placeholder="Ask anything"
+            renderAboveComposer={() =>
+              notice || editSourceId || s3SaveFailed || (!hasProviderKey && draft.trim() !== '') ? (
+                <View>
+                  {!hasProviderKey && draft.trim() !== '' ? (
                     <Pressable
-                      accessibilityLabel="Retry saving to S3"
+                      accessibilityLabel="Add API key in Settings"
                       accessibilityRole="button"
-                      onPress={() => void sync.run()}
-                      style={styles.s3Retry}
+                      onPress={() => {
+                        Keyboard.dismiss()
+                        setSettingsOpen(true)
+                      }}
+                      style={styles.setupNotice}
                     >
-                      <Text style={styles.s3RetryText}>↻</Text>
+                      <Text style={styles.setupNoticeGlyph}>⚙</Text>
+                      <Text style={styles.setupNoticeText}>
+                        Add your API key in Settings to send messages.
+                      </Text>
                     </Pressable>
-                  </View>
-                ) : null}
-                {notice ? (
-                  <View style={styles.notice}>
-                    <Text accessibilityRole="alert" style={styles.noticeText}>
-                      {notice}
-                    </Text>
-                  </View>
-                ) : null}
-                {editSourceId ? (
-                  <View style={styles.editRow}>
-                    <Text style={styles.editRowLabel}>Edit and resend</Text>
-                    <Pressable
-                      accessibilityLabel="Cancel edit and resend"
-                      accessibilityRole="button"
-                      onPress={cancelEdit}
-                      style={styles.editCancel}
-                    >
-                      <Text style={styles.editCancelText}>×</Text>
-                    </Pressable>
-                  </View>
-                ) : null}
-              </View>
-            ) : null
-          }
-          renderEmptyState={() => (
-            <Pressable onPress={Keyboard.dismiss} style={styles.emptyState} testID="chat.empty-state">
-              <Text style={styles.emptyTitle}>Start a conversation</Text>
-              <Text style={styles.emptySubtitle}>Your messages will appear here.</Text>
-            </Pressable>
-          )}
-          renderMessage={renderMessage}
-          renderSend={renderSend}
-          renderScrollToLatest={renderScrollToLatest}
-        />
+                  ) : null}
+                  {s3SaveFailed ? (
+                    <View style={styles.s3Notice}>
+                      <Text accessibilityRole="alert" style={styles.s3NoticeText}>
+                        Saved on this device. Couldn’t save to S3.
+                      </Text>
+                      <Pressable
+                        accessibilityLabel="Retry saving to S3"
+                        accessibilityRole="button"
+                        onPress={() => void sync.run()}
+                        style={styles.s3Retry}
+                      >
+                        <Text style={styles.s3RetryText}>↻</Text>
+                      </Pressable>
+                    </View>
+                  ) : null}
+                  {notice ? (
+                    <View style={styles.notice}>
+                      <Text accessibilityRole="alert" style={styles.noticeText}>
+                        {notice}
+                      </Text>
+                    </View>
+                  ) : null}
+                  {editSourceId ? (
+                    <View style={styles.editRow}>
+                      <Text style={styles.editRowLabel}>Edit and resend</Text>
+                      <Pressable
+                        accessibilityLabel="Cancel edit and resend"
+                        accessibilityRole="button"
+                        onPress={cancelEdit}
+                        style={styles.editCancel}
+                      >
+                        <Text style={styles.editCancelText}>×</Text>
+                      </Pressable>
+                    </View>
+                  ) : null}
+                </View>
+              ) : null
+            }
+            renderEmptyState={() => (
+              <Pressable
+                onPress={Keyboard.dismiss}
+                style={styles.emptyState}
+                testID="chat.empty-state"
+              >
+                <Text style={styles.emptyTitle}>Start a conversation</Text>
+                <Text style={styles.emptySubtitle}>Your messages will appear here.</Text>
+              </Pressable>
+            )}
+            renderMessage={renderMessage}
+            renderSend={renderSend}
+            renderScrollToLatest={renderScrollToLatest}
+          />
+        </View>
       </View>
       {historyOpen ? (
         <View style={styles.drawer}>
@@ -747,8 +811,14 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
             <Text style={styles.newChatLabel}>New chat</Text>
           </Pressable>
           <Text style={styles.recentHeading}>Recent</Text>
-          <View style={styles.drawerList}>
-            {historyError ? (
+          <ScrollView contentContainerStyle={styles.drawerList} style={styles.drawerScroll}>
+            {historyLoading ? (
+              <View style={styles.drawerLoading}>
+                <ActivityIndicator color="#6b6b70" size="small" />
+                <Text style={styles.drawerLoadingLabel}>Loading conversations…</Text>
+              </View>
+            ) : null}
+            {!historyLoading && historyError ? (
               <Pressable
                 accessibilityLabel="Retry loading conversations"
                 accessibilityRole="button"
@@ -756,9 +826,10 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
                 style={styles.historyError}
               >
                 <Text style={styles.noticeText}>{historyError}</Text>
+                <Text style={styles.historyRetryGlyph}>↻</Text>
               </Pressable>
             ) : null}
-            {!historyError && entries.length === 0 ? (
+            {!historyLoading && !historyError && entries.length === 0 ? (
               <Text style={styles.emptyHistory}>No conversations yet</Text>
             ) : null}
             {entries.map((entry) => (
@@ -770,30 +841,42 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
                 ]}
               >
                 <Pressable
-                  accessibilityLabel={entry.title || 'Untitled conversation'}
+                  accessibilityLabel={drawerTitle(entry.title)}
                   accessibilityRole="button"
                   accessibilityState={{ selected: entry.id === conversationIdRef.current }}
-                  onPress={() => void openConversation(entry.id)}
+                  onLongPress={() => {
+                    longPressConversationRef.current = entry.id
+                    conversationActions(entry)
+                  }}
+                  onPress={() => {
+                    if (longPressConversationRef.current === entry.id) {
+                      longPressConversationRef.current = null
+                      return
+                    }
+                    void openConversation(entry.id)
+                  }}
                   style={styles.entryOpen}
                 >
-                  <Text numberOfLines={1} style={styles.entryText}>
-                    {entry.title || 'Untitled conversation'}
+                  <Text ellipsizeMode="tail" numberOfLines={1} style={styles.entryText}>
+                    {drawerTitle(entry.title)}
                   </Text>
                 </Pressable>
                 <Pressable
-                  accessibilityLabel={`Conversation actions, ${entry.title || 'Untitled conversation'}`}
+                  accessibilityLabel={`Conversation actions, ${drawerTitle(entry.title)}`}
                   accessibilityRole="button"
                   disabled={mutationPending}
                   onPress={() => conversationActions(entry)}
                   style={styles.entryActions}
                 >
                   <Svg height={24} viewBox="0 0 24 24" width={24}>
-                    <Path d="M5 12h.01M12 12h.01M19 12h.01" stroke="#6b6b70" strokeWidth={4} />
+                    <Circle cx={5} cy={12} fill="#6b6b70" r={2} />
+                    <Circle cx={12} cy={12} fill="#6b6b70" r={2} />
+                    <Circle cx={19} cy={12} fill="#6b6b70" r={2} />
                   </Svg>
                 </Pressable>
               </View>
             ))}
-          </View>
+          </ScrollView>
           <Pressable
             accessibilityLabel={`Settings, build ${BUILD_NUMBER}`}
             accessibilityRole="button"
@@ -802,7 +885,10 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
               setHistoryOpen(false)
               setSettingsOpen(true)
             }}
-            style={styles.drawerSettings}
+            style={[
+              styles.drawerSettings,
+              { minHeight: 56 + safeAreaInsets.bottom, paddingBottom: safeAreaInsets.bottom },
+            ]}
           >
             <Text style={styles.drawerSettingsGlyph}>⚙</Text>
             <Text style={styles.drawerSettingsLabel}>
@@ -836,6 +922,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 6,
   },
+  headerLarge: { minHeight: 64 },
   headerButton: {
     alignItems: 'center',
     backgroundColor: '#ffffff',
@@ -846,7 +933,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: 44,
   },
-  headerIcon: { color: '#111111', fontSize: 24, lineHeight: 28 },
   modelPicker: {
     alignItems: 'center',
     backgroundColor: '#f2f2f7',
@@ -858,8 +944,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     width: 208,
   },
+  modelPickerLarge: { flexShrink: 1 },
   modelLabel: { color: '#111111', flexShrink: 1, fontSize: 17, lineHeight: 22 },
+  modelPickerHost: { alignItems: 'center', justifyContent: 'center' },
   chat: { flex: 1 },
+  chatRegion: { flex: 1 },
   notice: {
     backgroundColor: '#fff1f0',
     borderRadius: 12,
@@ -999,7 +1088,10 @@ const styles = StyleSheet.create({
     marginLeft: 16,
     marginTop: 24,
   },
-  drawerList: { paddingHorizontal: 16, paddingTop: 8 },
+  drawerList: { paddingBottom: 16, paddingHorizontal: 16, paddingTop: 8 },
+  drawerScroll: { flex: 1 },
+  drawerLoading: { alignItems: 'center', gap: 8, paddingVertical: 24 },
+  drawerLoadingLabel: { color: '#6b6b70', fontSize: 13, lineHeight: 18 },
   entry: {
     borderRadius: 14,
     flexDirection: 'row',
@@ -1011,21 +1103,29 @@ const styles = StyleSheet.create({
   entryActions: { alignItems: 'center', height: 44, justifyContent: 'center', width: 44 },
   entryText: { color: '#111111', fontSize: 17, lineHeight: 22 },
   emptyHistory: { color: '#6b6b70', fontSize: 17, marginTop: 12, textAlign: 'center' },
-  historyError: { minHeight: 44, padding: 12 },
+  historyError: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    minHeight: 44,
+    padding: 12,
+  },
+  historyRetryGlyph: { color: '#c62828', fontSize: 24, lineHeight: 28 },
   drawerSettings: {
     alignItems: 'center',
     borderTopColor: '#d1d1d6',
     borderTopWidth: 1,
-    bottom: 0,
     flexDirection: 'row',
     gap: 12,
-    height: 56,
-    left: 0,
+    minHeight: 56,
     paddingHorizontal: 16,
-    position: 'absolute',
-    right: 0,
   },
   drawerSettingsGlyph: { color: '#111111', fontSize: 24, lineHeight: 28 },
   drawerSettingsLabel: { color: '#111111', fontSize: 17, lineHeight: 22 },
-  drawerBuildNumber: { color: '#6b6b70', fontSize: 13, fontVariant: ['tabular-nums'], lineHeight: 18 },
+  drawerBuildNumber: {
+    color: '#6b6b70',
+    fontSize: 13,
+    fontVariant: ['tabular-nums'],
+    lineHeight: 18,
+  },
 })

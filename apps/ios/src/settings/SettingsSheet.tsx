@@ -1,6 +1,8 @@
 import { useEffect, useEffectEvent, useRef, useState } from 'react'
 import {
   ActivityIndicator,
+  AppState,
+  findNodeHandle,
   Modal,
   Pressable,
   ScrollView,
@@ -13,7 +15,9 @@ import * as DocumentPicker from 'expo-document-picker'
 import * as FileSystem from 'expo-file-system/legacy'
 import type { SecretService, SettingsSnapshot } from '../secrets/secretService'
 import { parseSettingsImport } from './settingsImport'
+import { createSettingsOperations } from './settingsOperations'
 import { mergeSettingsPatch, validateSettings, type SettingsErrors } from './settingsValidation'
+import type { SettingsField } from './settingsValidation'
 
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error'
 
@@ -43,12 +47,17 @@ export function SettingsSheet({
   const [errors, setErrors] = useState<SettingsErrors>({})
   const [status, setStatus] = useState<SaveStatus>('idle')
   const [importStatus, setImportStatus] = useState<string | null>(null)
+  const [importing, setImporting] = useState(false)
+  const [hydrating, setHydrating] = useState(true)
   const [revealed, setRevealed] = useState<'apiKey' | 'secretAccessKey' | null>(null)
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latestDraft = useRef(draft)
   const saving = useRef<Promise<void> | null>(null)
+  const hydrated = useRef(false)
+  const operationsRef = useRef(createSettingsOperations())
+  const scrollRef = useRef<ScrollView>(null)
+  const fieldRefs = useRef<Partial<Record<SettingsField, View | null>>>({})
 
-  const save = useEffectEvent(async (value: SettingsSnapshot) => {
+  const save = useEffectEvent(async (value: SettingsSnapshot): Promise<boolean> => {
     const result = validateSettings(value)
     setErrors(result.errors)
     setStatus('saving')
@@ -58,45 +67,78 @@ export function SettingsSheet({
       if (result.value) await service.saveS3Config(result.value.s3)
     }
     const previous = saving.current ?? Promise.resolve()
-    const next = previous.then(operation)
+    // A failed write must not block a later chained write (FR-009).
+    const next = previous.catch(() => undefined).then(operation)
     saving.current = next
     try {
       await next
       if (latestDraft.current === value) {
-        setStatus('saved')
-        setImportStatus((current) => (current ? `${current}. Saved.` : current))
+        if (result.value) {
+          setStatus('saved')
+        } else {
+          setStatus('idle')
+        }
       }
       onSaved()
+      return true
     } catch {
       setStatus('error')
+      return false
     } finally {
       if (saving.current === next) saving.current = null
     }
   })
 
   const scheduleSave = useEffectEvent((value: SettingsSnapshot) => {
-    if (timer.current) clearTimeout(timer.current)
-    timer.current = setTimeout(() => void save(value), 600)
+    operationsRef.current.schedule(() => void save(value))
   })
 
   useEffect(() => {
     if (!visible) {
       setRevealed(null)
-      return
+      operationsRef.current.cancelScheduledSave()
     }
-    void service.readSettings().then((value) => {
-      latestDraft.current = value
-      setDraft(value)
-      setErrors({})
-      setStatus('idle')
-      setImportStatus(null)
-    })
+  }, [visible])
+
+  useEffect(() => {
+    // Hydrate from protected storage once. A reopen resumes the retained draft
+    // instead of discarding an unsaved or failed write (FR-009).
+    if (hydrated.current) return
+    hydrated.current = true
+    let cancelled = false
+    setHydrating(true)
+    void service
+      .readSettings()
+      .then((value) => {
+        if (cancelled) return
+        latestDraft.current = value
+        setDraft(value)
+        setErrors({})
+        setStatus('idle')
+        setImportStatus(null)
+      })
+      .catch(() => {
+        if (!cancelled) setImportStatus('Settings could not be loaded.')
+      })
+      .finally(() => {
+        if (!cancelled) setHydrating(false)
+      })
     return () => {
-      if (timer.current) clearTimeout(timer.current)
+      cancelled = true
     }
-  }, [service, visible])
+  }, [service])
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      // A revealed secret is masked whenever the app leaves the foreground
+      // (FR-012).
+      if (state !== 'active') setRevealed(null)
+    })
+    return () => subscription.remove()
+  }, [])
 
   function update(next: SettingsSnapshot): void {
+    if (hydrating || importing) return
     latestDraft.current = next
     setDraft(next)
     setImportStatus(null)
@@ -104,15 +146,17 @@ export function SettingsSheet({
   }
 
   async function importFile(): Promise<void> {
-    const picker = await DocumentPicker.getDocumentAsync({
-      copyToCacheDirectory: true,
-      multiple: false,
-      type: ['application/json', 'text/plain'],
-    })
-    if (picker.canceled || !picker.assets[0]) return
-    const asset = picker.assets[0]
-    setImportStatus(`Imported ${asset.name}. Saving…`)
+    if (hydrating || !operationsRef.current.beginImport()) return
+    setImporting(true)
     try {
+      const picker = await DocumentPicker.getDocumentAsync({
+        copyToCacheDirectory: true,
+        multiple: false,
+        type: ['application/json', 'text/plain'],
+      })
+      if (picker.canceled || !picker.assets[0]) return
+      const asset = picker.assets[0]
+      setImportStatus(`Reading ${asset.name}…`)
       const parsed = parseSettingsImport(asset.name, await FileSystem.readAsStringAsync(asset.uri))
       if (!parsed.ok) {
         setImportStatus(parsed.error)
@@ -120,26 +164,41 @@ export function SettingsSheet({
       }
       setRevealed(null)
       const next = mergeSettingsPatch(latestDraft.current, parsed.patch)
+      // A valid partial S3 group remains in the draft until the required
+      // fields are supplied. The complete saved group remains unchanged.
+      const merged = validateSettings(next)
       latestDraft.current = next
       setDraft(next)
-      setImportStatus(`Imported ${asset.name}`)
-      await save(next)
+      setErrors(merged.errors)
+      if (!merged.value) {
+        setImportStatus(`Imported ${asset.name}. Complete S3 Keys to save.`)
+        await save(next)
+        return
+      }
+      setImportStatus(`Imported ${asset.name}. Saving…`)
+      if (await save(next)) setImportStatus(`Imported ${asset.name}. Saved.`)
     } catch {
       setImportStatus('The selected file could not be read.')
+    } finally {
+      operationsRef.current.finishImport()
+      setImporting(false)
     }
   }
 
+  function focusField(field: SettingsField): void {
+    const handle = findNodeHandle(fieldRefs.current[field] ?? null)
+    if (handle) scrollRef.current?.scrollResponderScrollNativeHandleToKeyboard(handle, 16, true)
+  }
+
   function close(): void {
-    if (timer.current) {
-      clearTimeout(timer.current)
-      timer.current = null
-      void save(latestDraft.current)
-    }
+    operationsRef.current.cancelScheduledSave()
+    if (!hydrating) void save(latestDraft.current)
     setRevealed(null)
     onClose()
   }
 
   const s3Configured = validateSettings(draft).value?.s3 !== null
+  const interactionLocked = hydrating || importing
   return (
     <Modal
       animationType="slide"
@@ -159,6 +218,12 @@ export function SettingsSheet({
             <Text style={styles.closeText}>×</Text>
           </Pressable>
         </View>
+        {hydrating ? (
+          <View style={styles.status}>
+            <ActivityIndicator size="small" />
+            <Text style={styles.statusText}>Loading settings…</Text>
+          </View>
+        ) : null}
         {status === 'saving' ? (
           <View style={styles.status}>
             <ActivityIndicator size="small" />
@@ -180,10 +245,17 @@ export function SettingsSheet({
             <Text style={styles.error}>Not saved. Retry</Text>
           </Pressable>
         ) : null}
-        <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+        <ScrollView
+          automaticallyAdjustKeyboardInsets
+          contentContainerStyle={styles.content}
+          keyboardShouldPersistTaps="handled"
+          ref={scrollRef}
+        >
           <Pressable
             accessibilityLabel="Import from JSON file"
             accessibilityRole="button"
+            accessibilityState={{ disabled: interactionLocked }}
+            disabled={interactionLocked}
             onPress={() => void importFile()}
             style={styles.import}
           >
@@ -195,15 +267,24 @@ export function SettingsSheet({
             </Text>
           ) : null}
           <Text style={styles.section}>API key</Text>
-          <View style={styles.card}>
+          <View
+            ref={(node) => {
+              fieldRefs.current.apiKey = node
+            }}
+            style={styles.card}
+          >
             <Text style={styles.label}>API key</Text>
             <View style={styles.secretRow}>
               <TextInput
                 autoCapitalize="none"
                 autoCorrect={false}
+                editable={!interactionLocked}
                 onBlur={() => void save(latestDraft.current)}
                 onChangeText={(apiKey) => update({ ...draft, apiKey })}
+                onFocus={() => focusField('apiKey')}
+                onSubmitEditing={() => void save(latestDraft.current)}
                 placeholder="Enter API key"
+                returnKeyType="done"
                 secureTextEntry={revealed !== 'apiKey'}
                 style={styles.input}
                 value={draft.apiKey}
@@ -215,7 +296,7 @@ export function SettingsSheet({
                   expanded: revealed === 'apiKey',
                   disabled: draft.apiKey === '',
                 }}
-                disabled={draft.apiKey === ''}
+                disabled={interactionLocked || draft.apiKey === ''}
                 onPress={() => setRevealed((current) => (current === 'apiKey' ? null : 'apiKey'))}
                 style={styles.eye}
               >
@@ -232,36 +313,63 @@ export function SettingsSheet({
           </Text>
           <View style={styles.card}>
             <SettingInput
+               disabled={interactionLocked}
+              onContainerRef={(node) => {
+                fieldRefs.current.bucket = node
+              }}
               label="Bucket"
               placeholder="Enter bucket name"
               value={draft.s3.bucket}
               error={errors.bucket}
+              onBlur={() => void save(latestDraft.current)}
               onChangeText={(bucket) => update({ ...draft, s3: { ...draft.s3, bucket } })}
+              onFocus={() => focusField('bucket')}
             />
             <SettingInput
+               disabled={interactionLocked}
+              onContainerRef={(node) => {
+                fieldRefs.current.region = node
+              }}
               label="Region"
               placeholder="Enter region (e.g. eu-west-1)"
               value={draft.s3.region}
               error={errors.region}
+              onBlur={() => void save(latestDraft.current)}
               onChangeText={(region) => update({ ...draft, s3: { ...draft.s3, region } })}
+              onFocus={() => focusField('region')}
             />
             <SettingInput
+               disabled={interactionLocked}
+              onContainerRef={(node) => {
+                fieldRefs.current.accessKeyId = node
+              }}
               label="Access key ID"
               placeholder="Enter access key ID"
               value={draft.s3.accessKeyId}
               error={errors.accessKeyId}
+              onBlur={() => void save(latestDraft.current)}
               onChangeText={(accessKeyId) => update({ ...draft, s3: { ...draft.s3, accessKeyId } })}
+              onFocus={() => focusField('accessKeyId')}
             />
-            <Text style={styles.label}>Secret access key</Text>
-            <View style={styles.secretRow}>
+            <View
+              ref={(node) => {
+                fieldRefs.current.secretAccessKey = node
+              }}
+            >
+              <Text style={styles.label}>Secret access key</Text>
+              <View style={styles.secretRow}>
               <TextInput
                 autoCapitalize="none"
                 autoCorrect={false}
+                 editable={!interactionLocked}
                 onBlur={() => void save(latestDraft.current)}
                 onChangeText={(secretAccessKey) =>
                   update({ ...draft, s3: { ...draft.s3, secretAccessKey } })
                 }
+                onFocus={() => focusField('secretAccessKey')}
+                onSubmitEditing={() => void save(latestDraft.current)}
                 placeholder="Enter secret access key"
+                returnKeyType="done"
                 secureTextEntry={revealed !== 'secretAccessKey'}
                 style={styles.input}
                 value={draft.s3.secretAccessKey}
@@ -277,7 +385,7 @@ export function SettingsSheet({
                   expanded: revealed === 'secretAccessKey',
                   disabled: draft.s3.secretAccessKey === '',
                 }}
-                disabled={draft.s3.secretAccessKey === ''}
+                 disabled={interactionLocked || draft.s3.secretAccessKey === ''}
                 onPress={() =>
                   setRevealed((current) =>
                     current === 'secretAccessKey' ? null : 'secretAccessKey',
@@ -287,14 +395,22 @@ export function SettingsSheet({
               >
                 <Text>◉</Text>
               </Pressable>
+              </View>
             </View>
             {fieldError(errors, 'secretAccessKey')}
             <SettingInput
+               disabled={interactionLocked}
+              onContainerRef={(node) => {
+                fieldRefs.current.endpoint = node
+              }}
+              keyboardType="url"
               label="Endpoint (optional)"
               placeholder="Enter S3 endpoint URL"
               value={draft.s3.endpoint}
               error={errors.endpoint}
+              onBlur={() => void save(latestDraft.current)}
               onChangeText={(endpoint) => update({ ...draft, s3: { ...draft.s3, endpoint } })}
+              onFocus={() => focusField('endpoint')}
             />
           </View>
           {Object.keys(errors).some((key) => key !== 'apiKey') ? (
@@ -307,25 +423,46 @@ export function SettingsSheet({
 }
 
 function SettingInput({
+  disabled,
+  keyboardType,
   label,
   placeholder,
   value,
   error,
+  onBlur,
   onChangeText,
+  onFocus,
+  onContainerRef,
 }: {
+  disabled: boolean
+  keyboardType?: 'default' | 'url'
   label: string
   placeholder: string
   value: string
   error?: string
+  onBlur?(): void
   onChangeText(value: string): void
+  onFocus(): void
+  onContainerRef(node: View | null): void
 }): React.JSX.Element {
   return (
-    <View style={styles.field}>
+    <View
+      ref={(node) => {
+        onContainerRef(node)
+      }}
+      style={styles.field}
+    >
       <Text style={styles.label}>{label}</Text>
       <TextInput
         autoCapitalize="none"
         autoCorrect={false}
+        editable={!disabled}
+        keyboardType={keyboardType}
+        onBlur={onBlur}
         onChangeText={onChangeText}
+        onFocus={onFocus}
+        onSubmitEditing={onBlur}
+        returnKeyType="done"
         placeholder={placeholder}
         style={[styles.input, error ? styles.inputError : null]}
         value={value}

@@ -33,7 +33,8 @@ npm install
 | `npm run format:check` | Check formatting with Prettier. |
 | `npm run typecheck` | Run TypeScript checks in every workspace that defines a typecheck script. |
 | `npm test` | Run Vitest unit tests. |
-| `npm run test:e2e` | Build the Electron application and run Playwright end-to-end tests. |
+| `npm run test:e2e:electron` | Build the Electron application and run Playwright end-to-end tests. |
+| `npm run test:e2e:ios` | Run the Maestro native iOS suite against an installed development build. It never launches Electron. |
 | `npm run dev:smoke` | Run the local development smoke check. |
 | `npm run verify` | Run linting, type checks, unit tests, Electron build, smoke check, and Electron end-to-end tests. |
 
@@ -76,5 +77,5 @@ EAS CLI does not report remaining build allowance or account credit. View the cu
 npm run lint          # ESLint
 npm run typecheck     # TypeScript strict check
 npm test              # Vitest unit tests
-npm run test:e2e      # Build the Electron harness, then run Playwright e2e
+npm run test:e2e:electron # Build the Electron harness, then run Playwright e2e
 ```
