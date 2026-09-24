@@ -91,6 +91,10 @@ function createId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
 
+function drawerTitle(title: string): string {
+  return title.replace(/\s+/g, ' ').trim() || 'Untitled conversation'
+}
+
 export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Element {
   const safeAreaInsets = useSafeAreaInsets()
   const { fontScale } = useWindowDimensions()
@@ -857,7 +861,7 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
                 ]}
               >
                 <Pressable
-                  accessibilityLabel={entry.title || 'Untitled conversation'}
+                  accessibilityLabel={drawerTitle(entry.title)}
                   accessibilityRole="button"
                   accessibilityState={{ selected: entry.id === conversationIdRef.current }}
                   onLongPress={() => {
@@ -873,10 +877,12 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
                   }}
                   style={styles.entryOpen}
                 >
-                  <Text style={styles.entryText}>{entry.title || 'Untitled conversation'}</Text>
+                  <Text ellipsizeMode="tail" numberOfLines={1} style={styles.entryText}>
+                    {drawerTitle(entry.title)}
+                  </Text>
                 </Pressable>
                 <Pressable
-                  accessibilityLabel={`Conversation actions, ${entry.title || 'Untitled conversation'}`}
+                  accessibilityLabel={`Conversation actions, ${drawerTitle(entry.title)}`}
                   accessibilityRole="button"
                   disabled={mutationPending}
                   onPress={() => conversationActions(entry)}
