@@ -15,6 +15,7 @@ import * as DocumentPicker from 'expo-document-picker'
 import * as FileSystem from 'expo-file-system/legacy'
 import type { SecretService, SettingsSnapshot } from '../secrets/secretService'
 import { parseSettingsImport } from './settingsImport'
+import { createSettingsOperations } from './settingsOperations'
 import { mergeSettingsPatch, validateSettings, type SettingsErrors } from './settingsValidation'
 import type { SettingsField } from './settingsValidation'
 
@@ -47,11 +48,12 @@ export function SettingsSheet({
   const [status, setStatus] = useState<SaveStatus>('idle')
   const [importStatus, setImportStatus] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
+  const [hydrating, setHydrating] = useState(true)
   const [revealed, setRevealed] = useState<'apiKey' | 'secretAccessKey' | null>(null)
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const latestDraft = useRef(draft)
   const saving = useRef<Promise<void> | null>(null)
   const hydrated = useRef(false)
+  const operationsRef = useRef(createSettingsOperations())
   const scrollRef = useRef<ScrollView>(null)
   const fieldRefs = useRef<Partial<Record<SettingsField, View | null>>>({})
 
@@ -88,30 +90,43 @@ export function SettingsSheet({
   })
 
   const scheduleSave = useEffectEvent((value: SettingsSnapshot) => {
-    if (timer.current) clearTimeout(timer.current)
-    timer.current = setTimeout(() => void save(value), 600)
+    operationsRef.current.schedule(() => void save(value))
   })
 
   useEffect(() => {
     if (!visible) {
       setRevealed(null)
-      return
+      operationsRef.current.cancelScheduledSave()
     }
+  }, [visible])
+
+  useEffect(() => {
     // Hydrate from protected storage once. A reopen resumes the retained draft
     // instead of discarding an unsaved or failed write (FR-009).
     if (hydrated.current) return
     hydrated.current = true
-    void service.readSettings().then((value) => {
-      latestDraft.current = value
-      setDraft(value)
-      setErrors({})
-      setStatus('idle')
-      setImportStatus(null)
-    })
+    let cancelled = false
+    setHydrating(true)
+    void service
+      .readSettings()
+      .then((value) => {
+        if (cancelled) return
+        latestDraft.current = value
+        setDraft(value)
+        setErrors({})
+        setStatus('idle')
+        setImportStatus(null)
+      })
+      .catch(() => {
+        if (!cancelled) setImportStatus('Settings could not be loaded.')
+      })
+      .finally(() => {
+        if (!cancelled) setHydrating(false)
+      })
     return () => {
-      if (timer.current) clearTimeout(timer.current)
+      cancelled = true
     }
-  }, [service, visible])
+  }, [service])
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', (state) => {
@@ -123,7 +138,7 @@ export function SettingsSheet({
   }, [])
 
   function update(next: SettingsSnapshot): void {
-    if (importing) return
+    if (hydrating || importing) return
     latestDraft.current = next
     setDraft(next)
     setImportStatus(null)
@@ -131,7 +146,7 @@ export function SettingsSheet({
   }
 
   async function importFile(): Promise<void> {
-    if (importing) return
+    if (hydrating || !operationsRef.current.beginImport()) return
     setImporting(true)
     try {
       const picker = await DocumentPicker.getDocumentAsync({
@@ -165,6 +180,7 @@ export function SettingsSheet({
     } catch {
       setImportStatus('The selected file could not be read.')
     } finally {
+      operationsRef.current.finishImport()
       setImporting(false)
     }
   }
@@ -175,16 +191,14 @@ export function SettingsSheet({
   }
 
   function close(): void {
-    if (timer.current) {
-      clearTimeout(timer.current)
-      timer.current = null
-      void save(latestDraft.current)
-    }
+    operationsRef.current.cancelScheduledSave()
+    if (!hydrating) void save(latestDraft.current)
     setRevealed(null)
     onClose()
   }
 
   const s3Configured = validateSettings(draft).value?.s3 !== null
+  const interactionLocked = hydrating || importing
   return (
     <Modal
       animationType="slide"
@@ -204,6 +218,12 @@ export function SettingsSheet({
             <Text style={styles.closeText}>×</Text>
           </Pressable>
         </View>
+        {hydrating ? (
+          <View style={styles.status}>
+            <ActivityIndicator size="small" />
+            <Text style={styles.statusText}>Loading settings…</Text>
+          </View>
+        ) : null}
         {status === 'saving' ? (
           <View style={styles.status}>
             <ActivityIndicator size="small" />
@@ -234,8 +254,8 @@ export function SettingsSheet({
           <Pressable
             accessibilityLabel="Import from JSON file"
             accessibilityRole="button"
-            accessibilityState={{ disabled: importing }}
-            disabled={importing}
+            accessibilityState={{ disabled: interactionLocked }}
+            disabled={interactionLocked}
             onPress={() => void importFile()}
             style={styles.import}
           >
@@ -258,7 +278,7 @@ export function SettingsSheet({
               <TextInput
                 autoCapitalize="none"
                 autoCorrect={false}
-                editable={!importing}
+                editable={!interactionLocked}
                 onBlur={() => void save(latestDraft.current)}
                 onChangeText={(apiKey) => update({ ...draft, apiKey })}
                 onFocus={() => focusField('apiKey')}
@@ -276,7 +296,7 @@ export function SettingsSheet({
                   expanded: revealed === 'apiKey',
                   disabled: draft.apiKey === '',
                 }}
-                disabled={importing || draft.apiKey === ''}
+                disabled={interactionLocked || draft.apiKey === ''}
                 onPress={() => setRevealed((current) => (current === 'apiKey' ? null : 'apiKey'))}
                 style={styles.eye}
               >
@@ -293,7 +313,7 @@ export function SettingsSheet({
           </Text>
           <View style={styles.card}>
             <SettingInput
-              disabled={importing}
+               disabled={interactionLocked}
               onContainerRef={(node) => {
                 fieldRefs.current.bucket = node
               }}
@@ -306,7 +326,7 @@ export function SettingsSheet({
               onFocus={() => focusField('bucket')}
             />
             <SettingInput
-              disabled={importing}
+               disabled={interactionLocked}
               onContainerRef={(node) => {
                 fieldRefs.current.region = node
               }}
@@ -319,7 +339,7 @@ export function SettingsSheet({
               onFocus={() => focusField('region')}
             />
             <SettingInput
-              disabled={importing}
+               disabled={interactionLocked}
               onContainerRef={(node) => {
                 fieldRefs.current.accessKeyId = node
               }}
@@ -341,7 +361,7 @@ export function SettingsSheet({
               <TextInput
                 autoCapitalize="none"
                 autoCorrect={false}
-                editable={!importing}
+                 editable={!interactionLocked}
                 onBlur={() => void save(latestDraft.current)}
                 onChangeText={(secretAccessKey) =>
                   update({ ...draft, s3: { ...draft.s3, secretAccessKey } })
@@ -365,7 +385,7 @@ export function SettingsSheet({
                   expanded: revealed === 'secretAccessKey',
                   disabled: draft.s3.secretAccessKey === '',
                 }}
-                disabled={importing || draft.s3.secretAccessKey === ''}
+                 disabled={interactionLocked || draft.s3.secretAccessKey === ''}
                 onPress={() =>
                   setRevealed((current) =>
                     current === 'secretAccessKey' ? null : 'secretAccessKey',
@@ -379,7 +399,7 @@ export function SettingsSheet({
             </View>
             {fieldError(errors, 'secretAccessKey')}
             <SettingInput
-              disabled={importing}
+               disabled={interactionLocked}
               onContainerRef={(node) => {
                 fieldRefs.current.endpoint = node
               }}

@@ -22,8 +22,9 @@ private final class RenameAlertState: NSObject, UITextFieldDelegate {
   ) -> Bool {
     guard let range = Range(range, in: textField.text ?? "") else { return false }
     let value = (textField.text ?? "").replacingCharacters(in: range, with: string)
+    guard value.count <= 80 else { return false }
     updateSaveAction(value)
-    return value.count <= 80
+    return true
   }
 
   private func updateSaveAction(_ value: String?) {
