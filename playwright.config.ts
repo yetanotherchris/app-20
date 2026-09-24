@@ -1,7 +1,7 @@
 import type { Config } from '@playwright/test'
 
 const config: Config = {
-  testDir: './tests/e2e',
+  testDir: './tests/e2e/electron',
   timeout: 60_000,
   expect: { timeout: 10_000 },
   // The app enforces a single-instance lock, so workers must not launch

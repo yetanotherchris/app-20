@@ -7,7 +7,7 @@ on:
     paths:
       - 'apps/electron/**'
       - 'packages/**'
-      - 'tests/**'
+      - 'tests/e2e/electron/**'
       - 'scripts/**'
       - 'src/**'
       - 'package.json'
