@@ -196,6 +196,7 @@ AGENTS.md                         This file
 
 ## Working practice
 
+- Never run Electron application tests locally, including `npm run test:e2e:electron`, Playwright commands that launch Electron, or any equivalent launcher. Use GitHub CI results for Electron validation.
 - Verify before asserting. Check the registry, read the type definitions, run
   the command. Do not state version numbers or API shapes from memory.
 - Prefer reading an artifact over asking the user something already written
