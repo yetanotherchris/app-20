@@ -76,7 +76,7 @@
 
 ## Review remediation
 
-Five agent-based reviews were run against PR #44. Every critical and major finding was fixed:
+Five agent-based reviews were run against PR #44. The following reviewed findings were fixed:
 
 - FR-016 failed resend now restores the edited text and refocuses the composer.
 - FR-004 model selector is wrapped in the `@expo/ui` `Host`.
@@ -87,3 +87,9 @@ Five agent-based reviews were run against PR #44. Every critical and major findi
 - FR-015 the edit action accessibility label includes a source excerpt.
 - FR-024 adds `sendRecovery.test.ts` and import, ordering, and mirror coverage.
 - Minor: settings writes chain past a failed write; an active rename updates the in-memory base; import rejects unicode-escaped and inherited-name duplicates and bounds scanner depth; the merged import candidate is validated before the draft changes.
+- `581c4e5` prevents a late settings hydration from overwriting editable input, serializes imports, cancels stale scheduled saves before import, corrects the native rename length boundary, and fixes the Maestro Settings navigation and import control label.
+
+The following review work remains incomplete and blocks readiness:
+
+- [ ] T039 Add native interaction coverage for the remaining FR-024 recovery paths and run it against an iOS development build.
+- [ ] T040 Add or provide a macOS iOS runner for the required Maestro and native acceptance checks.
