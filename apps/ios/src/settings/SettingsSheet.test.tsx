@@ -55,4 +55,25 @@ describe('SettingsSheet hydration', () => {
     fireEvent.change(apiKey, { target: { value: 'new-key' } })
     expect(apiKey).toHaveValue('new-key')
   })
+
+  it('retains the draft and exposes retry after a settings save fails', async () => {
+    const settings = service(Promise.resolve(savedSettings))
+    vi.mocked(settings.saveApiKey).mockRejectedValue(new Error('SecureStore unavailable'))
+    render(
+      <SettingsSheet
+        visible
+        service={settings}
+        onClose={() => undefined}
+        onSaved={() => undefined}
+      />,
+    )
+
+    const apiKey = screen.getByPlaceholderText('Enter API key')
+    await waitFor(() => expect(apiKey).toHaveValue('saved-key'))
+    fireEvent.change(apiKey, { target: { value: 'retained-key' } })
+    fireEvent.blur(apiKey)
+
+    await waitFor(() => expect(screen.getByLabelText('Retry saving settings')).toBeVisible())
+    expect(apiKey).toHaveValue('retained-key')
+  })
 })
