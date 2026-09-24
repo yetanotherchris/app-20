@@ -38,6 +38,7 @@ A user can browse recent chats and edit or import local settings while preservin
 2. **Given** a user enters a partial optional remote-storage configuration, **When** Settings is closed and reopened, **Then** the partial draft remains available and the last complete saved configuration remains unchanged.
 3. **Given** a revealed secret field is visible, **When** the app backgrounds, **Then** the secret is masked before the user returns.
 4. **Given** an imported settings file is invalid, **When** validation completes, **Then** neither the displayed draft nor any saved setting has changed.
+5. **Given** the app launches or a user selects New chat, **When** saved conversations exist, **Then** the start-conversation panel remains visible until the user selects a conversation from history.
 
 ### User Story 3 - Read the transcript and recover remote saves reliably (Priority: P1)
 
@@ -102,6 +103,7 @@ A developer can verify all affected states on a supported iOS device environment
 - **FR-023**: Retrying remote delivery MUST use queued local content only and MUST NOT create a new provider request or alter conversation history.
 - **FR-024**: Automated coverage MUST exercise every corrected failure and recovery path in this specification, including persistence across restart and settings draft retention.
 - **FR-025**: Native acceptance validation MUST cover states 01 through 35 at 320, 375, and 393-point widths and the largest supported accessibility text size. A state without passing evidence MUST be recorded as failed or blocked, not passed.
+- **FR-026**: The iOS app MUST start with an empty conversation. It MAY load history metadata at launch, but MUST NOT load a saved conversation until the user selects it. Selecting New chat MUST keep the empty conversation active.
 
 ## Key Entities
 
@@ -126,3 +128,7 @@ A developer can verify all affected states on a supported iOS device environment
 - The supplied design package remains the governing design input; no new user-facing feature is added.
 - The supported iOS validation environment is available before this feature is declared complete or archived.
 - Existing persisted beta data is not migrated. The remediation preserves current data formats unless a later specification explicitly changes them.
+
+## Clarifications
+
+- 2026-09-24: The archived requirement to restore the last conversation does not apply to the iOS redesign. The initial iOS surface is the start-conversation panel; history remains available through the Conversations control.

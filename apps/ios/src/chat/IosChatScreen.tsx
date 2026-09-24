@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useEffectEvent, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   AccessibilityInfo,
   ActionSheetIOS,
@@ -243,37 +243,17 @@ export function IosChatScreen({ appState }: IosChatScreenProps): React.JSX.Eleme
   })
   messagesRef.current = chat.messages
 
-  const applyRestoredConversation = useEffectEvent((conversation: Conversation) => {
-    baseRef.current = conversation
-    conversationIdRef.current = conversation.id
-    createdAtRef.current = conversation.createdAt
-    chat.replaceMessages(fromConversation(conversation))
-    // Loading a draft must not schedule a write merely because state changed.
-    restoreConversationUiState(conversation.id, conversation.draft ?? '')
-  })
-
   useEffect(() => {
     let cancelled = false
     void (async () => {
       const listed = await storeRef.current.list()
       if (cancelled) return
       setEntries(listed.entries)
-
-      for (const entry of listed.entries) {
-        if (cancelled || messagesRef.current.length > 0 || draftRef.current.length > 0) return
-        const result = await storeRef.current.read(entry.id)
-        if (result.kind === 'ok') {
-          if (!cancelled && messagesRef.current.length === 0 && draftRef.current.length === 0) {
-            applyRestoredConversation(result.conversation)
-          }
-          return
-        }
-      }
     })()
     return () => {
       cancelled = true
     }
-  }, [applyRestoredConversation])
+  }, [])
 
   useEffect(() => {
     void secretsRef.current.hasProviderKey().then(setHasProviderKey)
