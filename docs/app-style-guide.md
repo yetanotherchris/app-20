@@ -131,6 +131,6 @@ Reduce Motion replaces non-essential movement with a short crossfade or no anima
 
 ## Relationship to the iOS chat visual specification
 
-`specs/ios-chat-design/visual-spec.md` is an input to this guide. Its shared decisions are consolidated here as semantic roles, type and layout scales, state rules, patterns, and accessibility outcomes. The iOS specification remains the detailed source for chat-specific geometry, copy, state scenarios, and iOS-native behavior.
+The [iOS design package](https://github.com/yetanotherchris/app-20-ios/tree/main/specs/ios-chat-design) is an input to this guide. Its shared decisions are consolidated here as semantic roles, type and layout scales, state rules, patterns, and accessibility outcomes. The iOS specification remains the detailed source for chat-specific geometry, copy, state scenarios, and iOS-native behavior.
 
 When the two documents overlap, this guide defines shared cross-platform meaning and the iOS visual specification defines iOS chat-specific detail. Amend this guide first when changing a shared role or pattern, then update the iOS specification when its concrete chat detail changes. Do not create a conflicting local role or state meaning in either document.

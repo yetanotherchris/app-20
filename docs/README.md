@@ -34,7 +34,6 @@ npm install
 | `npm run typecheck` | Run TypeScript checks in every workspace that defines a typecheck script. |
 | `npm test` | Run Vitest unit tests. |
 | `npm run test:e2e:electron` | Build the Electron application and run Playwright end-to-end tests. |
-| `npm run test:e2e:ios` | Run the Maestro native iOS suite against an installed development build. It never launches Electron. |
 | `npm run dev:smoke` | Run the local development smoke check. |
 | `npm run verify` | Run linting, type checks, unit tests, Electron build, smoke check, and Electron end-to-end tests. |
 
