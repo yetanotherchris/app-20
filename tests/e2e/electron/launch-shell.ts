@@ -1,7 +1,7 @@
 import { spawn } from 'node:child_process'
 import { mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import { _electron, type ElectronApplication, type Page } from '@playwright/test'
 
 export interface LaunchedShell {
@@ -26,7 +26,13 @@ export interface LaunchShellOptions {
 }
 
 export function electronMainPath(): string {
-  return join(process.cwd(), 'apps/electron/out/main/index.js')
+  const currentDirectory = process.cwd()
+  const electronDirectory =
+    basename(currentDirectory) === 'electron' && basename(dirname(currentDirectory)) === 'apps'
+      ? currentDirectory
+      : join(currentDirectory, 'apps/electron')
+
+  return join(electronDirectory, 'out/main/index.js')
 }
 
 function cleanEnv(extra: Record<string, string> = {}): Record<string, string> {
